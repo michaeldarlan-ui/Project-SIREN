@@ -1009,13 +1009,7 @@
   .footer { text-align: center; font-size: 11px; color: var(--siren-text-faint); padding: 1.5rem 0 1rem; }
 
   /* SCOPE page */
-  .scope-create-prompt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 4rem 2rem; text-align: center; border: 1px dashed var(--siren-border-mid); border-radius: 12px; background: var(--siren-bg-card); }
-  .scope-create-icon { font-size: 36px; opacity: .3; }
-  .scope-create-title { font-family: var(--siren-font-hud); font-size: 15px; font-weight: 700; color: var(--siren-text-body); letter-spacing: .06em; }
-  .scope-create-sub { font-size: 13px; color: var(--siren-text-muted); max-width: 400px; line-height: 1.55; }
-  .scope-create-btn { margin-top: 8px; padding: 10px 28px; background: var(--siren-cyan); color: #000; border: none; border-radius: 6px; font-family: var(--siren-font-hud); font-size: 12px; font-weight: 700; letter-spacing: .08em; cursor: pointer; }
-  .scope-create-btn:hover { opacity: .85; }
-  .scope-rev-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.scope-rev-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
   .scope-rev-left { display: flex; align-items: center; gap: 10px; }
   .scope-rev-right { display: flex; align-items: center; gap: 10px; }
   .scope-rev-label { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--siren-text-muted); }
@@ -1659,16 +1653,7 @@
     </div>
     <!-- No account selected -->
     <div id="scopeEmpty" style="color:var(--siren-text-muted);padding:2rem 0;font-size:13px;">Select an account above — or create one with + New Account.</div>
-    <!-- Account selected, no scope yet -->
-    <div id="scopeNoScope" style="display:none;">
-      <div class="scope-create-prompt">
-        <div class="scope-create-icon">⬡</div>
-        <div class="scope-create-title">No scope exists for this account</div>
-        <div class="scope-create-sub">Create a new scoping questionnaire to begin capturing the prospect's environment details.</div>
-        <button class="scope-create-btn" onclick="scopeStartNew()">Create New Scope</button>
-      </div>
-    </div>
-    <!-- Scope form (has data) -->
+    <!-- Scope form -->
     <div id="scopeFormWrap" style="display:none;">
       <!-- Revision bar -->
       <div class="scope-rev-bar">
@@ -4505,13 +4490,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     all[company]=obj;
     localStorage.setItem('oa_scope_v2', JSON.stringify(all));
   }
-  function scopeHasData(company){
-    try{
-      const all=JSON.parse(localStorage.getItem('oa_scope_v2')||'{}');
-      return Object.prototype.hasOwnProperty.call(all, company);
-    }catch(e){ return false; }
-  }
-
   let _scopeViewingRevision = null; // null = draft, number = revision index
 
   function saveScope(company, fieldKey, type, val){
@@ -4619,35 +4597,22 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     document.getElementById('scopeForm').innerHTML=html;
   }
 
-  function scopeStartNew(){
-    const sel=document.getElementById('scopeAccountSelect');
-    const company=sel&&sel.value;
-    if(!company) return;
-    // initialise empty record
-    const s=loadScopeAll(company);
-    saveScopeAll(company,s);
-    _scopeViewingRevision=null;
-    document.getElementById('scopeNoScope').style.display='none';
-    document.getElementById('scopeFormWrap').style.display='';
-    renderScopeRevBar(company);
-    renderScopeFormBody(company);
-  }
 
   function onScopeAccountChange(){
     const sel=document.getElementById('scopeAccountSelect');
     const company=sel&&sel.value;
     const empty=document.getElementById('scopeEmpty');
-    const noScope=document.getElementById('scopeNoScope');
     const formWrap=document.getElementById('scopeFormWrap');
     _scopeViewingRevision=null;
     if(!company){
-      empty.style.display=''; noScope.style.display='none'; formWrap.style.display='none'; return;
+      empty.style.display=''; formWrap.style.display='none'; return;
     }
-    empty.style.display='none';
+    // Ensure a record exists in storage so future visits show the form
     if(!scopeHasData(company)){
-      noScope.style.display=''; formWrap.style.display='none'; return;
+      const s=loadScopeAll(company);
+      saveScopeAll(company, s);
     }
-    noScope.style.display='none'; formWrap.style.display='';
+    empty.style.display='none'; formWrap.style.display='';
     renderScopeRevBar(company);
     renderScopeFormBody(company);
     document.getElementById('scopeRevBanner').style.display='none';
