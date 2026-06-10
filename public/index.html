@@ -303,6 +303,18 @@
   .summary-list .missed li::before { background: #FF751F; }
   .summary-list .improvements li::before { background: #004750; }
 
+  /* ── Rep score toggle ── */
+  .rep-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .rep-toggle-btn {
+    padding: 7px 18px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border-mid); border-radius: 20px;
+    background: var(--bg-surface); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .rep-toggle-btn:hover { border-color: var(--oa-teal); color: var(--oa-teal); }
+  .rep-toggle-btn.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
+  .score-view { display: none; }
+  .score-view.active { display: block; }
+
   /* ── SPICED section ── */
   .spiced-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
   @media (max-width: 600px) { .spiced-grid { grid-template-columns: 1fr 1fr; } }
@@ -1056,6 +1068,23 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
     "improvements": ["concrete thing to do differently next call", "another improvement"]
   },
   "recommended_books": [{ "title": "Resource title", "author": "Author", "reason": "1-2 sentences why" }],
+  "rep_scores": [
+    {
+      "name": "Rep Name as spoken in transcript",
+      "dimensions": [
+        { "name": "Discovery & needs confirmation", "max": 20, "score": 0, "feedback": "2-3 sentences specific to this rep's contributions only" },
+        { "name": "Value framing & demo delivery", "max": 25, "score": 0, "feedback": "2-3 sentences" },
+        { "name": "Tactical empathy & objection handling", "max": 25, "score": 0, "feedback": "2-3 sentences" },
+        { "name": "Qualification & deal mechanics", "max": 15, "score": 0, "feedback": "2-3 sentences" },
+        { "name": "Call control & next steps", "max": 15, "score": 0, "feedback": "2-3 sentences" }
+      ],
+      "total": 0,
+      "letter_grade": "B",
+      "grade_label": "short evocative phrase",
+      "top_strength": "one specific sentence about this rep",
+      "top_priority": "single most important fix for this rep"
+    }
+  ],
   "spiced": {
     "situation":      { "touched": true,  "summary": "1-2 sentences on what situation context was established or what was missing" },
     "pain":           { "touched": true,  "summary": "1-2 sentences on pain points surfaced or what was left unexplored" },
@@ -1070,6 +1099,7 @@ call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.
+rep_scores: identify every named sales rep who speaks in the transcript. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no individual reps can be identified, return an empty array.
 spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.`;
 
     const context = [
@@ -1091,7 +1121,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 4000,
+          max_tokens: 6000,
           system: systemPrompt,
           messages: [{ role: 'user', content: context + '\n\n' + notes }]
         })
@@ -1114,24 +1144,45 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     }
   }
 
-  function renderResults(r, prospect, contactTitle, rep, callDate) {
-    const formattedDate = callDate ? new Date(callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    const meta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage, formattedDate].filter(Boolean).join(' · ');
-    const bannerBg = getBannerColor(r.letter_grade);
-
-    const dimsHtml = r.dimensions.map(d => {
+  function buildDimsHtml(dimensions) {
+    return dimensions.map(d => {
       const pct = Math.round((d.score / d.max) * 100);
       const col = getBarColor(pct);
       return `<div class="dim-card">
-        <div class="dim-head"><span class="dim-name">${d.name}</span><span class="dim-score" style="color:${col}">${d.score}/${d.max}</span></div>
+        <div class="dim-head"><span class="dim-name">${escHtml(d.name)}</span><span class="dim-score" style="color:${col}">${d.score}/${d.max}</span></div>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col};"></div></div>
-        <div class="dim-feedback">${d.feedback}</div>
+        <div class="dim-feedback">${escHtml(d.feedback)}</div>
       </div>`;
     }).join('');
+  }
 
-    // Auto-save new recommendations to library before rendering
+  function buildScoreView(viewData, metaLine, viewId) {
+    const bg = getBannerColor(viewData.letter_grade);
+    return `<div class="score-view ${viewId === 'overall' ? 'active' : ''}" id="score-view-${viewId}">
+      <div class="banner" style="background:${bg};">
+        <div>
+          <div class="banner-grade">${escHtml(viewData.letter_grade)} &nbsp; ${viewData.total}/100</div>
+          <div class="banner-label">${escHtml(viewData.grade_label || '')}</div>
+          ${metaLine ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:5px;">${metaLine}</div>` : ''}
+        </div>
+        <div class="banner-right">
+          <div style="margin-bottom:6px;"><strong>Strength:</strong> ${escHtml(viewData.top_strength || '')}</div>
+          <div><strong>Priority:</strong> ${escHtml(viewData.top_priority || '')}</div>
+        </div>
+      </div>
+      <div class="section-head">Score breakdown</div>
+      ${buildDimsHtml(viewData.dimensions)}
+    </div>`;
+  }
+
+  function renderResults(r, prospect, contactTitle, rep, callDate) {
+    const formattedDate = callDate ? new Date(callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const overallMeta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage, formattedDate].filter(Boolean).join(' · ');
+
+    // Auto-save recommendations
     if (r.recommended_books?.length) autoSaveRecommendations(r.recommended_books);
 
+    // Call summary
     const s = r.call_summary || {};
     const summaryHtml = (s.positives?.length || s.missed?.length || s.improvements?.length) ? `
       <div class="section-head">Call summary</div>
@@ -1150,6 +1201,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         </div>
       </div>` : '';
 
+    // SPICED
     const spicedKeys = ['situation','pain','impact','critical_event','evolution','decision'];
     const spicedLabels = { situation: 'Situation', pain: 'Pain', impact: 'Impact', critical_event: 'Critical Event', evolution: 'Evolution', decision: 'Decision' };
     const sp = r.spiced || {};
@@ -1169,22 +1221,25 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         }).join('')}
       </div>` : '';
 
+    // Toggle + score views
+    const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
+    const showToggle = repScores.length > 0;
+
+    const toggleHtml = showToggle ? `
+      <div class="rep-toggle">
+        <button class="rep-toggle-btn active" id="toggle-overall" onclick="switchScoreView('overall')">Overall Call</button>
+        ${repScores.map((rs, i) => `<button class="rep-toggle-btn" id="toggle-rep-${i}" onclick="switchScoreView('rep-${i}')">${escHtml(rs.name)}</button>`).join('')}
+      </div>` : '';
+
+    const overallView = buildScoreView(r, overallMeta, 'overall');
+    const repViews = repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (selectedStage ? ' · ' + selectedStage : ''), `rep-${i}`)).join('');
+
     const resultsHtml = `
-      <div class="banner" style="background:${bannerBg};">
-        <div>
-          <div class="banner-grade">${r.letter_grade} &nbsp; ${r.total}/100</div>
-          <div class="banner-label">${r.grade_label}</div>
-          ${meta ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:5px;">${meta}</div>` : ''}
-        </div>
-        <div class="banner-right">
-          <div style="margin-bottom:6px;"><strong>Strength:</strong> ${r.top_strength}</div>
-          <div><strong>Priority:</strong> ${r.top_priority}</div>
-        </div>
-      </div>
+      ${toggleHtml}
+      ${overallView}
+      ${repViews}
       ${summaryHtml}
       ${spicedHtml}
-      <div class="section-head">Score breakdown</div>
-      ${dimsHtml}
       <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>`;
 
     document.getElementById('results').innerHTML = resultsHtml;
@@ -1193,6 +1248,15 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml);
+  }
+
+  function switchScoreView(viewId) {
+    document.querySelectorAll('.score-view').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.rep-toggle-btn').forEach(el => el.classList.remove('active'));
+    const view = document.getElementById('score-view-' + viewId);
+    const btn = document.getElementById('toggle-' + viewId);
+    if (view) view.classList.add('active');
+    if (btn) btn.classList.add('active');
   }
 
   function autoSaveRecommendations(books) {
