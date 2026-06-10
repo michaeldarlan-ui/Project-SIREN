@@ -704,6 +704,18 @@
   .hist-card-chevron { font-size: 10px; color: var(--text-faint); transition: transform 0.2s; }
   .hist-card-chevron.open { transform: rotate(180deg); }
   .hist-card-body { display: none; border-top: 1px solid var(--border); padding: 16px 18px; }
+  .hist-scores-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; margin: 0 -4px 12px;
+    background: var(--bg-surface); border: 1px solid var(--border-low); border-radius: var(--radius-sm);
+    cursor: pointer; user-select: none;
+  }
+  .hist-scores-toggle:hover { background: var(--bg-deep); }
+  .hist-scores-toggle-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .hist-scores-toggle-chev { font-size: 9px; color: var(--text-faint); transition: transform 0.2s; }
+  .hist-scores-toggle-chev.open { transform: rotate(180deg); }
+  .hist-scores-body { display: none; }
+  .hist-scores-body.open { display: block; }
   .hist-delete-btn { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; padding: 4px 0; text-decoration: underline; }
   .hist-delete-btn:hover { color: #c00; }
   .hist-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 1.25rem; }
@@ -2346,7 +2358,24 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
-    const bodyHtml = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
+    // Wrap score-view blocks in a collapsible section; keep everything else visible
+    const strippedReset = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
+    const scoreMatch = strippedReset.match(/([\s\S]*?)(<div class="(?:rep-toggle|score-view)[\s\S]*?)((?:<div class="section-head[^>]*>(?:Call highlights|Recommended|SPICED)[\s\S]*)?)$/);
+    let bodyHtml;
+    if (scoreMatch) {
+      const before = scoreMatch[1];   // banner
+      const scores = scoreMatch[2];   // rep-toggle + score-view blocks
+      const after  = scoreMatch[3] || ''; // highlights, books, spiced
+      bodyHtml = `${before}
+        <div class="hist-scores-toggle" onclick="toggleHistScores(${h.id},event)">
+          <span class="hist-scores-toggle-label">Scoring Details</span>
+          <span class="hist-scores-toggle-chev" id="hist-sc-chev-${h.id}">&#9660;</span>
+        </div>
+        <div class="hist-scores-body" id="hist-sc-body-${h.id}">${scores}</div>
+        ${after}`;
+    } else {
+      bodyHtml = strippedReset;
+    }
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
@@ -2448,6 +2477,15 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const open = body.style.display !== 'block';
     body.style.display = open ? 'block' : 'none';
     chev.classList.toggle('open', open);
+  }
+
+  function toggleHistScores(id, e) {
+    e.stopPropagation();
+    const body = document.getElementById('hist-sc-body-' + id);
+    const chev = document.getElementById('hist-sc-chev-' + id);
+    if (!body) return;
+    const open = body.classList.toggle('open');
+    if (chev) chev.classList.toggle('open', open);
   }
 
   function toggleGroupCards(groupId) {
