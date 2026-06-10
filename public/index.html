@@ -4201,6 +4201,145 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   renderHistory();
   initUsageBar();
   forgeInit();
+
+  // SCOPE page
+  const SCOPE_SECTIONS = [
+    { title: 'ENGAGEMENT OVERVIEW', fields: [
+      'Company Name',
+      'Industry Vertical (Fintech / Healthcare / Manufacturing…)',
+      'Primary point of contact (name & title)',
+      'Contact email',
+      'Contact phone',
+      'Target completion window / date needed',
+      'Primary business driver (gap assessment / exam prep / board request / insurance / M&A)'
+    ]},
+    { title: 'ORGANIZATION PROFILE', fields: [
+      'Legal entity type (LLC / corporation / partnership / nonprofit / etc.)',
+      'Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)',
+      'Primary products & services',
+      'Total number of employees (full-time + part-time)',
+      'Number of in-house IT / security staff',
+      'Number of business locations / offices',
+      'Operating model (business hours only / 24×7 online operations)',
+      'International operations?',
+      'Approximate number of customers / clients / users served'
+    ]},
+    { title: 'ENVIRONMENT SIZE & COMPOSITION', fields: [
+      'System architecture (on-prem / cloud-hosted / hybrid)',
+      'Number of endpoints (workstations + laptops)',
+      'Number of mobile devices accessing organization data',
+      'Number of servers (physical + virtual)',
+      'Number of live hosts — internal network',
+      'Number of internet-facing (external) hosts',
+      'Number of hosting environments (physical + cloud)',
+      'Number of systems hosted / managed by third parties',
+      'Do you use a Managed Service / Security Provider (MSP / MSSP)? Name it.'
+    ]},
+    { title: 'TECHNOLOGY & KEY SYSTEMS', fields: [
+      'Core business / ERP / processing platform (e.g. SAP / Oracle / Salesforce / NetSuite)',
+      'Customer-facing / digital platform provider (e.g. web portal / mobile app / e-commerce)',
+      'Firewall / network equipment (e.g. Cisco / Meraki / Palo Alto)',
+      'Predominant OS / server environment (Windows / Azure / on-prem / etc.)',
+      'Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)',
+      'Number of cloud tenants / subscriptions',
+      'Key SaaS / third-party apps handling regulated data',
+      'Endpoint protection / EDR solution in use',
+      'Is MFA deployed (email / remote access / admin accounts)?',
+      'Email / collaboration platform (M365 / Google Workspace / etc.)'
+    ]},
+    { title: 'DATA & SENSITIVE INFORMATION', fields: [
+      'Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)',
+      'Do you store, process, or transmit payment card data (PCI scope)?',
+      'Approximate volume of customer PII / records held',
+      'Where is sensitive data stored (on-prem / cloud / vendor)?'
+    ]},
+    { title: 'DRIVERS, CONTEXT & CONSTRAINTS', fields: [
+      'Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)',
+      'Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?',
+      'Applying for / renewing cyber liability insurance? When?',
+      'Preparing for a regulatory exam or audit? When?',
+      'Recent or pending M&A activity? Describe.',
+      'Expected network / application changes during the assessment window?',
+      'Timing restrictions (time of day / day of week / blackout periods)?'
+    ]},
+    { title: 'PRIOR ASSESSMENT HISTORY', fields: [
+      'Has the organization had a prior risk / security assessment? When?',
+      'Date of last security audit or regulatory exam',
+      'Security incident in the past 24 months? Briefly describe.',
+      'Number of personnel who will support this engagement'
+    ]}
+  ];
+
+  function slugField(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+
+  function loadScope(company){
+    try{ return JSON.parse(localStorage.getItem('oa_scope')||'{}')[company]||{}; }catch(e){ return {}; }
+  }
+
+  function saveScope(company, fieldKey, type, val){
+    let all={};
+    try{ all=JSON.parse(localStorage.getItem('oa_scope')||'{}'); }catch(e){}
+    if(!all[company]) all[company]={};
+    if(!all[company][fieldKey]) all[company][fieldKey]={value:'',notes:''};
+    all[company][fieldKey][type]=val;
+    localStorage.setItem('oa_scope', JSON.stringify(all));
+    const s=document.getElementById('scopeSaveStatus');
+    if(s){ s.textContent='Saved'; setTimeout(()=>{ s.textContent=''; },1500); }
+  }
+
+  function onScopeAccountChange(){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel.value;
+    const empty=document.getElementById('scopeEmpty');
+    const form=document.getElementById('scopeForm');
+    if(!company){ empty.style.display=''; form.style.display='none'; return; }
+    empty.style.display='none';
+    form.style.display='';
+    const data=loadScope(company);
+    let html='';
+    for(const sec of SCOPE_SECTIONS){
+      html+=`<div class="scope-section"><div class="scope-section-header">${sec.title}</div>`;
+      html+=`<div class="scope-grid"><div class="scope-col-head">Field</div><div class="scope-col-head">Response / Value</div><div class="scope-col-head">Notes / Detail</div>`;
+      for(const field of sec.fields){
+        const key=slugField(field);
+        const saved=data[key]||{value:'',notes:''};
+        const vEsc=saved.value.replace(/"/g,'&quot;');
+        const nEsc=saved.notes.replace(/"/g,'&quot;');
+        html+=`<div class="scope-label">${field}</div>`;
+        html+=`<input class="scope-input" type="text" value="${vEsc}" data-company="${company.replace(/"/g,'&quot;')}" data-key="${key}" data-type="value" oninput="saveScope(this.dataset.company,this.dataset.key,'value',this.value)" placeholder="—">`;
+        html+=`<input class="scope-input scope-notes" type="text" value="${nEsc}" data-company="${company.replace(/"/g,'&quot;')}" data-key="${key}" data-type="notes" oninput="saveScope(this.dataset.company,this.dataset.key,'notes',this.value)" placeholder="notes…">`;
+      }
+      html+=`</div></div>`;
+    }
+    form.innerHTML=html;
+  }
+
+  function renderScopePage(){
+    const sel=document.getElementById('scopeAccountSelect');
+    if(!sel) return;
+    const prev=sel.value;
+    const companies=getLcCompanies();
+    sel.innerHTML='<option value="">— select account —</option>'+companies.map(c=>`<option value="${c}"${c===prev?' selected':''}>${c}</option>`).join('');
+    if(prev && companies.includes(prev)){ onScopeAccountChange(); }
+  }
+
+  function exportScope(){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel&&sel.value;
+    if(!company){ alert('Select an account first.'); return; }
+    const data=loadScope(company);
+    let lines=[`SCOPE — ${company}`,`Exported: ${new Date().toLocaleString()}`,''];
+    for(const sec of SCOPE_SECTIONS){
+      lines.push(`=== ${sec.title} ===`);
+      for(const field of sec.fields){
+        const key=slugField(field);
+        const saved=data[key]||{value:'',notes:''};
+        lines.push(`${field}: ${saved.value||'(blank)'}${saved.notes?' ['+saved.notes+']':''}`);
+      }
+      lines.push('');
+    }
+    navigator.clipboard.writeText(lines.join('\n')).then(()=>{ const s=document.getElementById('scopeSaveStatus'); if(s){ s.textContent='Copied to clipboard'; setTimeout(()=>{ s.textContent=''; },2000); } }).catch(()=>{ alert('Copy failed'); });
+  }
 </script>
 </body>
 </html>
