@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,20 +28,58 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
 
 const server = http.createServer((req, res) => {
-  if (req.url === '/' || req.url === '/index.html') {
-    const htmlPath = path.join(__dirname, 'public', 'index.html');
-    let html = fs.readFileSync(htmlPath, 'utf8');
+  // ── Claude API proxy ─────────────────────────────────────────
+  if (req.method === 'POST' && req.url === '/api/claude') {
+    if (!API_KEY) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: 'ANTHROPIC_API_KEY not configured on server.' } }));
+      return;
+    }
 
-    // Inject the API key as a JS global — only served locally, never in the HTML file itself
-    const injection = `<script>window.ENV = { ANTHROPIC_API_KEY: ${JSON.stringify(API_KEY)} };</script>`;
-    html = html.replace('</head>', injection + '\n</head>');
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      const options = {
+        hostname: 'api.anthropic.com',
+        path: '/v1/messages',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+          'anthropic-version': '2023-06-01',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      };
 
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(html);
+      const proxyReq = https.request(options, proxyRes => {
+        res.writeHead(proxyRes.statusCode, {
+          'Content-Type': proxyRes.headers['content-type'] || 'application/json',
+          'Cache-Control': 'no-cache',
+        });
+        proxyRes.pipe(res);
+      });
+
+      proxyReq.on('error', err => {
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+        }
+        res.end(JSON.stringify({ error: { message: 'Proxy error: ' + err.message } }));
+      });
+
+      proxyReq.write(body);
+      proxyReq.end();
+    });
     return;
   }
 
-  // Serve other static files (css, js, assets) if needed
+  // ── Static files ─────────────────────────────────────────────
+  if (req.url === '/' || req.url === '/index.html') {
+    const htmlPath = path.join(__dirname, 'public', 'index.html');
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(fs.readFileSync(htmlPath));
+    return;
+  }
+
   const filePath = path.join(__dirname, 'public', req.url);
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);
@@ -57,6 +96,6 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  OneAxiom Call Grader running at http://localhost:${PORT}\n`);
   if (!API_KEY) {
-    console.warn('  ⚠  ANTHROPIC_API_KEY not set — you will need to enter it manually in the browser.\n');
+    console.warn('  ⚠  ANTHROPIC_API_KEY not set — API calls will fail.\n');
   }
 });

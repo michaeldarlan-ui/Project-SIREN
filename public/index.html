@@ -1839,30 +1839,14 @@
   document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
 
   // ── Grader ─────────────────────────────────────────────────
-  const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? String(window.ENV.ANTHROPIC_API_KEY).trim() : null;
-
   function initKeyUI() {
     const el = document.getElementById('keyStatus');
-    if (injectedKey) {
-      el.innerHTML = `<div class="key-banner"><div class="key-dot"></div>API key loaded from environment — you're good to go.</div>`;
-    } else {
-      el.innerHTML = `
-        <div class="manual-key-row">
-          <input type="password" id="apiKey" placeholder="sk-ant-api03-…" autocomplete="off" />
-          <button class="key-toggle" onclick="toggleKey()">Show</button>
-        </div>
-        <p class="key-hint">Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> · Or set ANTHROPIC_API_KEY in your .env to skip this field</p>`;
-    }
-  }
-
-  function getApiKey() {
-    if (injectedKey) return injectedKey;
-    const el = document.getElementById('apiKey');
-    return el ? el.value.trim() : '';
+    if (el) el.innerHTML = `<div class="key-banner"><div class="key-dot"></div>Connected — API key secured on server.</div>`;
   }
 
   function toggleKey() {
     const input = document.getElementById('apiKey');
+    if (!input) return;
     input.type = input.type === 'password' ? 'text' : 'password';
     event.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
   }
@@ -2040,14 +2024,12 @@
   }
 
   async function gradeCall() {
-    const apiKey = getApiKey();
     const notes = document.getElementById('callNotes').value.trim();
     const prospect = document.getElementById('prospect').value.trim();
     const contactTitle = document.getElementById('contactTitle').value.trim();
     const callDate = document.getElementById('callDate').value;
     const rep = getSelectedRep();
 
-    if (!apiKey) { showError('No API key found. Add one in .env or enter it above.'); return; }
     if (!notes) { showError('Please paste your call notes or transcript.'); return; }
 
     setLoading(true, prospect, selectedStage);
@@ -2124,14 +2106,9 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     ].filter(Boolean).join(' | ');
 
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 6000,
