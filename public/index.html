@@ -1039,11 +1039,11 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
 
 {
   "dimensions": [
-    { "name": "Discovery & needs confirmation", "max": 20, "score": 0, "feedback": "2-3 sentences of specific actionable coaching tied to what happened in this call", "book_insight": "1-2 sentences referencing techniques from the already-read resources where relevant, or suggest from the recommended list if score under 14" },
-    { "name": "Value framing & demo delivery", "max": 25, "score": 0, "feedback": "2-3 sentences", "book_insight": "1-2 sentences" },
-    { "name": "Tactical empathy & objection handling", "max": 25, "score": 0, "feedback": "2-3 sentences — call out specific techniques used or missed", "book_insight": "1-2 sentences" },
-    { "name": "Qualification & deal mechanics", "max": 15, "score": 0, "feedback": "2-3 sentences covering budget, authority, timeline, competitive landscape, winnability", "book_insight": "1-2 sentences" },
-    { "name": "Call control & next steps", "max": 15, "score": 0, "feedback": "2-3 sentences", "book_insight": "1-2 sentences" }
+    { "name": "Discovery & needs confirmation", "max": 20, "score": 0, "feedback": "2-3 sentences of specific actionable coaching tied to what happened in this call" },
+    { "name": "Value framing & demo delivery", "max": 25, "score": 0, "feedback": "2-3 sentences" },
+    { "name": "Tactical empathy & objection handling", "max": 25, "score": 0, "feedback": "2-3 sentences — call out specific techniques used or missed" },
+    { "name": "Qualification & deal mechanics", "max": 15, "score": 0, "feedback": "2-3 sentences covering budget, authority, timeline, competitive landscape, winnability" },
+    { "name": "Call control & next steps", "max": 15, "score": 0, "feedback": "2-3 sentences" }
   ],
   "total": 0,
   "letter_grade": "B",
@@ -1126,7 +1126,6 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         <div class="dim-head"><span class="dim-name">${d.name}</span><span class="dim-score" style="color:${col}">${d.score}/${d.max}</span></div>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col};"></div></div>
         <div class="dim-feedback">${d.feedback}</div>
-        <div class="book-chip"><strong>Book insight:</strong> ${d.book_insight}</div>
       </div>`;
     }).join('');
 
