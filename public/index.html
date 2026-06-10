@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sales SIEM — by OneAxiom</title>
+<title>SIREN — Sales Intelligence, Review & Enablement Network</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -64,7 +64,9 @@
     display: flex; align-items: center; justify-content: center;
   }
   .topbar-logo svg { width: 17px; height: 17px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  .topbar-name { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -0.2px; }
+  .topbar-wordmark { display: flex; flex-direction: column; gap: 1px; }
+  .topbar-siren { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 0.06em; line-height: 1.1; }
+  .topbar-siren-sub { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.45); letter-spacing: 0.04em; line-height: 1.2; white-space: nowrap; }
   .nav-tabs { display: flex; align-items: stretch; gap: 0; flex: 1; }
   .nav-tab {
     padding: 0 18px; height: 52px;
@@ -400,17 +402,17 @@
   .score-view.active { display: block; }
 
   /* ── SPICED section ── */
-  .spiced-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
-  @media (max-width: 600px) { .spiced-grid { grid-template-columns: 1fr 1fr; } }
-  .spiced-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
-  .spiced-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-  .spiced-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .spiced-list { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden; }
+  .spiced-item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+  .spiced-item:last-child { border-bottom: none; }
+  .spiced-bullet { display: flex; align-items: center; gap: 8px; flex-shrink: 0; width: 130px; padding-top: 1px; }
+  .spiced-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .spiced-dot.touched { background: var(--oa-green); }
   .spiced-dot.not-touched { background: var(--oa-grey); }
   .spiced-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
   .spiced-label.touched { color: var(--oa-teal); }
   .spiced-label.not-touched { color: var(--text-faint); }
-  .spiced-summary { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+  .spiced-summary { font-size: 13px; color: var(--text-muted); line-height: 1.55; flex: 1; }
 
   /* ── History page ── */
   .hist-empty { font-size: 14px; color: var(--text-faint); padding: 3rem 0; text-align: center; }
@@ -480,7 +482,10 @@
     <div class="topbar-logo">
       <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     </div>
-    <span class="topbar-name">Sales SIEM</span>
+    <div class="topbar-wordmark">
+      <span class="topbar-siren">SIREN</span>
+      <span class="topbar-siren-sub">Sales Intelligence, Review &amp; Enablement Network</span>
+    </div>
   </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="navTo('grader')">Grader</button>
@@ -588,7 +593,7 @@
           </div>
         </div>
         <div class="load-title">Analyzing Call</div>
-        <div class="load-context" id="loadContext">Sales SIEM · AI Coach</div>
+        <div class="load-context" id="loadContext">SIREN · AI Coach</div>
         <div class="load-phase-wrap">
           <div class="load-phase" id="loadPhase">Initializing analysis engine…</div>
         </div>
@@ -602,7 +607,7 @@
 
     <div id="results"></div>
 
-    <div class="footer">Sales SIEM · Key is never logged or stored beyond this session</div>
+    <div class="footer">SIREN · Key is never logged or stored beyond this session</div>
   </div>
 </div>
 
@@ -624,7 +629,7 @@
       </div>
     </div>
 
-    <div class="footer">Sales SIEM · Internal use only</div>
+    <div class="footer">SIREN · Internal use only</div>
   </div>
 </div>
 
@@ -690,7 +695,7 @@
       <input type="file" id="pdfInput" accept="application/pdf" multiple style="display:none;" onchange="onFileSelect(event)" />
     </div>
 
-    <div class="footer">Sales SIEM · Internal use only</div>
+    <div class="footer">SIREN · Internal use only</div>
   </div>
 </div>
 
@@ -705,7 +710,7 @@
       <button class="clear-hist-btn" onclick="clearHistory()">Clear all history</button>
     </div>
     <div id="historyList"></div>
-    <div class="footer">Sales SIEM · Internal use only</div>
+    <div class="footer">SIREN · Internal use only</div>
   </div>
 </div>
 
@@ -1311,12 +1316,12 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     const sp = r.spiced || {};
     const spicedHtml = spicedKeys.some(k => sp[k]) ? `
       <div class="section-head">SPICED framework</div>
-      <div class="spiced-grid">
+      <div class="spiced-list">
         ${spicedKeys.map(k => {
           const c = sp[k] || {};
           const cls = c.touched ? 'touched' : 'not-touched';
-          return `<div class="spiced-card">
-            <div class="spiced-card-head">
+          return `<div class="spiced-item">
+            <div class="spiced-bullet">
               <div class="spiced-dot ${cls}"></div>
               <span class="spiced-label ${cls}">${spicedLabels[k]}</span>
             </div>
@@ -1415,7 +1420,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
       // Context line
       const parts = [prospect, stage].filter(Boolean);
-      document.getElementById('loadContext').textContent = parts.length ? parts.join(' · ') : 'Sales SIEM · AI Coach';
+      document.getElementById('loadContext').textContent = parts.length ? parts.join(' · ') : 'SIREN · AI Coach';
 
       // Kick off phase cycling
       const phaseEl  = document.getElementById('loadPhase');
