@@ -1834,7 +1834,7 @@
     return `${readClause}\n\n${recClause}`;
   }
 
-  document.getElementById('libTitle').addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
+  document.getElementById('libTitle')?.addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
   // Default call date to today
   document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
 
