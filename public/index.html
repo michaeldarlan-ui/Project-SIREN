@@ -1826,6 +1826,7 @@
   function refreshRepSelect() {
     const team = loadTeam();
     const sel = document.getElementById('repSelect');
+    if (!sel) return;
     const current = sel.value;
     sel.innerHTML = '<option value="">— Rep (optional) —</option>' +
       team.map(m => `<option value="${escHtml(m.name)}">${escHtml(m.name)} — ${escHtml(m.role)}</option>`).join('');
@@ -1834,6 +1835,8 @@
   }
 
   function onRepChange() {
+    const sel = document.getElementById('repSelect');
+    if (!sel) return;
     const team = loadTeam();
     const name = document.getElementById('repSelect').value;
     const hint = document.getElementById('repRoleHint');
@@ -1848,13 +1851,14 @@
   }
 
   function getSelectedRep() {
+    const sel = document.getElementById('repSelect');
+    if (!sel) return null;
     const team = loadTeam();
-    const name = document.getElementById('repSelect').value;
-    return team.find(m => m.name === name) || null;
+    return team.find(m => m.name === sel.value) || null;
   }
 
   ['newMemberName','newMemberRole'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') addMember(); });
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') addMember(); });
   });
 
   // ── Resource library ───────────────────────────────────────
