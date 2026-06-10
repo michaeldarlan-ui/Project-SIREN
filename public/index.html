@@ -178,6 +178,52 @@
   .reset-btn:hover { background: var(--bg-surface); }
 
   .footer { text-align: center; font-size: 11px; color: var(--text-faint); margin-top: 2rem; padding-bottom: 1rem; }
+
+  /* Usage bar */
+  .usage-bar {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .usage-bar-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; cursor: pointer; user-select: none;
+  }
+  .usage-bar-header:hover { background: var(--bg-surface); }
+  .usage-bar-left { display: flex; align-items: center; gap: 8px; }
+  .usage-bar-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .usage-chevron { font-size: 11px; color: var(--text-faint); transition: transform 0.2s; }
+  .usage-chevron.open { transform: rotate(180deg); }
+  .usage-bar-body { border-top: 1px solid var(--border); padding: 14px 16px; }
+  .usage-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .usage-metric {
+    background: var(--bg-surface); border-radius: var(--radius-sm);
+    padding: 10px 12px; position: relative;
+  }
+  .usage-metric.disabled { opacity: 0.35; }
+  .usage-metric-label { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
+  .usage-metric-value { font-size: 18px; font-weight: 600; color: var(--oa-teal); }
+  .usage-metric-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .metric-toggle {
+    position: absolute; top: 8px; right: 8px;
+    width: 28px; height: 16px; border-radius: 8px;
+    background: var(--bg-deep); border: none; cursor: pointer;
+    transition: background 0.2s; padding: 0; flex-shrink: 0;
+  }
+  .metric-toggle.on { background: var(--oa-green); }
+  .metric-toggle::after {
+    content: ''; display: block;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; margin: 2px; transition: margin 0.2s;
+  }
+  .metric-toggle.on::after { margin-left: 14px; }
+  .usage-actions { display: flex; align-items: center; justify-content: space-between; }
+  .usage-last-call { font-size: 12px; color: var(--text-faint); }
+  .usage-reset { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
+  .usage-reset:hover { color: var(--oa-orange); }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--oa-green); display: inline-block; margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -192,6 +238,49 @@
     <div class="header-text">
       <h1>OneAxiom Sales Call Grader</h1>
       <p>Powered by Claude · Internal use only</p>
+    </div>
+  </div>
+
+  <!-- Usage Bar -->
+  <div class="usage-bar" id="usageBar">
+    <div class="usage-bar-header" onclick="toggleUsageBar()">
+      <div class="usage-bar-left">
+        <span class="live-dot" id="usageDot" style="background:var(--oa-grey);"></span>
+        <span class="usage-bar-title">API Usage</span>
+      </div>
+      <span class="usage-chevron" id="usageChevron">▼</span>
+    </div>
+    <div class="usage-bar-body" id="usageBarBody" style="display:none;">
+      <div class="usage-metrics">
+        <div class="usage-metric" id="metric-tokens">
+          <div class="usage-metric-label">Tokens this call</div>
+          <div class="usage-metric-value" id="val-tokens">—</div>
+          <div class="usage-metric-sub">input + output</div>
+          <button class="metric-toggle on" id="toggle-tokens" onclick="toggleMetric('tokens', event)" title="Toggle"></button>
+        </div>
+        <div class="usage-metric" id="metric-cost-call">
+          <div class="usage-metric-label">Cost this call</div>
+          <div class="usage-metric-value" id="val-cost-call">—</div>
+          <div class="usage-metric-sub">USD</div>
+          <button class="metric-toggle on" id="toggle-cost-call" onclick="toggleMetric('cost-call', event)" title="Toggle"></button>
+        </div>
+        <div class="usage-metric" id="metric-cost-session">
+          <div class="usage-metric-label">Session total</div>
+          <div class="usage-metric-value" id="val-cost-session">$0.00</div>
+          <div class="usage-metric-sub">since browser opened</div>
+          <button class="metric-toggle on" id="toggle-cost-session" onclick="toggleMetric('cost-session', event)" title="Toggle"></button>
+        </div>
+        <div class="usage-metric" id="metric-cost-alltime">
+          <div class="usage-metric-label">All-time total</div>
+          <div class="usage-metric-value" id="val-cost-alltime">$0.00</div>
+          <div class="usage-metric-sub" id="sub-alltime">0 calls graded</div>
+          <button class="metric-toggle on" id="toggle-cost-alltime" onclick="toggleMetric('cost-alltime', event)" title="Toggle"></button>
+        </div>
+      </div>
+      <div class="usage-actions">
+        <span class="usage-last-call" id="lastCallLabel"></span>
+        <button class="usage-reset" onclick="resetAllTime()">Reset all-time totals</button>
+      </div>
     </div>
   </div>
 
@@ -381,6 +470,9 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
       }
 
       const data = await resp.json();
+      if (data.usage) {
+        updateUsageUI(data.usage.input_tokens || 0, data.usage.output_tokens || 0);
+      }
       let raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
       raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
       renderResults(JSON.parse(raw), prospect, contactTitle);
@@ -461,7 +553,120 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
     el.style.display = 'none';
   }
 
+  // ── Usage bar ──────────────────────────────────────────────
+  // Pricing: claude-sonnet-4-6 — $3/M input, $15/M output
+  const PRICE_IN  = 3  / 1_000_000;
+  const PRICE_OUT = 15 / 1_000_000;
+
+  // Session state (in-memory)
+  let sessionCost = 0;
+  let lastCallTokens = null;
+  let lastCallCost = null;
+
+  // Persistent state (localStorage)
+  function loadAllTime() {
+    try {
+      return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}');
+    } catch { return { cost: 0, calls: 0 }; }
+  }
+  function saveAllTime(data) {
+    try { localStorage.setItem('oa_usage', JSON.stringify(data)); } catch {}
+  }
+  function loadToggles() {
+    try {
+      return JSON.parse(localStorage.getItem('oa_toggles') || '{"tokens":true,"cost-call":true,"cost-session":true,"cost-alltime":true}');
+    } catch { return { tokens: true, 'cost-call': true, 'cost-session': true, 'cost-alltime': true }; }
+  }
+  function saveToggles(t) {
+    try { localStorage.setItem('oa_toggles', JSON.stringify(t)); } catch {}
+  }
+  function loadBarOpen() {
+    try { return localStorage.getItem('oa_bar_open') !== 'false'; } catch { return true; }
+  }
+
+  let metricToggles = loadToggles();
+
+  function applyToggles() {
+    ['tokens', 'cost-call', 'cost-session', 'cost-alltime'].forEach(key => {
+      const on = metricToggles[key];
+      const el = document.getElementById('metric-' + key);
+      const btn = document.getElementById('toggle-' + key);
+      if (el) el.classList.toggle('disabled', !on);
+      if (btn) btn.classList.toggle('on', on);
+    });
+  }
+
+  function toggleMetric(key, e) {
+    e.stopPropagation();
+    metricToggles[key] = !metricToggles[key];
+    saveToggles(metricToggles);
+    applyToggles();
+  }
+
+  function toggleUsageBar() {
+    const body = document.getElementById('usageBarBody');
+    const chevron = document.getElementById('usageChevron');
+    const open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    chevron.classList.toggle('open', open);
+    try { localStorage.setItem('oa_bar_open', open); } catch {}
+  }
+
+  function updateUsageUI(inputTokens, outputTokens) {
+    const callCost = (inputTokens * PRICE_IN) + (outputTokens * PRICE_OUT);
+    const totalTokens = inputTokens + outputTokens;
+    lastCallTokens = totalTokens;
+    lastCallCost = callCost;
+    sessionCost += callCost;
+
+    const allTime = loadAllTime();
+    allTime.cost += callCost;
+    allTime.calls += 1;
+    saveAllTime(allTime);
+
+    document.getElementById('val-tokens').textContent = totalTokens.toLocaleString();
+    document.getElementById('val-cost-call').textContent = '$' + callCost.toFixed(4);
+    document.getElementById('val-cost-session').textContent = '$' + sessionCost.toFixed(4);
+    document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
+    document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
+
+    const now = new Date();
+    document.getElementById('lastCallLabel').textContent =
+      'Last call: ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Green dot = active
+    document.getElementById('usageDot').style.background = '#00A983';
+
+    // Auto-open the bar after first call
+    const body = document.getElementById('usageBarBody');
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      document.getElementById('usageChevron').classList.add('open');
+    }
+  }
+
+  function resetAllTime() {
+    if (!confirm('Reset all-time totals? This cannot be undone.')) return;
+    saveAllTime({ cost: 0, calls: 0 });
+    document.getElementById('val-cost-alltime').textContent = '$0.00';
+    document.getElementById('sub-alltime').textContent = '0 calls graded';
+  }
+
+  function initUsageBar() {
+    const allTime = loadAllTime();
+    document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
+    document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
+    applyToggles();
+    const open = loadBarOpen();
+    if (open) {
+      document.getElementById('usageBarBody').style.display = 'block';
+      document.getElementById('usageChevron').classList.add('open');
+    }
+  }
+  // ── End usage bar ──────────────────────────────────────────
+
   initKeyUI();
+  initUsageBar();
 </script>
 </body>
 </html>
