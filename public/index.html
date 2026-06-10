@@ -371,14 +371,7 @@
     </div>
 
     <div class="card-title" style="margin-bottom:8px;">Transcript or notes</div>
-    <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here.
-
-Include:
-• How you opened and what you asked
-• What the prospect shared about their environment and pain
-• How you framed OneAxiom's value
-• Objections raised and how you handled them
-• How the call ended and what the next step is"></textarea>
+    <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here."></textarea>
 
     <button class="submit-btn" id="submitBtn" onclick="gradeCall()">Grade this call</button>
     <div class="loading" id="loading"><div class="dots"><span></span><span></span><span></span></div>Analyzing your call…</div>
@@ -842,6 +835,66 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
     applyToggles();
   }
   // ── End usage bar ──────────────────────────────────────────
+
+  // Sample transcript — cleared as soon as the user edits
+  const SAMPLE_TRANSCRIPT = `Michael Darlan (0:12): Good afternoon Jason, can you hear me alright?
+Jason Pruitt (0:15): Yeah, loud and clear. How are you?
+Michael Darlan (0:17): Doing great, thanks for making time. I know you mentioned you had a hard stop at 2, so I want to make sure we use your time well today.
+Jason Pruitt (0:25): Yeah, appreciate that.
+Michael Darlan (0:27): So last time we spoke, you mentioned your team was stretched thin and you were having some frustration with the alert volume coming out of your current setup. Has anything changed since then, or is that still the main pain point?
+Jason Pruitt (0:41): No, that's still very much the situation. If anything it's gotten worse. We had an incident two weeks ago where one of our analysts missed an alert because it got buried. Nothing came of it, but it was a wake-up call.
+Michael Darlan (0:57): That sounds stressful. What did that incident end up looking like on your end — was it a weekend situation?
+Jason Pruitt (1:04): Saturday morning. Our on-call guy saw it about four hours after it fired.
+Michael Darlan (1:09): Four hours. So in that window, what was your exposure like — was the endpoint still connected to the network?
+Jason Pruitt (1:17): Yeah, it was. We got lucky. The behavior turned out to be a false positive from a software update our vendor pushed without telling us, but we didn't know that for hours.
+Michael Darlan (1:29): Got it. And that's exactly the scenario that keeps IT directors up at night — not knowing whether it's real or not, and not having anyone in your corner at 7am on a Saturday to make that call for you.
+Jason Pruitt (1:40): Exactly. I've got three people on my security team. None of them want to be on call every weekend.
+Michael Darlan (1:47): Totally understandable. So when you think about solving that, is the priority getting someone to own the 24/7 triage, or is it more about reducing the noise so the alerts that do come through actually mean something?
+Jason Pruitt (2:01): Both, honestly. But if I had to pick one, it's the triage. I need to know that if something fires at 3am, a human is looking at it — not just an automated playbook.
+Michael Darlan (2:13): That makes sense. Let me show you how we approach that, because it speaks directly to what you just described.
+Michael Darlan (2:19): So what we do at OneAxiom is operate a 24/7 US-based SOC — these are human analysts, not bots — who are monitoring your environment around the clock. Every alert that comes through gets validated by a person before anything reaches you. So you're not getting woken up at 3am for a false positive from a vendor update.
+Jason Pruitt (2:41): Okay. And what's the response time when something does fire?
+Michael Darlan (2:46): For a confirmed threat, our analysts are engaging within minutes. And here's the part that I think is relevant to your Saturday situation — we work with you upfront to build out playbooks. So we define together: for this type of threat, at this time of day, here's what action we take. Isolation, containment, account lockout — whatever makes sense for your environment. Your team gets notified, but the action is already being taken.
+Jason Pruitt (3:12): So you're not just alerting me, you're actually doing something about it.
+Michael Darlan (3:16): Right. We act as an extension of your team. You still have full visibility into everything we do — you can log into the platform anytime and see exactly what actions were taken and why — but you don't have to be the one pulling the trigger at 3am on a Saturday.
+Jason Pruitt (3:32): That's appealing. What EDR platform do you use?
+Michael Darlan (3:36): We work with both CrowdStrike Falcon and SentinelOne. Do you have a preference, or are you currently on one of those?
+Jason Pruitt (3:43): We've got CrowdStrike right now through our current MSSP, but I'm not married to it. Honestly if SentinelOne is better for your platform I'm open to a conversation.
+Michael Darlan (3:55): Good to know. Either works well for us — we'd just take over management of whichever you go with. So if you want to stay on CrowdStrike, we assume that contract and manage the tenant. No redeployment of agents, no disruption to your environment.
+Jason Pruitt (4:10): That's actually a big deal for me. Last time we switched tools it was a nightmare.
+Andie Prandini (4:16): Jason, what does your current MSSP contract situation look like — are you locked in or coming up on renewal?
+Jason Pruitt (4:23): We're about 60 days out from renewal. That's honestly why I'm taking these calls now.
+Andie Prandini (4:30): Perfect timing then. And just so we can be thorough — how many endpoints are we talking about?
+Jason Pruitt (4:36): We're at about 320 endpoints, 280 named users.
+Andie Prandini (4:41): Got it. And is it just EDR you're looking to replace, or are there other gaps you're trying to fill at the same time?
+Jason Pruitt (4:49): Honestly, I've been meaning to get a security awareness training program in place for two years. We keep pushing it back. And I know our vulnerability scanning is basically nonexistent right now — we run a scan quarterly and that's it.
+Michael Darlan (5:04): So that's actually a great segue, because our platform bundles all three — managed EDR, security awareness training through KnowBe4, and continuous vulnerability management through SecPod. So instead of going to three different vendors and managing three different contracts, it's all under one roof.
+Jason Pruitt (5:24): How does that affect pricing?
+Michael Darlan (5:27): It's typically more cost-effective than buying them separately, and more importantly it eliminates the integration headache. One dashboard, one point of contact, one contract. For a three-person security team that's meaningful.
+Jason Pruitt (5:42): Yeah, my team would appreciate that. Vendor sprawl is a real problem for us.
+Michael Darlan (5:48): It's one of the most common things we hear. You end up spending more time managing vendors than managing security.
+Jason Pruitt (5:55): Exactly. Okay, so what does pricing look like for what you've described?
+Michael Darlan (6:00): I want to get you accurate numbers rather than a ballpark that turns out to be wrong, so let me put together a formal quote based on your 320 endpoints and 280 users. I can have that to you by end of day tomorrow. What I can tell you is that for a company your size, the bundle comes out significantly cheaper than running separate contracts for each piece.
+Jason Pruitt (6:22): That works. I'll also say — we're looking at two other vendors right now. One of them I'm pretty lukewarm on, but the other one is solid. So you're not the only one in the running.
+Michael Darlan (6:35): I appreciate you being straight with us. Can I ask — what's making you lukewarm on the one, and what does the other one do well? That helps me make sure we're addressing the right things in the proposal.
+Jason Pruitt (6:47): The one I'm lukewarm on just feels like a big company that won't care about us once the contract is signed. The other one has good technology but their SOC is offshore and I'm not sure how I feel about that.
+Michael Darlan (7:02): That's really helpful. On the offshore SOC point — ours is US-based, fully domestic analysts. And on the big company feeling — we're intentionally mid-market focused, which means your account actually matters to us. You'll have named analysts who know your environment, not a different person every time you call.
+Jason Pruitt (7:22): Named analysts — is that actually the case or is that a sales thing?
+Michael Darlan (7:27): It's actually the case. You get a dedicated analyst team assigned to your account. They learn your environment over time — they know what normal looks like for you, which is how we reduce false positive noise. I can put you in touch with a current customer at a similar size if that would help.
+Jason Pruitt (7:44): Yeah, a reference would actually go a long way. Can you do that?
+Andie Prandini (7:48): Absolutely, we can set that up. I'll coordinate on our end and get you a name and number by tomorrow along with the quote.
+Jason Pruitt (7:56): Perfect. I think I've got what I need for now. Send the quote and the reference and let's reconnect next week.
+Andie Prandini (8:02): Sounds great. Same time next week work for you — say Tuesday at 1pm?
+Jason Pruitt (8:08): Tuesday at 1 works.
+Michael Darlan (8:10): Perfect. Jason, thanks for your time today. We'll get you that quote and reference tomorrow, and we'll talk Tuesday.
+Jason Pruitt (8:16): Sounds good. Talk then.`;
+
+  const callNotesEl = document.getElementById('callNotes');
+  callNotesEl.value = SAMPLE_TRANSCRIPT;
+  callNotesEl.addEventListener('focus', function onFocus() {
+    if (callNotesEl.value === SAMPLE_TRANSCRIPT) callNotesEl.value = '';
+    callNotesEl.removeEventListener('focus', onFocus);
+  });
 
   initKeyUI();
   initPanels();
