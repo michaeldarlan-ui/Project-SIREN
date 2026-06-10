@@ -781,6 +781,26 @@
   .lib-add-grid input::placeholder, .lib-add-grid textarea::placeholder { color: var(--siren-text-faint); }
   .lib-add-grid textarea { min-height: unset; resize: none; }
 
+  /* Content Templates */
+  .tmpl-item { border: 1px solid var(--siren-border); border-radius: var(--siren-radius-sm); background: var(--siren-bg-card-raised); margin-bottom: 10px; overflow: hidden; }
+  .tmpl-item-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; cursor: pointer; }
+  .tmpl-item-head:hover { background: var(--siren-cyan-08); }
+  .tmpl-item-name { font-size: 13px; font-weight: 600; color: var(--siren-text-body); flex: 1; min-width: 0; }
+  .tmpl-item-stage { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 10px; background: var(--siren-cyan-12); color: var(--siren-cyan-70); flex-shrink: 0; }
+  .tmpl-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .tmpl-item-body { padding: 0 14px 14px; }
+  .tmpl-item-body textarea { width: 100%; font-size: 12px; font-family: var(--siren-font-hud); background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: 4px; color: var(--siren-text-body); padding: 10px; resize: vertical; min-height: 100px; outline: none; box-sizing: border-box; }
+  .tmpl-item-body textarea:focus { border-color: var(--siren-border-active); }
+  .tmpl-copy-btn { font-size: 11px; padding: 4px 10px; background: var(--siren-cyan-12); border: 1px solid var(--siren-border-mid); border-radius: 4px; color: var(--siren-cyan-90); cursor: pointer; font-weight: 600; }
+  .tmpl-copy-btn:hover { background: var(--siren-cyan-20); }
+  .tmpl-add-form { display: none; border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm); background: var(--siren-bg-card-raised); padding: 14px; margin-bottom: 10px; }
+  .tmpl-add-form input, .tmpl-add-form select, .tmpl-add-form textarea { width: 100%; padding: 9px 12px; font-size: 13px; background: var(--siren-bg-card); border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm); color: var(--siren-text-body); outline: none; font-family: inherit; box-sizing: border-box; }
+  .tmpl-add-form input:focus, .tmpl-add-form select:focus, .tmpl-add-form textarea:focus { border-color: var(--siren-border-active); }
+  .tmpl-add-form input::placeholder, .tmpl-add-form textarea::placeholder { color: var(--siren-text-faint); }
+  .tmpl-add-form textarea { font-family: var(--siren-font-hud); font-size: 12px; resize: vertical; }
+  .tmpl-new-btn { font-size: 12px; font-weight: 600; padding: 7px 16px; background: transparent; border: 1px dashed var(--siren-border-mid); border-radius: var(--siren-radius-sm); color: var(--siren-text-muted); cursor: pointer; width: 100%; margin-top: 4px; }
+  .tmpl-new-btn:hover { border-color: var(--siren-border-active); color: var(--siren-text-body); }
+
   .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
   @media (max-width: 600px) { .summary-grid { grid-template-columns: 1fr; } }
   .summary-card { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); padding: 14px 16px; }
@@ -982,6 +1002,22 @@
 
   /* ── Footer ── */
   .footer { text-align: center; font-size: 11px; color: var(--siren-text-faint); padding: 1.5rem 0 1rem; }
+
+  /* SCOPE page */
+  .scope-section { background: var(--siren-bg-card); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; border: 1px solid var(--siren-border); }
+  .scope-section-header { font-size: .75rem; font-weight: 800; letter-spacing: .12em; color: var(--siren-cyan-70, #00c8ffb3); text-transform: uppercase; margin-bottom: 1rem; }
+  .scope-grid { display: grid; grid-template-columns: 240px 1fr 1fr; gap: 8px 12px; align-items: center; }
+  .scope-col-head { font-size: .7rem; font-weight: 700; color: var(--siren-text-muted); text-transform: uppercase; letter-spacing: .08em; padding-bottom: 4px; border-bottom: 1px solid var(--siren-border); margin-bottom: 4px; }
+  .scope-label { font-size: .85rem; color: var(--siren-text-muted); line-height: 1.3; padding: 6px 0; }
+  .scope-input { background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border); border-radius: 6px; color: var(--siren-text-main); padding: 6px 10px; font-size: .85rem; width: 100%; box-sizing: border-box; }
+  .scope-input:focus { outline: none; border-color: var(--siren-cyan); }
+  .scope-notes { opacity: .75; font-size: .8rem; }
+  .scope-notes:focus { opacity: 1; }
+  @media (max-width: 700px) {
+    .scope-grid { grid-template-columns: 1fr; }
+    .scope-col-head { display: none; }
+    .scope-label { font-weight: 600; padding-bottom: 2px; }
+  }
 </style>
 </head>
 <body>
@@ -1001,6 +1037,7 @@
     <button class="nav-tab" onclick="navTo('pulse')">PULSE</button>
     <button class="nav-tab active" onclick="navTo('grader')">ENGAGE</button>
     <button class="nav-tab" onclick="navTo('lifecycle')">ATLAS</button>
+    <button class="nav-tab" onclick="navTo('scope')">SCOPE</button>
     <button class="nav-tab" onclick="navTo('forge')">FORGE</button>
   </nav>
   <div class="topbar-settings" id="settingsMenu">
@@ -1473,6 +1510,35 @@
       <input type="file" id="pdfInput" accept="application/pdf" multiple style="display:none;" onchange="onFileSelect(event)" />
     </div>
 
+    <!-- Content Templates -->
+    <div class="card" style="margin-top:1.5rem;">
+      <div class="card-title">Content Templates</div>
+      <p style="font-size:13px;color:var(--siren-text-muted);margin-bottom:16px;line-height:1.55;">Store reusable report templates — copy them into FORGE or any outbound content. Use <code style="font-family:var(--siren-font-hud);font-size:12px;color:var(--siren-cyan-70);background:var(--siren-bg-card-raised);padding:1px 5px;border-radius:3px;">{{variable}}</code> placeholders for dynamic values.</p>
+
+      <div id="tmplList"></div>
+
+      <!-- Add form -->
+      <div class="tmpl-add-form" id="tmplAddForm">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;">
+          <input id="tmplName" placeholder="Template name (e.g. Discovery Follow-Up)" />
+          <select id="tmplStage">
+            <option value="">— Stage —</option>
+            <option>Cold Outreach</option>
+            <option>Discovery</option>
+            <option>Demo</option>
+            <option>Proposal / Close</option>
+            <option>Touchpoint</option>
+            <option>General</option>
+          </select>
+        </div>
+        <textarea id="tmplBody" rows="6" placeholder="Template body — use {{prospect}}, {{rep}}, {{next_steps}}, {{date}} etc."></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+          <button class="primary-btn" onclick="addTemplate()">Save Template</button>
+        </div>
+      </div>
+      <button class="tmpl-new-btn" id="tmplNewBtn" onclick="toggleTmplForm()">+ New Template</button>
+    </div>
+
     <div class="footer">SIREN · Internal use only</div>
   </div>
 </div>
@@ -1538,6 +1604,23 @@
         <div class="lc-sb-inner" id="lcSbInner"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══ SCOPE PAGE ══ -->
+<div class="page" id="page-scope">
+  <div class="shell">
+    <div class="page-heading">
+      <h2>SCOPE</h2>
+      <p>Prospect environment scoping — tied to an account.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;">
+      <select id="scopeAccountSelect" onchange="onScopeAccountChange()" style="background:var(--siren-bg-card);color:var(--siren-text-main);border:1px solid var(--siren-border);border-radius:6px;padding:8px 12px;font-size:.9rem;min-width:220px;"></select>
+      <button onclick="exportScope()" style="background:var(--siren-cyan);color:#000;border:none;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:.85rem;">Export</button>
+      <span id="scopeSaveStatus" style="font-size:.8rem;color:var(--siren-text-muted);"></span>
+    </div>
+    <div id="scopeEmpty" style="color:var(--siren-text-muted);padding:2rem 0;">Select an account to view or fill out scoping.</div>
+    <div id="scopeForm" style="display:none;"></div>
   </div>
 </div>
 
@@ -1618,6 +1701,7 @@
       if ((page === 'grader'    && t.textContent === 'ENGAGE') ||
           (page === 'pulse'     && t.textContent === 'PULSE') ||
           (page === 'lifecycle' && t.textContent === 'ATLAS') ||
+          (page === 'scope'     && t.textContent === 'SCOPE') ||
           (page === 'forge'     && t.textContent === 'FORGE')) {
         t.classList.add('active');
       }
@@ -1627,6 +1711,7 @@
     if (page === 'pulse')     renderPulse();
     if (page === 'history')   renderHistory();
     if (page === 'lifecycle') renderLifecyclePage();
+    if (page === 'scope')     renderScopePage();
     if (page === 'forge')     forgeInit();
   }
 
@@ -1835,6 +1920,93 @@
   }
 
   document.getElementById('libTitle')?.addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
+
+  // ── Content Templates ───────────────────────────────────────
+  function loadTemplates() {
+    try { const r = localStorage.getItem('oa_templates'); if (r) return JSON.parse(r); } catch {}
+    return [];
+  }
+  function saveTemplates(t) { try { localStorage.setItem('oa_templates', JSON.stringify(t)); } catch {} }
+
+  let _tmplExpanded = new Set();
+
+  function renderTemplates() {
+    const tmpls = loadTemplates();
+    const el = document.getElementById('tmplList');
+    if (!el) return;
+    if (!tmpls.length) { el.innerHTML = '<div class="lib-empty" style="margin-bottom:10px;">No templates yet — create one below.</div>'; return; }
+    el.innerHTML = tmpls.map((t, i) => {
+      const open = _tmplExpanded.has(i);
+      return `<div class="tmpl-item">
+        <div class="tmpl-item-head" onclick="toggleTmplExpand(${i})">
+          <span class="tmpl-item-name">${escHtml(t.name)}</span>
+          ${t.stage ? `<span class="tmpl-item-stage">${escHtml(t.stage)}</span>` : ''}
+          <div class="tmpl-item-actions" onclick="event.stopPropagation()">
+            <button class="tmpl-copy-btn" onclick="copyTemplate(${i})">Copy</button>
+            <button class="member-remove" onclick="removeTemplate(${i})">Remove</button>
+          </div>
+          <span style="font-size:11px;color:var(--siren-text-faint);margin-left:4px;">${open ? '▲' : '▼'}</span>
+        </div>
+        ${open ? `<div class="tmpl-item-body">
+          <textarea rows="6" onchange="updateTemplate(${i}, this.value)">${escHtml(t.body)}</textarea>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function toggleTmplExpand(i) {
+    if (_tmplExpanded.has(i)) _tmplExpanded.delete(i); else _tmplExpanded.add(i);
+    renderTemplates();
+  }
+
+  function addTemplate() {
+    const name = document.getElementById('tmplName').value.trim();
+    const stage = document.getElementById('tmplStage').value;
+    const body = document.getElementById('tmplBody').value.trim();
+    if (!name) { document.getElementById('tmplName').focus(); return; }
+    if (!body) { document.getElementById('tmplBody').focus(); return; }
+    const tmpls = loadTemplates();
+    tmpls.push({ name, stage, body });
+    saveTemplates(tmpls);
+    document.getElementById('tmplName').value = '';
+    document.getElementById('tmplStage').value = '';
+    document.getElementById('tmplBody').value = '';
+    toggleTmplForm(false);
+    renderTemplates();
+  }
+
+  function removeTemplate(i) {
+    const tmpls = loadTemplates();
+    tmpls.splice(i, 1);
+    _tmplExpanded.delete(i);
+    saveTemplates(tmpls);
+    renderTemplates();
+  }
+
+  function updateTemplate(i, val) {
+    const tmpls = loadTemplates();
+    if (tmpls[i]) { tmpls[i].body = val; saveTemplates(tmpls); }
+  }
+
+  function copyTemplate(i) {
+    const tmpls = loadTemplates();
+    if (!tmpls[i]) return;
+    navigator.clipboard.writeText(tmpls[i].body).then(() => {
+      const btns = document.querySelectorAll('.tmpl-copy-btn');
+      const btn = btns[i];
+      if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = orig; }, 1500); }
+    }).catch(() => {});
+  }
+
+  function toggleTmplForm(forceOpen) {
+    const form = document.getElementById('tmplAddForm');
+    const btn = document.getElementById('tmplNewBtn');
+    if (!form || !btn) return;
+    const open = forceOpen !== undefined ? forceOpen : form.style.display === 'none' || !form.style.display;
+    form.style.display = open ? 'block' : 'none';
+    btn.style.display = open ? 'none' : 'block';
+    if (open) document.getElementById('tmplName').focus();
+  }
   // Default call date to today
   document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
 
@@ -4024,6 +4196,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   initKeyUI();
   renderMemberList();
   renderLibrary();
+  renderTemplates();
   renderDocList();
   renderHistory();
   initUsageBar();
