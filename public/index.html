@@ -43,49 +43,74 @@
     background: var(--oa-cream);
     color: var(--text);
     min-height: 100vh;
-    padding: 2rem 1rem;
   }
 
-  @media (prefers-color-scheme: dark) {
-    body { background: #111; }
-  }
+  @media (prefers-color-scheme: dark) { body { background: #111; } }
 
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--oa-teal);
+    padding: 0 1.5rem;
+    display: flex; align-items: center; gap: 0;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 0; margin-right: 24px; flex-shrink: 0;
+  }
+  .topbar-logo {
+    width: 30px; height: 30px; border-radius: 7px;
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-logo svg { width: 17px; height: 17px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .topbar-name { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -0.2px; }
+  .nav-tabs { display: flex; align-items: stretch; gap: 0; flex: 1; }
+  .nav-tab {
+    padding: 0 18px; height: 52px;
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.65);
+    background: none; border: none; cursor: pointer;
+    border-bottom: 3px solid transparent;
+    display: flex; align-items: center;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: rgba(255,255,255,0.9); }
+  .nav-tab.active { color: #fff; border-bottom-color: var(--oa-green); }
+
+  /* ── Page shell ── */
+  .page { display: none; padding: 2rem 1rem; min-height: calc(100vh - 52px); }
+  .page.active { display: block; }
   .shell { max-width: 760px; margin: 0 auto; }
 
-  .header { display: flex; align-items: center; gap: 14px; margin-bottom: 2rem; }
-  .logo-mark {
-    width: 42px; height: 42px; border-radius: 10px;
-    background: var(--oa-teal);
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .logo-mark svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .header-text h1 { font-size: 18px; font-weight: 600; color: var(--oa-teal); letter-spacing: -0.3px; }
-  .header-text p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  /* ── Page headers ── */
+  .page-heading { margin-bottom: 1.5rem; }
+  .page-heading h2 { font-size: 20px; font-weight: 700; color: var(--oa-teal); letter-spacing: -0.3px; }
+  .page-heading p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 
+  /* ── Cards ── */
   .card { background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem; }
   .card-title { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
 
+  /* ── Key banner ── */
   .key-banner {
     display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px;
-    background: #e8f7f3;
-    border: 1px solid #b2e8d8;
-    border-radius: var(--radius-sm);
+    padding: 10px 14px; background: #e8f7f3;
+    border: 1px solid #b2e8d8; border-radius: var(--radius-sm);
     font-size: 13px; color: #0a5c45;
   }
-  @media (prefers-color-scheme: dark) {
-    .key-banner { background: #0d2e26; border-color: #1a5c45; color: #5de0b0; }
-  }
+  @media (prefers-color-scheme: dark) { .key-banner { background: #0d2e26; border-color: #1a5c45; color: #5de0b0; } }
   .key-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--oa-green); flex-shrink: 0; }
 
-  .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .meta-row input, .manual-key-row input {
+  /* ── Inputs ── */
+  input[type=text], input[type=password] {
     padding: 9px 12px; font-size: 13px;
     background: var(--bg-surface); border: 1px solid var(--border-mid);
     border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
+    width: 100%;
   }
-  .meta-row input:focus, .manual-key-row input:focus { border-color: var(--oa-green); }
-  .meta-row input::placeholder, .manual-key-row input::placeholder { color: var(--text-faint); }
+  input[type=text]:focus, input[type=password]:focus { border-color: var(--oa-green); }
+  input::placeholder { color: var(--text-faint); }
 
   select {
     padding: 9px 12px; font-size: 13px;
@@ -97,6 +122,17 @@
     padding-right: 32px;
   }
   select:focus { border-color: var(--oa-green); }
+
+  textarea {
+    width: 100%; min-height: 220px; resize: vertical;
+    padding: 12px; font-size: 13.5px; line-height: 1.65; font-family: inherit;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); color: var(--text); outline: none;
+  }
+  textarea:focus { border-color: var(--oa-green); }
+  textarea::placeholder { color: var(--text-faint); }
+
+  .meta-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 
   .manual-key-row { display: flex; gap: 8px; margin-bottom: 8px; }
   .manual-key-row input { flex: 1; font-family: 'SF Mono', 'Fira Code', monospace; }
@@ -110,6 +146,7 @@
   .key-hint a { color: var(--oa-green); text-decoration: none; }
   .key-hint a:hover { text-decoration: underline; }
 
+  /* ── Stage buttons ── */
   .stage-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
   .stage-btn {
     padding: 7px 14px; font-size: 12px; font-weight: 500;
@@ -119,15 +156,7 @@
   .stage-btn:hover { border-color: var(--oa-green); color: var(--oa-green); }
   .stage-btn.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
 
-  textarea {
-    width: 100%; min-height: 220px; resize: vertical;
-    padding: 12px; font-size: 13.5px; line-height: 1.65; font-family: inherit;
-    background: var(--bg-surface); border: 1px solid var(--border-mid);
-    border-radius: var(--radius-sm); color: var(--text); outline: none;
-  }
-  textarea:focus { border-color: var(--oa-green); }
-  textarea::placeholder { color: var(--text-faint); }
-
+  /* ── Buttons ── */
   .submit-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; padding: 13px; margin-top: 14px;
@@ -138,46 +167,12 @@
   .submit-btn:hover:not(:disabled) { background: var(--oa-green); }
   .submit-btn:disabled { opacity: 0.5; cursor: default; }
 
-  .loading { display: none; align-items: center; gap: 12px; padding: 1.5rem; color: var(--text-muted); font-size: 14px; }
-  .dots { display: flex; gap: 4px; }
-  .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--oa-green); animation: bounce 1.2s ease-in-out infinite; }
-  .dots span:nth-child(2) { animation-delay: 0.2s; }
-  .dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,80%,100% { transform: scale(0.55); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
-
-  .error-box { display: none; padding: 12px 16px; background: #fff0f0; border: 1px solid #fcc; border-radius: var(--radius-sm); color: #c00; font-size: 13px; margin-top: 10px; line-height: 1.5; }
-  @media (prefers-color-scheme: dark) { .error-box { background: #2a1010; border-color: #5a2020; color: #ff8080; } }
-
-  #results { display: none; }
-
-  .banner {
-    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 1rem;
-    display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  .add-btn {
+    padding: 9px 16px; font-size: 13px; font-weight: 600;
+    background: var(--oa-teal); color: #fff;
+    border: none; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
   }
-  .banner-grade { font-size: 34px; font-weight: 700; color: #fff; }
-  .banner-label { font-size: 13px; color: rgba(255,255,255,0.85); margin-top: 3px; }
-  .banner-right { font-size: 13px; color: rgba(255,255,255,0.9); max-width: 300px; line-height: 1.6; }
-  .banner-right strong { color: #fff; }
-
-  .section-head { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: 1.25rem 0 10px; }
-
-  .dim-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; }
-  .dim-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .dim-name { font-size: 14px; font-weight: 600; }
-  .dim-score { font-size: 14px; font-weight: 600; }
-  .bar-bg { height: 5px; background: var(--bg-deep); border-radius: 4px; margin-bottom: 11px; }
-  .bar-fill { height: 100%; border-radius: 4px; }
-  .dim-feedback { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
-  .book-chip { margin-top: 10px; padding: 9px 12px; background: var(--bg-surface); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); line-height: 1.55; border-left: 3px solid var(--oa-green); }
-  .book-chip strong { color: var(--text); }
-
-  .rec-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; }
-  .book-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .book-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .book-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--oa-green); flex-shrink: 0; margin-top: 5px; }
-  .book-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
-  .book-author { font-weight: 400; color: var(--text-muted); }
-  .book-why { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+  .add-btn:hover { background: var(--oa-green); }
 
   .reset-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -188,81 +183,94 @@
   }
   .reset-btn:hover { background: var(--bg-surface); }
 
-  .footer { text-align: center; font-size: 11px; color: var(--text-faint); margin-top: 2rem; padding-bottom: 1rem; }
+  /* ── Loading / error ── */
+  .loading { display: none; align-items: center; gap: 12px; padding: 1.5rem; color: var(--text-muted); font-size: 14px; }
+  .dots { display: flex; gap: 4px; }
+  .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--oa-green); animation: bounce 1.2s ease-in-out infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.55); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 
-  /* Collapsible panels (team + usage share this) */
-  .panel {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 1rem;
-    overflow: hidden;
+  .error-box { display: none; padding: 12px 16px; background: #fff0f0; border: 1px solid #fcc; border-radius: var(--radius-sm); color: #c00; font-size: 13px; margin-top: 10px; line-height: 1.5; }
+  @media (prefers-color-scheme: dark) { .error-box { background: #2a1010; border-color: #5a2020; color: #ff8080; } }
+
+  /* ── Results ── */
+  #results { display: none; }
+  .banner {
+    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 1rem;
+    display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px;
   }
-  .panel-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px; cursor: pointer; user-select: none;
-  }
+  .banner-grade { font-size: 34px; font-weight: 700; color: #fff; }
+  .banner-label { font-size: 13px; color: rgba(255,255,255,0.85); margin-top: 3px; }
+  .banner-right { font-size: 13px; color: rgba(255,255,255,0.9); max-width: 300px; line-height: 1.6; }
+  .banner-right strong { color: #fff; }
+  .section-head { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: 1.25rem 0 10px; }
+  .dim-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; }
+  .dim-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .dim-name { font-size: 14px; font-weight: 600; }
+  .dim-score { font-size: 14px; font-weight: 600; }
+  .bar-bg { height: 5px; background: var(--bg-deep); border-radius: 4px; margin-bottom: 11px; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .dim-feedback { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+  .book-chip { margin-top: 10px; padding: 9px 12px; background: var(--bg-surface); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); line-height: 1.55; border-left: 3px solid var(--oa-green); }
+  .book-chip strong { color: var(--text); }
+  .rec-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; }
+  .book-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .book-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .book-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--oa-green); flex-shrink: 0; margin-top: 5px; }
+  .book-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .book-author { font-weight: 400; color: var(--text-muted); }
+  .book-why { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+  /* ── Usage bar (collapsible, grader page only) ── */
+  .panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; user-select: none; }
   .panel-header:hover { background: var(--bg-surface); }
   .panel-left { display: flex; align-items: center; gap: 8px; }
   .panel-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
   .panel-chevron { font-size: 11px; color: var(--text-faint); transition: transform 0.2s; }
   .panel-chevron.open { transform: rotate(180deg); }
   .panel-body { border-top: 1px solid var(--border); padding: 14px 16px; }
+  .usage-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .usage-metric { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 10px 12px; position: relative; }
+  .usage-metric.disabled { opacity: 0.35; }
+  .usage-metric-label { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
+  .usage-metric-value { font-size: 18px; font-weight: 600; color: var(--oa-teal); }
+  .usage-metric-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .metric-toggle { position: absolute; top: 8px; right: 8px; width: 28px; height: 16px; border-radius: 8px; background: var(--bg-deep); border: none; cursor: pointer; transition: background 0.2s; padding: 0; }
+  .metric-toggle.on { background: var(--oa-green); }
+  .metric-toggle::after { content: ''; display: block; width: 12px; height: 12px; border-radius: 50%; background: #fff; margin: 2px; transition: margin 0.2s; }
+  .metric-toggle.on::after { margin-left: 14px; }
+  .usage-actions { display: flex; align-items: center; justify-content: space-between; }
+  .usage-last-call { font-size: 12px; color: var(--text-faint); }
+  .usage-reset { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
+  .usage-reset:hover { color: var(--oa-orange); }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 
-  /* Team manager */
-  .team-empty { font-size: 13px; color: var(--text-faint); padding: 6px 0 12px; }
-  .member-list { margin-bottom: 14px; }
-  .member-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 10px; border-radius: var(--radius-sm);
-    background: var(--bg-surface); margin-bottom: 6px;
-  }
-  .member-info { display: flex; flex-direction: column; gap: 2px; }
-  .member-name { font-size: 13px; font-weight: 600; }
+  /* ── Team page ── */
+  .team-section-label { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+  .member-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--bg-surface); margin-bottom: 8px; }
+  .member-info { display: flex; flex-direction: column; gap: 3px; }
+  .member-name { font-size: 14px; font-weight: 600; }
   .member-role { font-size: 12px; color: var(--text-muted); }
-  .member-remove {
-    font-size: 12px; color: var(--text-faint); background: none; border: none;
-    cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm);
-  }
+  .member-remove { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; padding: 5px 10px; border-radius: var(--radius-sm); }
   .member-remove:hover { background: #fff0f0; color: #c00; }
   @media (prefers-color-scheme: dark) { .member-remove:hover { background: #2a1010; color: #ff8080; } }
+  .team-empty { font-size: 13px; color: var(--text-faint); padding: 8px 0 16px; }
+  .add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: center; }
 
-  .add-member-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
-  .add-member-row input {
-    padding: 8px 10px; font-size: 13px;
-    background: var(--bg-surface); border: 1px solid var(--border-mid);
-    border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
-  }
-  .add-member-row input:focus { border-color: var(--oa-green); }
-  .add-member-row input::placeholder { color: var(--text-faint); }
-  .add-btn {
-    padding: 8px 14px; font-size: 13px; font-weight: 600;
-    background: var(--oa-teal); color: #fff;
-    border: none; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
-  }
-  .add-btn:hover { background: var(--oa-green); }
-
-  /* Library */
-  .lib-section-label {
-    font-size: 11px; font-weight: 700; color: var(--text-faint);
-    text-transform: uppercase; letter-spacing: 0.07em;
-    margin: 14px 0 8px;
-  }
-  .lib-section-label:first-child { margin-top: 0; }
-  .lib-empty { font-size: 13px; color: var(--text-faint); padding: 4px 0 10px; }
-  .lib-item {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-    padding: 8px 10px; border-radius: var(--radius-sm);
-    background: var(--bg-surface); margin-bottom: 6px;
-  }
+  /* ── Library page ── */
+  .lib-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 600px) { .lib-columns { grid-template-columns: 1fr; } }
+  .lib-col-head { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .lib-col-sub { font-size: 12px; color: var(--text-faint); margin-bottom: 12px; }
+  .lib-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg-surface); margin-bottom: 8px; }
   .lib-item-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .lib-item-title { font-size: 13px; font-weight: 600; }
   .lib-item-meta { font-size: 12px; color: var(--text-muted); }
   .lib-item-why { font-size: 12px; color: var(--text-faint); margin-top: 3px; line-height: 1.45; }
-  .lib-type-chip {
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-    padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 2px;
-  }
+  .lib-empty { font-size: 13px; color: var(--text-faint); padding: 6px 0 12px; }
+  .lib-type-chip { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
   .lib-type-book { background: #e8f7f3; color: #0a5c45; }
   .lib-type-website { background: #fff3e8; color: #7a3800; }
   .lib-type-framework { background: #eef0ff; color: #2d3a8c; }
@@ -271,122 +279,175 @@
     .lib-type-website { background: #2e1a00; color: #ffb366; }
     .lib-type-framework { background: #1a1e3c; color: #9ba8ff; }
   }
-  .lib-divider { height: 1px; background: var(--border); margin: 14px 0; }
-  .add-lib-grid {
-    display: grid; gap: 6px;
-  }
-  .add-lib-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
-  .add-lib-row-full { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
-  .add-lib-grid input, .add-lib-grid textarea, .add-lib-grid select {
-    padding: 8px 10px; font-size: 13px;
-    background: var(--bg-surface); border: 1px solid var(--border-mid);
-    border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
-    width: 100%;
-  }
-  .add-lib-grid input:focus, .add-lib-grid textarea:focus, .add-lib-grid select:focus { border-color: var(--oa-green); }
-  .add-lib-grid input::placeholder, .add-lib-grid textarea::placeholder { color: var(--text-faint); }
-  .add-lib-grid textarea { min-height: unset; resize: none; }
-  .lib-section-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-  .lib-tab {
-    padding: 5px 14px; font-size: 12px; font-weight: 600;
-    border: 1px solid var(--border-mid); border-radius: 20px;
-    background: var(--bg-surface); color: var(--text-muted); cursor: pointer;
-  }
-  .lib-tab.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
+  .lib-add-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .lib-add-tab { padding: 6px 16px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-mid); border-radius: 20px; background: var(--bg-surface); color: var(--text-muted); cursor: pointer; }
+  .lib-add-tab.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
+  .lib-add-grid { display: grid; gap: 8px; }
+  .lib-add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+  .lib-add-grid input, .lib-add-grid textarea, .lib-add-grid select { padding: 9px 12px; font-size: 13px; background: var(--bg-surface); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit; width: 100%; }
+  .lib-add-grid input:focus, .lib-add-grid textarea:focus, .lib-add-grid select:focus { border-color: var(--oa-green); }
+  .lib-add-grid input::placeholder, .lib-add-grid textarea::placeholder { color: var(--text-faint); }
+  .lib-add-grid textarea { min-height: unset; resize: none; }
 
-  /* Usage bar */
-  .usage-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
-  .usage-metric {
-    background: var(--bg-surface); border-radius: var(--radius-sm);
-    padding: 10px 12px; position: relative;
-  }
-  .usage-metric.disabled { opacity: 0.35; }
-  .usage-metric-label { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
-  .usage-metric-value { font-size: 18px; font-weight: 600; color: var(--oa-teal); }
-  .usage-metric-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
-  .metric-toggle {
-    position: absolute; top: 8px; right: 8px;
-    width: 28px; height: 16px; border-radius: 8px;
-    background: var(--bg-deep); border: none; cursor: pointer;
-    transition: background 0.2s; padding: 0; flex-shrink: 0;
-  }
-  .metric-toggle.on { background: var(--oa-green); }
-  .metric-toggle::after {
-    content: ''; display: block;
-    width: 12px; height: 12px; border-radius: 50%;
-    background: #fff; margin: 2px; transition: margin 0.2s;
-  }
-  .metric-toggle.on::after { margin-left: 14px; }
-  .usage-actions { display: flex; align-items: center; justify-content: space-between; }
-  .usage-last-call { font-size: 12px; color: var(--text-faint); }
-  .usage-reset { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
-  .usage-reset:hover { color: var(--oa-orange); }
-  .live-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  /* ── Footer ── */
+  .footer { text-align: center; font-size: 11px; color: var(--text-faint); padding: 1.5rem 0 1rem; }
 </style>
 </head>
 <body>
-<div class="shell">
 
-  <div class="header">
-    <div class="logo-mark">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-      </svg>
+<!-- Top navigation -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     </div>
-    <div class="header-text">
-      <h1>OneAxiom Sales Call Grader</h1>
-      <p>Powered by Claude · Internal use only</p>
-    </div>
+    <span class="topbar-name">OneAxiom</span>
   </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="navTo('grader')">Grader</button>
+    <button class="nav-tab" onclick="navTo('team')">Sales Team</button>
+    <button class="nav-tab" onclick="navTo('library')">Resource Library</button>
+  </nav>
+</div>
 
-  <!-- Team Manager -->
-  <div class="panel" id="teamPanel">
-    <div class="panel-header" onclick="togglePanel('team')">
-      <div class="panel-left">
-        <span class="panel-title">Sales Team</span>
+<!-- ══ GRADER PAGE ══ -->
+<div class="page active" id="page-grader">
+  <div class="shell">
+
+    <!-- Usage bar -->
+    <div class="panel" id="usagePanel">
+      <div class="panel-header" onclick="toggleUsage()">
+        <div class="panel-left">
+          <span class="live-dot" id="usageDot" style="background:var(--oa-grey);"></span>
+          <span class="panel-title">API Usage</span>
+        </div>
+        <span class="panel-chevron" id="usageChevron">▼</span>
       </div>
-      <span class="panel-chevron" id="teamChevron">▼</span>
+      <div class="panel-body" id="usageBody" style="display:none;">
+        <div class="usage-metrics">
+          <div class="usage-metric" id="metric-tokens">
+            <div class="usage-metric-label">Tokens this call</div>
+            <div class="usage-metric-value" id="val-tokens">—</div>
+            <div class="usage-metric-sub">input + output</div>
+            <button class="metric-toggle on" id="toggle-tokens" onclick="toggleMetric('tokens',event)"></button>
+          </div>
+          <div class="usage-metric" id="metric-cost-call">
+            <div class="usage-metric-label">Cost this call</div>
+            <div class="usage-metric-value" id="val-cost-call">—</div>
+            <div class="usage-metric-sub">USD</div>
+            <button class="metric-toggle on" id="toggle-cost-call" onclick="toggleMetric('cost-call',event)"></button>
+          </div>
+          <div class="usage-metric" id="metric-cost-session">
+            <div class="usage-metric-label">Session total</div>
+            <div class="usage-metric-value" id="val-cost-session">$0.00</div>
+            <div class="usage-metric-sub">since browser opened</div>
+            <button class="metric-toggle on" id="toggle-cost-session" onclick="toggleMetric('cost-session',event)"></button>
+          </div>
+          <div class="usage-metric" id="metric-cost-alltime">
+            <div class="usage-metric-label">All-time total</div>
+            <div class="usage-metric-value" id="val-cost-alltime">$0.00</div>
+            <div class="usage-metric-sub" id="sub-alltime">0 calls graded</div>
+            <button class="metric-toggle on" id="toggle-cost-alltime" onclick="toggleMetric('cost-alltime',event)"></button>
+          </div>
+        </div>
+        <div class="usage-actions">
+          <span class="usage-last-call" id="lastCallLabel"></span>
+          <button class="usage-reset" onclick="resetAllTime()">Reset all-time totals</button>
+        </div>
+      </div>
     </div>
-    <div class="panel-body" id="teamPanelBody" style="display:none;">
+
+    <div class="card" id="inputCard">
+      <div class="card-title">API Key</div>
+      <div id="keyStatus"></div>
+
+      <div class="card-title" style="margin-top:1.25rem;">Call details</div>
+      <div class="meta-row" style="margin-bottom:10px;">
+        <select id="repSelect" onchange="onRepChange()">
+          <option value="">— Rep (optional) —</option>
+        </select>
+        <input type="text" id="prospect" placeholder="Prospect / company name" />
+        <input type="text" id="contactTitle" placeholder="Contact title (e.g. IT Director)" />
+      </div>
+      <div id="repRoleHint" style="font-size:12px;color:var(--text-faint);margin-bottom:14px;display:none;"></div>
+
+      <div class="card-title" style="margin-bottom:8px;">Call stage</div>
+      <div class="stage-row">
+        <button class="stage-btn" onclick="setStage(this,'Cold outreach')">Cold outreach</button>
+        <button class="stage-btn" onclick="setStage(this,'Discovery')">Discovery</button>
+        <button class="stage-btn active" onclick="setStage(this,'Demo / solution presentation')">Demo / solution presentation</button>
+        <button class="stage-btn" onclick="setStage(this,'Proposal / close')">Proposal / close</button>
+      </div>
+
+      <div class="card-title" style="margin-bottom:8px;">Transcript or notes</div>
+      <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here."></textarea>
+
+      <button class="submit-btn" id="submitBtn" onclick="gradeCall()">Grade this call</button>
+      <div class="loading" id="loading"><div class="dots"><span></span><span></span><span></span></div>Analyzing your call…</div>
+      <div class="error-box" id="errorBox"></div>
+    </div>
+
+    <div id="results"></div>
+
+    <div class="footer">OneAxiom · Key is never logged or stored beyond this session</div>
+  </div>
+</div>
+
+<!-- ══ TEAM PAGE ══ -->
+<div class="page" id="page-team">
+  <div class="shell">
+    <div class="page-heading">
+      <h2>Sales Team</h2>
+      <p>Manage team members and their roles. The selected rep and role are used to tailor grading on the Grader page.</p>
+    </div>
+
+    <div class="card">
+      <div class="team-section-label">Team members</div>
       <div id="memberList"></div>
-      <div class="add-member-row">
+      <div class="add-row">
         <input type="text" id="newMemberName" placeholder="Name" />
         <input type="text" id="newMemberRole" placeholder="Role (e.g. Account Executive)" />
         <button class="add-btn" onclick="addMember()">Add</button>
       </div>
     </div>
+
+    <div class="footer">OneAxiom · Internal use only</div>
   </div>
+</div>
 
-  <!-- Resource Library -->
-  <div class="panel" id="libraryPanel">
-    <div class="panel-header" onclick="togglePanel('library')">
-      <div class="panel-left">
-        <span class="panel-title">Resource Library</span>
-      </div>
-      <span class="panel-chevron" id="libraryChevron">▼</span>
+<!-- ══ LIBRARY PAGE ══ -->
+<div class="page" id="page-library">
+  <div class="shell">
+    <div class="page-heading">
+      <h2>Resource Library</h2>
+      <p>Manage the resources Claude uses when grading calls. Already Read items are never recommended. Recommended items replace the default candidate list.</p>
     </div>
-    <div class="panel-body" id="libraryPanelBody" style="display:none;">
 
+    <div class="lib-columns">
       <!-- Already Read -->
-      <div class="lib-section-label">Already Read — never recommend</div>
-      <div id="libReadList"></div>
-
-      <div class="lib-divider"></div>
+      <div class="card" style="margin-bottom:0;">
+        <div class="lib-col-head">Already Read</div>
+        <div class="lib-col-sub">Claude will never recommend these.</div>
+        <div id="libReadList"></div>
+      </div>
 
       <!-- Recommended -->
-      <div class="lib-section-label">Recommended — Claude will suggest from this list</div>
-      <div id="libRecommendList"></div>
-
-      <div class="lib-divider"></div>
-
-      <!-- Add form -->
-      <div class="lib-section-label">Add resource</div>
-      <div class="lib-section-tabs">
-        <button class="lib-tab active" id="tabRead" onclick="setLibTab('read')">Already Read</button>
-        <button class="lib-tab" id="tabRecommend" onclick="setLibTab('recommend')">Recommended</button>
+      <div class="card" style="margin-bottom:0;">
+        <div class="lib-col-head">Recommended</div>
+        <div class="lib-col-sub">Claude recommends from this list when gaps exist.</div>
+        <div id="libRecommendList"></div>
       </div>
-      <div class="add-lib-grid">
-        <div class="add-lib-row">
+    </div>
+
+    <!-- Add resource -->
+    <div class="card">
+      <div class="card-title">Add resource</div>
+      <div class="lib-add-tabs">
+        <button class="lib-add-tab active" id="tabRead" onclick="setLibTab('read')">Already Read</button>
+        <button class="lib-add-tab" id="tabRecommend" onclick="setLibTab('recommend')">Recommended</button>
+      </div>
+      <div class="lib-add-grid">
+        <div class="lib-add-row">
           <input type="text" id="libTitle" placeholder="Title" />
           <input type="text" id="libAuthor" placeholder="Author / source (optional)" />
           <select id="libType" style="width:auto;">
@@ -398,94 +459,39 @@
         <div id="libWhyRow" style="display:none;">
           <textarea id="libWhy" rows="2" placeholder="Why recommend this? (shown to Claude as context)"></textarea>
         </div>
-        <div>
-          <button class="add-btn" onclick="addLibItem()" style="width:100%;">Add to library</button>
-        </div>
+        <button class="add-btn" onclick="addLibItem()">Add to library</button>
       </div>
-
     </div>
+
+    <div class="footer">OneAxiom · Internal use only</div>
   </div>
-
-  <!-- Usage Bar -->
-  <div class="panel" id="usageBar">
-    <div class="panel-header" onclick="togglePanel('usage')">
-      <div class="panel-left">
-        <span class="live-dot" id="usageDot" style="background:var(--oa-grey);"></span>
-        <span class="panel-title">API Usage</span>
-      </div>
-      <span class="panel-chevron" id="usageChevron">▼</span>
-    </div>
-    <div class="panel-body" id="usagePanelBody" style="display:none;">
-      <div class="usage-metrics">
-        <div class="usage-metric" id="metric-tokens">
-          <div class="usage-metric-label">Tokens this call</div>
-          <div class="usage-metric-value" id="val-tokens">—</div>
-          <div class="usage-metric-sub">input + output</div>
-          <button class="metric-toggle on" id="toggle-tokens" onclick="toggleMetric('tokens', event)" title="Toggle"></button>
-        </div>
-        <div class="usage-metric" id="metric-cost-call">
-          <div class="usage-metric-label">Cost this call</div>
-          <div class="usage-metric-value" id="val-cost-call">—</div>
-          <div class="usage-metric-sub">USD</div>
-          <button class="metric-toggle on" id="toggle-cost-call" onclick="toggleMetric('cost-call', event)" title="Toggle"></button>
-        </div>
-        <div class="usage-metric" id="metric-cost-session">
-          <div class="usage-metric-label">Session total</div>
-          <div class="usage-metric-value" id="val-cost-session">$0.00</div>
-          <div class="usage-metric-sub">since browser opened</div>
-          <button class="metric-toggle on" id="toggle-cost-session" onclick="toggleMetric('cost-session', event)" title="Toggle"></button>
-        </div>
-        <div class="usage-metric" id="metric-cost-alltime">
-          <div class="usage-metric-label">All-time total</div>
-          <div class="usage-metric-value" id="val-cost-alltime">$0.00</div>
-          <div class="usage-metric-sub" id="sub-alltime">0 calls graded</div>
-          <button class="metric-toggle on" id="toggle-cost-alltime" onclick="toggleMetric('cost-alltime', event)" title="Toggle"></button>
-        </div>
-      </div>
-      <div class="usage-actions">
-        <span class="usage-last-call" id="lastCallLabel"></span>
-        <button class="usage-reset" onclick="resetAllTime()">Reset all-time totals</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" id="inputCard">
-    <div class="card-title">API Key</div>
-    <div id="keyStatus"></div>
-
-    <div class="card-title" style="margin-top:1.25rem;">Call details</div>
-    <div class="meta-row" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:10px;">
-      <select id="repSelect" onchange="onRepChange()">
-        <option value="">— Rep (optional) —</option>
-      </select>
-      <input type="text" id="prospect" placeholder="Prospect / company name" />
-      <input type="text" id="contactTitle" placeholder="Contact title (e.g. IT Director)" />
-    </div>
-    <div id="repRoleHint" style="font-size:12px;color:var(--text-faint);margin-bottom:14px;display:none;"></div>
-
-    <div class="card-title" style="margin-bottom:8px;">Call stage</div>
-    <div class="stage-row">
-      <button class="stage-btn" onclick="setStage(this,'Cold outreach')">Cold outreach</button>
-      <button class="stage-btn" onclick="setStage(this,'Discovery')">Discovery</button>
-      <button class="stage-btn active" onclick="setStage(this,'Demo / solution presentation')">Demo / solution presentation</button>
-      <button class="stage-btn" onclick="setStage(this,'Proposal / close')">Proposal / close</button>
-    </div>
-
-    <div class="card-title" style="margin-bottom:8px;">Transcript or notes</div>
-    <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here."></textarea>
-
-    <button class="submit-btn" id="submitBtn" onclick="gradeCall()">Grade this call</button>
-    <div class="loading" id="loading"><div class="dots"><span></span><span></span><span></span></div>Analyzing your call…</div>
-    <div class="error-box" id="errorBox"></div>
-  </div>
-
-  <div id="results"></div>
-
-  <div class="footer">OneAxiom · Key is never logged or stored beyond this session</div>
 </div>
 
 <script>
   let selectedStage = 'Demo / solution presentation';
+  let currentPage = 'grader';
+
+  // ── Navigation ─────────────────────────────────────────────
+  function navTo(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(t => {
+      if (t.textContent.toLowerCase().replace(' ', '') === page ||
+          (page === 'grader' && t.textContent === 'Grader') ||
+          (page === 'team' && t.textContent === 'Sales Team') ||
+          (page === 'library' && t.textContent === 'Resource Library')) {
+        t.classList.add('active');
+      }
+    });
+    currentPage = page;
+    window.scrollTo(0, 0);
+  }
+
+  // ── Helpers ────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
   // ── Team manager ───────────────────────────────────────────
   function loadTeam() {
@@ -498,18 +504,16 @@
   function renderMemberList() {
     const team = loadTeam();
     const el = document.getElementById('memberList');
-    if (!team.length) {
-      el.innerHTML = '<div class="team-empty">No team members yet. Add someone below.</div>';
-    } else {
-      el.innerHTML = '<div class="member-list">' + team.map((m, i) => `
-        <div class="member-row">
-          <div class="member-info">
-            <span class="member-name">${escHtml(m.name)}</span>
-            <span class="member-role">${escHtml(m.role)}</span>
-          </div>
-          <button class="member-remove" onclick="removeMember(${i})">Remove</button>
-        </div>`).join('') + '</div>';
-    }
+    el.innerHTML = team.length
+      ? team.map((m, i) => `
+          <div class="member-row">
+            <div class="member-info">
+              <span class="member-name">${escHtml(m.name)}</span>
+              <span class="member-role">${escHtml(m.role)}</span>
+            </div>
+            <button class="member-remove" onclick="removeMember(${i})">Remove</button>
+          </div>`).join('')
+      : '<div class="team-empty">No team members yet. Add someone below.</div>';
     refreshRepSelect();
   }
 
@@ -547,8 +551,8 @@
     const name = document.getElementById('repSelect').value;
     const hint = document.getElementById('repRoleHint');
     const member = team.find(m => m.name === name);
-    if (member && member.role) {
-      hint.textContent = `Grading as: ${member.role}`;
+    if (member?.role) {
+      hint.textContent = 'Grading as: ' + member.role;
       hint.style.display = 'block';
     } else {
       hint.style.display = 'none';
@@ -561,15 +565,9 @@
     return team.find(m => m.name === name) || null;
   }
 
-  function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-
-  // Enter key submits add-member form
   ['newMemberName','newMemberRole'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') addMember(); });
   });
-  // ── End team manager ───────────────────────────────────────
 
   // ── Resource library ───────────────────────────────────────
   const DEFAULT_READ = [
@@ -577,7 +575,7 @@
   ];
   const DEFAULT_RECOMMEND = [
     { title: 'SPIN Selling', author: 'Neil Rackham', type: 'Book', why: 'Strong framework for consultative discovery and surfacing implicit needs in complex B2B sales.' },
-    { title: 'The Challenger Sale', author: 'Matthew Dixon & Brent Adamson', type: 'Book', why: 'Teaches reps to reframe the prospect\'s thinking and lead with insight rather than just responding to stated needs.' },
+    { title: 'The Challenger Sale', author: 'Matthew Dixon & Brent Adamson', type: 'Book', why: "Teaches reps to reframe the prospect's thinking and lead with insight rather than just responding to stated needs." },
     { title: 'Gap Selling', author: 'Keenan', type: 'Book', why: 'Problem-centric selling focused on quantifying the gap between current state and desired state — highly applicable to MSSP conversations.' },
     { title: 'Fanatical Prospecting', author: 'Jeb Blount', type: 'Book', why: 'Pipeline discipline and outreach cadence for reps who need to build consistent top-of-funnel activity.' },
     { title: 'The Qualified Sales Leader', author: 'John McMahon', type: 'Book', why: 'Enterprise qualification rigor — MEDDIC/MEDDPICC methodology for complex deals with multiple stakeholders.' },
@@ -612,33 +610,33 @@
   function renderLibrary() {
     const lib = loadLibrary();
 
-    const readEl = document.getElementById('libReadList');
-    readEl.innerHTML = lib.read.length ? lib.read.map((item, i) => `
-      <div class="lib-item">
-        <div class="lib-item-info">
-          <span class="lib-item-title">${escHtml(item.title)}</span>
-          ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0;">
-          ${typeChip(item.type)}
-          <button class="member-remove" onclick="removeLibItem('read',${i})">Remove</button>
-        </div>
-      </div>`).join('')
+    document.getElementById('libReadList').innerHTML = lib.read.length
+      ? lib.read.map((item, i) => `
+          <div class="lib-item">
+            <div class="lib-item-info">
+              <span class="lib-item-title">${escHtml(item.title)}</span>
+              ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;flex-shrink:0;">
+              ${typeChip(item.type)}
+              <button class="member-remove" onclick="removeLibItem('read',${i})">Remove</button>
+            </div>
+          </div>`).join('')
       : '<div class="lib-empty">No items yet.</div>';
 
-    const recEl = document.getElementById('libRecommendList');
-    recEl.innerHTML = lib.recommend.length ? lib.recommend.map((item, i) => `
-      <div class="lib-item">
-        <div class="lib-item-info">
-          <span class="lib-item-title">${escHtml(item.title)}</span>
-          ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
-          ${item.why ? `<span class="lib-item-why">${escHtml(item.why)}</span>` : ''}
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0;">
-          ${typeChip(item.type)}
-          <button class="member-remove" onclick="removeLibItem('recommend',${i})">Remove</button>
-        </div>
-      </div>`).join('')
+    document.getElementById('libRecommendList').innerHTML = lib.recommend.length
+      ? lib.recommend.map((item, i) => `
+          <div class="lib-item">
+            <div class="lib-item-info">
+              <span class="lib-item-title">${escHtml(item.title)}</span>
+              ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
+              ${item.why ? `<span class="lib-item-why">${escHtml(item.why)}</span>` : ''}
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;flex-shrink:0;">
+              ${typeChip(item.type)}
+              <button class="member-remove" onclick="removeLibItem('recommend',${i})">Remove</button>
+            </div>
+          </div>`).join('')
       : '<div class="lib-empty">No items yet.</div>';
   }
 
@@ -673,12 +671,10 @@
     const readList = lib.read.map(r => `"${r.title}"${r.author ? ' by ' + r.author : ''}`).join(', ');
     const recList = lib.recommend.map(r => {
       let s = `- ${r.title}${r.author ? ' (' + r.author + ')' : ''}`;
-      if (r.why) s += `: ${r.why}`;
+      if (r.why) s += ': ' + r.why;
       return s;
     }).join('\n');
-    const readClause = readList
-      ? `The rep has already read the following — never recommend them: ${readList}.`
-      : '';
+    const readClause = readList ? `The rep has already read the following — never recommend them: ${readList}.` : '';
     const recClause = lib.recommend.length
       ? `Only recommend resources from this approved list when a genuine gap exists:\n${recList}`
       : 'No recommended resources are configured — omit the recommended_books field entirely.';
@@ -686,35 +682,8 @@
   }
 
   document.getElementById('libTitle').addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
-  // ── End resource library ───────────────────────────────────
 
-  // ── Collapsible panels ─────────────────────────────────────
-  function togglePanel(key) {
-    const bodies = { team: 'teamPanelBody', library: 'libraryPanelBody', usage: 'usagePanelBody' };
-    const chevrons = { team: 'teamChevron', library: 'libraryChevron', usage: 'usageChevron' };
-    const body = document.getElementById(bodies[key]);
-    const chevron = document.getElementById(chevrons[key]);
-    const open = body.style.display === 'none';
-    body.style.display = open ? 'block' : 'none';
-    chevron.classList.toggle('open', open);
-    try { localStorage.setItem('oa_panel_' + key, open); } catch {}
-  }
-
-  function initPanels() {
-    ['team', 'library', 'usage'].forEach(key => {
-      const bodies = { team: 'teamPanelBody', library: 'libraryPanelBody', usage: 'usagePanelBody' };
-      const chevrons = { team: 'teamChevron', library: 'libraryChevron', usage: 'usageChevron' };
-      try {
-        const open = localStorage.getItem('oa_panel_' + key) !== 'false';
-        if (open) {
-          document.getElementById(bodies[key]).style.display = 'block';
-          document.getElementById(chevrons[key]).classList.add('open');
-        }
-      } catch {}
-    });
-  }
-  // ── End collapsible panels ─────────────────────────────────
-
+  // ── Grader ─────────────────────────────────────────────────
   const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? window.ENV.ANTHROPIC_API_KEY : null;
 
   function initKeyUI() {
@@ -739,9 +708,8 @@
 
   function toggleKey() {
     const input = document.getElementById('apiKey');
-    const btn = event.target;
     input.type = input.type === 'password' ? 'text' : 'password';
-    btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
+    event.target.textContent = input.type === 'password' ? 'Show' : 'Hide';
   }
 
   function setStage(btn, stage) {
@@ -764,19 +732,14 @@
   function buildRoleGuidance(rep) {
     if (!rep) return '';
     const role = rep.role.toLowerCase();
-    if (role.includes('sdr') || role.includes('bdr') || role.includes('development')) {
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward pipeline generation skills: opening, qualifying interest, booking the next meeting. Hold lighter expectations on deep technical demo delivery or close mechanics, but be rigorous on discovery quality and next-step commitment.`;
-    }
-    if (role.includes('engineer') || role.includes('se') || role.includes('presales') || role.includes('pre-sales')) {
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward technical demo quality, solution fit accuracy, and ability to translate prospect pain into OneAxiom's technical differentiators. Hold lighter expectations on commercial negotiation or close tactics, but be rigorous on demo delivery and objection handling around technical concerns.`;
-    }
-    if (role.includes('manager') || role.includes('director') || role.includes('vp') || role.includes('leader')) {
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward deal strategy, team coaching observable in the call, and executive-level value framing. Expect strong qualification and deal mechanics rigor. Note any coaching or leadership behaviors if this appears to be a joint call.`;
-    }
-    if (role.includes('account manager') || role.includes('csm') || role.includes('success') || role.includes('renewal')) {
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward expansion discovery, identifying upsell signals, relationship depth, and retention mechanics. Hold lighter expectations on cold prospecting technique, but be rigorous on value confirmation and next-step clarity.`;
-    }
-    // Default: Account Executive or unrecognized role
+    if (role.includes('sdr') || role.includes('bdr') || role.includes('development'))
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward pipeline generation skills: opening, qualifying interest, booking the next meeting. Hold lighter expectations on deep technical demo delivery or close mechanics, but be rigorous on discovery quality and next-step commitment.`;
+    if (role.includes('engineer') || role.includes('se') || role.includes('presales') || role.includes('pre-sales'))
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward technical demo quality, solution fit accuracy, and ability to translate prospect pain into OneAxiom's technical differentiators. Hold lighter expectations on commercial negotiation or close tactics, but be rigorous on demo delivery and technical objection handling.`;
+    if (role.includes('manager') || role.includes('director') || role.includes('vp') || role.includes('leader'))
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward deal strategy, executive-level value framing, and qualification rigor. Note any coaching or leadership behaviors if this appears to be a joint call.`;
+    if (role.includes('account manager') || role.includes('csm') || role.includes('success') || role.includes('renewal'))
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward expansion discovery, upsell signals, relationship depth, and retention mechanics. Hold lighter expectations on cold prospecting technique, but be rigorous on value confirmation and next-step clarity.`;
     return `\n\nRep role context — ${rep.name} is a ${rep.role}. Grade the full sales cycle with balanced weight across all five dimensions.`;
   }
 
@@ -794,64 +757,28 @@
     clearError();
     document.getElementById('results').style.display = 'none';
 
-    const roleGuidance = buildRoleGuidance(rep);
-
-    const libraryPrompt = buildLibraryPrompt();
-
     const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales.
 
-${libraryPrompt}
+${buildLibraryPrompt()}
 
-You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${roleGuidance}
+You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
 
 Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble:
 
 {
   "dimensions": [
-    {
-      "name": "Discovery & needs confirmation",
-      "max": 20,
-      "score": 0,
-      "feedback": "2-3 sentences of specific actionable coaching tied to what happened in this call",
-      "book_insight": "1-2 sentences referencing Never Split the Difference techniques (labeling, mirroring, calibrated questions, tactical empathy) where relevant, or name a different book if score under 14"
-    },
-    {
-      "name": "Value framing & demo delivery",
-      "max": 25,
-      "score": 0,
-      "feedback": "2-3 sentences",
-      "book_insight": "1-2 sentences"
-    },
-    {
-      "name": "Tactical empathy & objection handling",
-      "max": 25,
-      "score": 0,
-      "feedback": "2-3 sentences — call out specific Voss techniques used or missed",
-      "book_insight": "1-2 sentences"
-    },
-    {
-      "name": "Qualification & deal mechanics",
-      "max": 15,
-      "score": 0,
-      "feedback": "2-3 sentences covering budget, authority, timeline, competitive landscape, winnability",
-      "book_insight": "1-2 sentences"
-    },
-    {
-      "name": "Call control & next steps",
-      "max": 15,
-      "score": 0,
-      "feedback": "2-3 sentences",
-      "book_insight": "1-2 sentences"
-    }
+    { "name": "Discovery & needs confirmation", "max": 20, "score": 0, "feedback": "2-3 sentences of specific actionable coaching tied to what happened in this call", "book_insight": "1-2 sentences referencing techniques from the already-read resources where relevant, or suggest from the recommended list if score under 14" },
+    { "name": "Value framing & demo delivery", "max": 25, "score": 0, "feedback": "2-3 sentences", "book_insight": "1-2 sentences" },
+    { "name": "Tactical empathy & objection handling", "max": 25, "score": 0, "feedback": "2-3 sentences — call out specific techniques used or missed", "book_insight": "1-2 sentences" },
+    { "name": "Qualification & deal mechanics", "max": 15, "score": 0, "feedback": "2-3 sentences covering budget, authority, timeline, competitive landscape, winnability", "book_insight": "1-2 sentences" },
+    { "name": "Call control & next steps", "max": 15, "score": 0, "feedback": "2-3 sentences", "book_insight": "1-2 sentences" }
   ],
   "total": 0,
   "letter_grade": "B",
   "grade_label": "short evocative phrase",
   "top_strength": "one specific sentence",
   "top_priority": "single most important fix for next call",
-  "recommended_books": [
-    { "title": "Book title", "author": "Author", "reason": "1-2 sentences why" }
-  ]
+  "recommended_books": [{ "title": "Resource title", "author": "Author", "reason": "1-2 sentences why" }]
 }
 
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.`;
@@ -886,9 +813,7 @@ recommended_books: only recommend resources from the approved list above. If no 
       }
 
       const data = await resp.json();
-      if (data.usage) {
-        updateUsageUI(data.usage.input_tokens || 0, data.usage.output_tokens || 0);
-      }
+      if (data.usage) updateUsageUI(data.usage.input_tokens || 0, data.usage.output_tokens || 0);
       let raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
       raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
       renderResults(JSON.parse(raw), prospect, contactTitle, rep);
@@ -900,13 +825,7 @@ recommended_books: only recommend resources from the approved list above. If no 
   }
 
   function renderResults(r, prospect, contactTitle, rep) {
-    const metaParts = [
-      rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '',
-      prospect,
-      contactTitle,
-      selectedStage
-    ].filter(Boolean);
-    const meta = metaParts.join(' · ');
+    const meta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage].filter(Boolean).join(' · ');
     const bannerBg = getBannerColor(r.letter_grade);
 
     const dimsHtml = r.dimensions.map(d => {
@@ -920,13 +839,12 @@ recommended_books: only recommend resources from the approved list above. If no 
       </div>`;
     }).join('');
 
-    let booksHtml = '';
-    if (r.recommended_books?.length) {
-      booksHtml = `<div class="section-head">Recommended reading</div><div class="rec-card">` +
+    const booksHtml = r.recommended_books?.length
+      ? `<div class="section-head">Recommended reading</div><div class="rec-card">` +
         r.recommended_books.map(b => `<div class="book-row"><div class="book-dot"></div><div>
           <div class="book-title">${b.title} <span class="book-author">— ${b.author}</span></div>
-          <div class="book-why">${b.reason}</div></div></div>`).join('') + `</div>`;
-    }
+          <div class="book-why">${b.reason}</div></div></div>`).join('') + `</div>`
+      : '';
 
     document.getElementById('results').innerHTML = `
       <div class="banner" style="background:${bannerBg};">
@@ -970,40 +888,30 @@ recommended_books: only recommend resources from the approved list above. If no 
   }
 
   function clearError() {
-    const el = document.getElementById('errorBox');
-    el.textContent = '';
-    el.style.display = 'none';
+    document.getElementById('errorBox').textContent = '';
+    document.getElementById('errorBox').style.display = 'none';
   }
 
   // ── Usage bar ──────────────────────────────────────────────
-  const PRICE_IN  = 3  / 1_000_000;
-  const PRICE_OUT = 15 / 1_000_000;
-
+  const PRICE_IN = 3 / 1_000_000, PRICE_OUT = 15 / 1_000_000;
   let sessionCost = 0;
 
   function loadAllTime() {
     try { return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}'); } catch { return { cost: 0, calls: 0 }; }
   }
-  function saveAllTime(data) {
-    try { localStorage.setItem('oa_usage', JSON.stringify(data)); } catch {}
-  }
+  function saveAllTime(d) { try { localStorage.setItem('oa_usage', JSON.stringify(d)); } catch {} }
   function loadToggles() {
     try { return JSON.parse(localStorage.getItem('oa_toggles') || '{"tokens":true,"cost-call":true,"cost-session":true,"cost-alltime":true}'); }
     catch { return { tokens: true, 'cost-call': true, 'cost-session': true, 'cost-alltime': true }; }
   }
-  function saveToggles(t) {
-    try { localStorage.setItem('oa_toggles', JSON.stringify(t)); } catch {}
-  }
+  function saveToggles(t) { try { localStorage.setItem('oa_toggles', JSON.stringify(t)); } catch {} }
 
   let metricToggles = loadToggles();
 
   function applyToggles() {
-    ['tokens', 'cost-call', 'cost-session', 'cost-alltime'].forEach(key => {
-      const on = metricToggles[key];
-      const el = document.getElementById('metric-' + key);
-      const btn = document.getElementById('toggle-' + key);
-      if (el) el.classList.toggle('disabled', !on);
-      if (btn) btn.classList.toggle('on', on);
+    ['tokens','cost-call','cost-session','cost-alltime'].forEach(k => {
+      document.getElementById('metric-' + k)?.classList.toggle('disabled', !metricToggles[k]);
+      document.getElementById('toggle-' + k)?.classList.toggle('on', metricToggles[k]);
     });
   }
 
@@ -1014,29 +922,32 @@ recommended_books: only recommend resources from the approved list above. If no 
     applyToggles();
   }
 
-  function updateUsageUI(inputTokens, outputTokens) {
-    const callCost = (inputTokens * PRICE_IN) + (outputTokens * PRICE_OUT);
-    const totalTokens = inputTokens + outputTokens;
-    sessionCost += callCost;
+  function toggleUsage() {
+    const body = document.getElementById('usageBody');
+    const chevron = document.getElementById('usageChevron');
+    const open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    chevron.classList.toggle('open', open);
+    try { localStorage.setItem('oa_usage_open', open); } catch {}
+  }
 
+  function updateUsageUI(inputTokens, outputTokens) {
+    const callCost = inputTokens * PRICE_IN + outputTokens * PRICE_OUT;
+    sessionCost += callCost;
     const allTime = loadAllTime();
     allTime.cost += callCost;
     allTime.calls += 1;
     saveAllTime(allTime);
 
-    document.getElementById('val-tokens').textContent = totalTokens.toLocaleString();
+    document.getElementById('val-tokens').textContent = (inputTokens + outputTokens).toLocaleString();
     document.getElementById('val-cost-call').textContent = '$' + callCost.toFixed(4);
     document.getElementById('val-cost-session').textContent = '$' + sessionCost.toFixed(4);
     document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
     document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
-
-    const now = new Date();
-    document.getElementById('lastCallLabel').textContent =
-      'Last call: ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
+    document.getElementById('lastCallLabel').textContent = 'Last call: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.getElementById('usageDot').style.background = '#00A983';
 
-    const body = document.getElementById('usagePanelBody');
+    const body = document.getElementById('usageBody');
     if (body.style.display === 'none') {
       body.style.display = 'block';
       document.getElementById('usageChevron').classList.add('open');
@@ -1055,10 +966,15 @@ recommended_books: only recommend resources from the approved list above. If no 
     document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
     document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
     applyToggles();
+    try {
+      if (localStorage.getItem('oa_usage_open') !== 'false') {
+        document.getElementById('usageBody').style.display = 'block';
+        document.getElementById('usageChevron').classList.add('open');
+      }
+    } catch {}
   }
-  // ── End usage bar ──────────────────────────────────────────
 
-  // Sample transcript — cleared as soon as the user edits
+  // ── Sample transcript ──────────────────────────────────────
   const SAMPLE_TRANSCRIPT = `Michael Darlan (0:12): Good afternoon Jason, can you hear me alright?
 Jason Pruitt (0:15): Yeah, loud and clear. How are you?
 Michael Darlan (0:17): Doing great, thanks for making time. I know you mentioned you had a hard stop at 2, so I want to make sure we use your time well today.
@@ -1118,8 +1034,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     callNotesEl.removeEventListener('focus', onFocus);
   });
 
+  // ── Init ───────────────────────────────────────────────────
   initKeyUI();
-  initPanels();
   renderMemberList();
   renderLibrary();
   initUsageBar();
