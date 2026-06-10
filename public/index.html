@@ -3027,15 +3027,27 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       else if (nd.type==='account') { inner=(nd.sublabel||nd.label).split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
       else { inner=PH_SYMBOLS[nd.type]||'?'; }
       const tf=ph?'rgba(255,255,255,0.35)':'#fff';
-      const yOff=sub!==''?-5:0;
+      const yOff=sub!==''?-6:0;
       nodeSvg += `<text x="${nd.x}" y="${nd.y+yOff}" text-anchor="middle" dominant-baseline="middle" font-size="${nd.type==='account'?15:13}" font-weight="700" fill="${tf}" font-family="system-ui,sans-serif" style="pointer-events:none;">${inner}</text>`;
-      if (sub!=='') nodeSvg += `<text x="${nd.x}" y="${nd.y+10}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="rgba(255,255,255,0.5)" font-family="'SF Mono','Fira Code',monospace" style="pointer-events:none;">${sub}</text>`;
+      if (sub!=='') nodeSvg += `<text x="${nd.x}" y="${nd.y+7}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="rgba(255,255,255,0.5)" font-family="'SF Mono','Fira Code',monospace" style="pointer-events:none;">${sub}</text>`;
+      // Stage badge inside call node
+      if (nd.type==='call' && nd.data?.stage) {
+        const stageIcon = { 'Cold outreach':'📞', 'Discovery':'🔍', 'Demo / solution presentation':'📽', 'Proposal / close':'📝', 'Touchpoint':'💬', 'Security Observability Scorecard':'🛡' }[nd.data.stage] || '·';
+        const stageColor = { 'Cold outreach':'rgba(255,255,255,0.35)', 'Discovery':'rgba(74,158,255,0.8)', 'Demo / solution presentation':'rgba(255,117,31,0.9)', 'Proposal / close':'rgba(0,169,131,0.9)', 'Touchpoint':'rgba(255,255,255,0.45)', 'Security Observability Scorecard':'rgba(155,89,182,0.9)' }[nd.data.stage] || 'rgba(255,255,255,0.35)';
+        nodeSvg += `<text x="${nd.x}" y="${nd.y+20}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="${stageColor}" style="pointer-events:none;">${stageIcon}</text>`;
+      }
 
       // External labels
       const ly=nd.y+r+16;
       nodeSvg += `<text x="${nd.x}" y="${ly}" text-anchor="middle" font-size="11" font-weight="${ph?400:600}" fill="${ph?'rgba(255,255,255,0.28)':'rgba(255,255,255,0.8)'}" font-family="system-ui,sans-serif" style="pointer-events:none;">${escHtml(nd.label)}</text>`;
-      const sub2 = nd.type==='call'?nd.dateStr:(nd.type!=='account'?nd.sublabel:'');
-      if (sub2) nodeSvg += `<text x="${nd.x}" y="${ly+14}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.25)" font-family="${nd.type==='call'?'\'SF Mono\',\'Fira Code\',monospace':'system-ui,sans-serif'}" style="pointer-events:none;">${escHtml(sub2)}</text>`;
+      if (nd.type==='call') {
+        // Stage on first line (highlighted), date on second
+        if (nd.sublabel) nodeSvg += `<text x="${nd.x}" y="${ly+14}" text-anchor="middle" font-size="9" font-weight="600" fill="rgba(0,169,131,0.7)" font-family="system-ui,sans-serif" letter-spacing="0.04em" style="pointer-events:none;">${escHtml(nd.sublabel.toUpperCase())}</text>`;
+        if (nd.dateStr)  nodeSvg += `<text x="${nd.x}" y="${ly+26}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="'SF Mono','Fira Code',monospace" style="pointer-events:none;">${escHtml(nd.dateStr)}</text>`;
+      } else {
+        const sub2 = nd.type!=='account' ? nd.sublabel : '';
+        if (sub2) nodeSvg += `<text x="${nd.x}" y="${ly+14}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.25)" font-family="system-ui,sans-serif" style="pointer-events:none;">${escHtml(sub2)}</text>`;
+      }
     });
 
     root.innerHTML = edgeSvg + nodeSvg;
