@@ -3689,8 +3689,20 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function lcSelectNode(id) {
     _lcSelId = id;
-    drawLcGraph();
     const nd = _lcNodes.find(n=>n.id===id);
+    // If zoomed too far out, animate zoom to center on the selected node
+    if (nd && _lcT.s < 0.65) {
+      const c = document.getElementById('lcGraphCanvas');
+      if (c) {
+        const W = c.offsetWidth, H = c.offsetHeight;
+        const targetS = Math.max(_lcT.s * 1.5, 0.85);
+        _lcT.x = W / 2 - nd.x * targetS;
+        _lcT.y = H / 2 - nd.y * targetS;
+        _lcT.s = targetS;
+        applyLcTransform();
+      }
+    }
+    drawLcGraph();
     if (nd) lcShowSidebar(nd);
   }
 
@@ -4000,6 +4012,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   function lcPanStart(e) {
     if (e.target.classList.contains('lc-node-hit')) return;
     if (e.button !== 0) return;
+    // Close sidebar when clicking on the canvas background
+    if (_lcSelId) lcCloseSidebar();
     document.getElementById('lcGraphCanvas').classList.add('panning');
     _lcPan = { ox:e.clientX, oy:e.clientY, tx:_lcT.x, ty:_lcT.y };
   }
