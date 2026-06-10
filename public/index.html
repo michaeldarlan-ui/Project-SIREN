@@ -2397,7 +2397,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
+          model: 'claude-sonnet-4-6',
           max_tokens: 6000,
           stream: true,
           system: systemPrompt,
@@ -4600,7 +4600,7 @@ INSTRUCTIONS:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
+          model: 'claude-sonnet-4-6',
           max_tokens: 600,
           stream: true,
           system: 'You are a Solutions Engineer writing concise, professional sales emails.',
