@@ -1318,24 +1318,24 @@
             <span style="font-size:10px;color:var(--siren-text-muted);">Select a format to generate</span>
           </div>
           <div class="forge-panel-body" style="padding-bottom:14px;">
+            <div style="font-family:var(--siren-font-hud);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:8px;">Built-in</div>
             <div class="forge-template-row">
-              <div class="forge-template-card selected">
+              <div class="forge-template-card selected" data-builtin="call-brief">
                 <div class="forge-template-icon">📋</div>
                 <div class="forge-template-name">CALL BRIEF</div>
                 <div class="forge-template-desc">Post-call summary with score, highlights, and next steps for internal review.</div>
               </div>
-              <div class="forge-template-card">
+              <div class="forge-template-card" data-builtin="follow-up">
                 <div class="forge-template-icon">📬</div>
                 <div class="forge-template-name">FOLLOW-UP EMAIL</div>
                 <div class="forge-template-desc">Personalized follow-up draft tailored to stage, pain points, and open questions.</div>
               </div>
-              <div class="forge-template-card">
+              <div class="forge-template-card" data-builtin="stage-transition">
                 <div class="forge-template-icon">🗂</div>
                 <div class="forge-template-name">STAGE TRANSITION</div>
                 <div class="forge-template-desc">Criteria checklist and summary for moving the deal to the next pipeline stage.</div>
               </div>
-              <div class="forge-template-card locked">
-                <div class="forge-template-soon">SOON</div>
+              <div class="forge-template-card" data-builtin="exec-summary">
                 <div class="forge-template-icon">📊</div>
                 <div class="forge-template-name">EXEC SUMMARY</div>
                 <div class="forge-template-desc">Board-ready deal summary with SPICED status and risk indicators.</div>
@@ -1353,6 +1353,8 @@
                 <div class="forge-template-desc">Launch a stage-matched email sequence directly from HubSpot after grading.</div>
               </div>
             </div>
+            <!-- User-defined templates from Resource Library -->
+            <div id="forgeUserTemplates"></div>
           </div>
         </div>
 
@@ -1415,7 +1417,8 @@
 
             <div class="forge-report-section" id="fr-generated-section" style="display:none;">
               <div class="forge-report-section-label">Generated Report</div>
-              <div class="forge-field" id="fr-generated" style="min-height:140px;white-space:pre-wrap;line-height:1.65;"></div>
+              <div class="forge-field" id="fr-generated" style="min-height:140px;white-space:pre-wrap;line-height:1.65;" contenteditable="true"></div>
+              <div id="fr-template-files" style="display:none;margin-top:10px;"></div>
             </div>
           </div>
         </div>
@@ -4060,7 +4063,70 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   };
 
   let _forgeHistory = [];   // all calls for selected account
+  let _forgeCustomTemplate = null; // selected user template object
   let _forgeCall    = null; // currently selected call entry
+
+  function forgeRenderUserTemplates() {
+    const el = document.getElementById('forgeUserTemplates');
+    if (!el) return;
+    const tmpls = loadTemplates();
+    if (!tmpls.length) { el.innerHTML = ''; return; }
+    const cards = tmpls.map((t, i) => {
+      const icon = t.reportType === 'Executive Summary' ? '📊'
+        : t.reportType === 'Follow-Up Email' ? '📬'
+        : t.reportType === 'Proposal Cover' ? '📄'
+        : t.reportType === 'QBR Report' ? '📈'
+        : '📋';
+      const fileNote = (t.files||[]).length ? `<div style="font-size:10px;color:var(--siren-cyan-50);margin-top:4px;">📎 ${t.files.length} attachment${t.files.length>1?'s':''}</div>` : '';
+      return `<div class="forge-template-card" data-user-tmpl="${i}" onclick="forgeSelectUserTemplate(${i})" style="cursor:pointer;">
+        <div class="forge-template-icon">${icon}</div>
+        <div class="forge-template-name">${escHtml(t.name)}</div>
+        ${t.reportType ? `<div class="forge-template-desc" style="color:var(--siren-cyan-50);margin-bottom:4px;">${escHtml(t.reportType)}</div>` : ''}
+        ${fileNote}
+      </div>`;
+    }).join('');
+    el.innerHTML = `<div style="font-family:var(--siren-font-hud);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--siren-text-muted);margin:12px 0 8px;">Your Templates</div>
+      <div class="forge-template-row">${cards}</div>`;
+  }
+
+  function forgeSelectUserTemplate(idx) {
+    const tmpls = loadTemplates();
+    _forgeCustomTemplate = tmpls[idx] || null;
+    document.querySelectorAll('.forge-template-card').forEach(c => c.classList.remove('selected'));
+    const card = document.querySelector(`.forge-template-card[data-user-tmpl="${idx}"]`);
+    if (card) card.classList.add('selected');
+    forgeUpdateTemplateTitles();
+  }
+
+  function forgeApplyTemplate(h, tmpl) {
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    const nextSteps = h.next_steps && Array.isArray(h.next_steps)
+      ? h.next_steps.map((s,i) => `${i+1}. ${s}`).join('\n')
+      : (h.next_steps || '');
+    const spicedLines = h.spiced ? Object.entries(h.spiced).map(([k,v]) => {
+      const label = k.charAt(0).toUpperCase()+k.slice(1).replace('_',' ');
+      return `  ${label}: ${v.touched ? (v.summary||'Covered') : 'Not addressed'}`;
+    }).join('\n') : '';
+    const dimLines = h.dimensions ? Object.entries(h.dimensions).map(([name,d]) => `  ${name}: ${d.score??0}/100`).join('\n') : '';
+    return (tmpl.body || '')
+      .replace(/\{\{prospect\}\}/gi, h.prospect||'')
+      .replace(/\{\{company\}\}/gi, h.prospect||'')
+      .replace(/\{\{rep\}\}/gi, h.rep||'')
+      .replace(/\{\{date\}\}/gi, ds)
+      .replace(/\{\{stage\}\}/gi, h.stage||'')
+      .replace(/\{\{grade\}\}/gi, (h.letter_grade||'')+(h.total?' · '+h.total+'/100':''))
+      .replace(/\{\{score\}\}/gi, String(h.total??''))
+      .replace(/\{\{grade_label\}\}/gi, h.grade_label||'')
+      .replace(/\{\{top_strength\}\}/gi, h.top_strength||'')
+      .replace(/\{\{top_priority\}\}/gi, h.top_priority||'')
+      .replace(/\{\{next_steps\}\}/gi, nextSteps)
+      .replace(/\{\{spiced\}\}/gi, spicedLines)
+      .replace(/\{\{dimensions\}\}/gi, dimLines)
+      .replace(/\{\{contact\}\}/gi, h.contactTitle||'')
+      .replace(/\{\{notes\}\}/gi, h.notes||'');
+  }
 
   function forgeInit() {
     const hist = loadHistory();
@@ -4075,6 +4141,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     companies.sort((a,b) => a.localeCompare(b));
     sel.innerHTML = '<option value="">— Select account —</option>' +
       companies.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+    forgeRenderUserTemplates();
   }
 
   function forgeSelectAccount(company) {
@@ -4267,17 +4334,35 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   function forgeGenerate() {
     if (!_forgeCall) return;
     const h = _forgeCall;
-    const text = forgeComposeText(h);
+    const text = _forgeCustomTemplate
+      ? forgeApplyTemplate(h, _forgeCustomTemplate)
+      : forgeComposeText(h);
     const genEl = document.getElementById('fr-generated');
     genEl.textContent = text;
     document.getElementById('fr-generated-section').style.display = '';
+
+    // Show template file attachments if any
+    const filesEl = document.getElementById('fr-template-files');
+    const files = _forgeCustomTemplate?.files || [];
+    if (filesEl) {
+      if (files.length) {
+        filesEl.style.display = '';
+        filesEl.innerHTML = `<div style="font-family:var(--siren-font-hud);font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:6px;">Template Attachments</div>` +
+          files.map(f => `<span class="tmpl-file-chip"><a href="${f.data}" download="${escHtml(f.name)}" style="color:inherit;text-decoration:none;">📎 ${escHtml(f.name)}</a></span>`).join('');
+      } else {
+        filesEl.style.display = 'none';
+        filesEl.innerHTML = '';
+      }
+    }
+
     genEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     document.getElementById('forgeGenBtn').textContent = 'Regenerate';
   }
 
-  // Template card click
-  document.querySelectorAll('.forge-template-card:not(.locked)').forEach(card => {
+  // Built-in template card click (clears custom template selection)
+  document.querySelectorAll('.forge-template-card:not(.locked)[data-builtin]').forEach(card => {
     card.addEventListener('click', () => {
+      _forgeCustomTemplate = null;
       document.querySelectorAll('.forge-template-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       forgeUpdateTemplateTitles();
