@@ -3715,12 +3715,16 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const c = document.getElementById('lcGraphCanvas');
       const sb = document.getElementById('lcSidebar');
       if (c) {
-        // Account for sidebar opening: if sidebar isn't open yet, canvas will shrink by 310px
+        // Zoom to a readable scale — use 1.1 unless user is already zoomed in more
+        const TARGET_SCALE = 1.1;
+        const newS = Math.max(_lcT.s, TARGET_SCALE);
+        // Account for sidebar: if it's about to open, the canvas loses 310px
         const sidebarOpening = sb && !sb.classList.contains('open');
         const W = c.offsetWidth - (sidebarOpening ? 310 : 0);
         const H = c.offsetHeight;
-        _lcT.x = W / 2 - nd.x * _lcT.s;
-        _lcT.y = H / 2 - nd.y * _lcT.s;
+        _lcT.s = newS;
+        _lcT.x = W / 2 - nd.x * newS;
+        _lcT.y = H / 2 - nd.y * newS;
         applyLcTransform();
       }
       lcShowSidebar(nd);
