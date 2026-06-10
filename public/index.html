@@ -4562,14 +4562,12 @@ INSTRUCTIONS:
       spinner.style.display = 'none';
 
       if (!resp.ok) {
-        const err = await resp.json().catch(()=>({error:{message:'Unknown error'}}));
-        bodyEl.textContent = 'Error: ' + (err?.error?.message || resp.statusText);
-        btn.disabled = false;
-        btn.textContent = 'Retry';
-        return;
+        const err = await resp.json().catch(()=>({}));
+        throw new Error(err?.error?.message || 'API error ' + resp.status);
       }
 
-      let buffer = '';
+      let sseBuffer = '';
+      let accumulated = '';
       let subjectDone = false;
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -4577,46 +4575,49 @@ INSTRUCTIONS:
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop();
+        for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') break;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === '[DONE]') continue;
           try {
-            const evt = JSON.parse(data);
-            const delta = evt?.delta?.text || evt?.content?.[0]?.text || '';
-            if (!delta) continue;
-            buffer += delta;
-
-            // Split subject from body on first blank line
-            if (!subjectDone) {
-              const blankIdx = buffer.indexOf('\n\n');
-              if (blankIdx !== -1) {
-                const subjectLine = buffer.slice(0, blankIdx).replace(/^Subject:\s*/i, '').trim();
-                subjectEl.textContent = subjectLine;
-                buffer = buffer.slice(blankIdx + 2);
-                subjectDone = true;
-                bodyEl.textContent = buffer;
+            const ev = JSON.parse(payload);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              accumulated += ev.delta.text;
+              // Split subject from body on first blank line
+              if (!subjectDone) {
+                const blankIdx = accumulated.indexOf('\n\n');
+                if (blankIdx !== -1) {
+                  subjectEl.textContent = accumulated.slice(0, blankIdx).replace(/^Subject:\s*/i, '').trim();
+                  bodyEl.textContent = accumulated.slice(blankIdx + 2);
+                  subjectDone = true;
+                }
+              } else {
+                bodyEl.textContent = accumulated.slice(accumulated.indexOf('\n\n') + 2);
               }
-            } else {
-              bodyEl.textContent = buffer;
             }
           } catch {}
         }
       }
 
-      // Ensure subject is extracted even if no blank line yet
-      if (!subjectDone && buffer) {
-        const lines = buffer.split('\n');
-        subjectEl.textContent = lines[0].replace(/^Subject:\s*/i, '').trim();
-        bodyEl.textContent = lines.slice(2).join('\n').trim();
+      // Final parse if blank line never appeared mid-stream
+      if (!subjectDone && accumulated) {
+        const nlnl = accumulated.indexOf('\n\n');
+        if (nlnl !== -1) {
+          subjectEl.textContent = accumulated.slice(0, nlnl).replace(/^Subject:\s*/i, '').trim();
+          bodyEl.textContent = accumulated.slice(nlnl + 2);
+        } else {
+          bodyEl.textContent = accumulated;
+        }
       }
 
       btn.disabled = false;
       btn.textContent = 'Re-draft';
     } catch (err) {
       spinner.style.display = 'none';
-      bodyEl.textContent = 'Error: ' + err.message;
+      bodyEl.textContent = 'Error: ' + (err.message || String(err));
       btn.disabled = false;
       btn.textContent = 'Retry';
     }
