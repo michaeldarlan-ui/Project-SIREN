@@ -52,6 +52,7 @@ const server = http.createServer((req, res) => {
       };
 
       const proxyReq = https.request(options, proxyRes => {
+        console.log(`[proxy] ${proxyRes.statusCode} from Anthropic`);
         res.writeHead(proxyRes.statusCode, {
           'Content-Type': proxyRes.headers['content-type'] || 'application/json',
           'Cache-Control': 'no-cache',
