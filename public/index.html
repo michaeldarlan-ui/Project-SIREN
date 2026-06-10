@@ -242,6 +242,58 @@
   }
   .add-btn:hover { background: var(--oa-green); }
 
+  /* Library */
+  .lib-section-label {
+    font-size: 11px; font-weight: 700; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin: 14px 0 8px;
+  }
+  .lib-section-label:first-child { margin-top: 0; }
+  .lib-empty { font-size: 13px; color: var(--text-faint); padding: 4px 0 10px; }
+  .lib-item {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--bg-surface); margin-bottom: 6px;
+  }
+  .lib-item-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+  .lib-item-title { font-size: 13px; font-weight: 600; }
+  .lib-item-meta { font-size: 12px; color: var(--text-muted); }
+  .lib-item-why { font-size: 12px; color: var(--text-faint); margin-top: 3px; line-height: 1.45; }
+  .lib-type-chip {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 2px;
+  }
+  .lib-type-book { background: #e8f7f3; color: #0a5c45; }
+  .lib-type-website { background: #fff3e8; color: #7a3800; }
+  .lib-type-framework { background: #eef0ff; color: #2d3a8c; }
+  @media (prefers-color-scheme: dark) {
+    .lib-type-book { background: #0d2e26; color: #5de0b0; }
+    .lib-type-website { background: #2e1a00; color: #ffb366; }
+    .lib-type-framework { background: #1a1e3c; color: #9ba8ff; }
+  }
+  .lib-divider { height: 1px; background: var(--border); margin: 14px 0; }
+  .add-lib-grid {
+    display: grid; gap: 6px;
+  }
+  .add-lib-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+  .add-lib-row-full { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+  .add-lib-grid input, .add-lib-grid textarea, .add-lib-grid select {
+    padding: 8px 10px; font-size: 13px;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
+    width: 100%;
+  }
+  .add-lib-grid input:focus, .add-lib-grid textarea:focus, .add-lib-grid select:focus { border-color: var(--oa-green); }
+  .add-lib-grid input::placeholder, .add-lib-grid textarea::placeholder { color: var(--text-faint); }
+  .add-lib-grid textarea { min-height: unset; resize: none; }
+  .lib-section-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .lib-tab {
+    padding: 5px 14px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border-mid); border-radius: 20px;
+    background: var(--bg-surface); color: var(--text-muted); cursor: pointer;
+  }
+  .lib-tab.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
+
   /* Usage bar */
   .usage-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
   .usage-metric {
@@ -302,6 +354,55 @@
         <input type="text" id="newMemberRole" placeholder="Role (e.g. Account Executive)" />
         <button class="add-btn" onclick="addMember()">Add</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Resource Library -->
+  <div class="panel" id="libraryPanel">
+    <div class="panel-header" onclick="togglePanel('library')">
+      <div class="panel-left">
+        <span class="panel-title">Resource Library</span>
+      </div>
+      <span class="panel-chevron" id="libraryChevron">▼</span>
+    </div>
+    <div class="panel-body" id="libraryPanelBody" style="display:none;">
+
+      <!-- Already Read -->
+      <div class="lib-section-label">Already Read — never recommend</div>
+      <div id="libReadList"></div>
+
+      <div class="lib-divider"></div>
+
+      <!-- Recommended -->
+      <div class="lib-section-label">Recommended — Claude will suggest from this list</div>
+      <div id="libRecommendList"></div>
+
+      <div class="lib-divider"></div>
+
+      <!-- Add form -->
+      <div class="lib-section-label">Add resource</div>
+      <div class="lib-section-tabs">
+        <button class="lib-tab active" id="tabRead" onclick="setLibTab('read')">Already Read</button>
+        <button class="lib-tab" id="tabRecommend" onclick="setLibTab('recommend')">Recommended</button>
+      </div>
+      <div class="add-lib-grid">
+        <div class="add-lib-row">
+          <input type="text" id="libTitle" placeholder="Title" />
+          <input type="text" id="libAuthor" placeholder="Author / source (optional)" />
+          <select id="libType" style="width:auto;">
+            <option value="Book">Book</option>
+            <option value="Website">Website</option>
+            <option value="Framework">Framework</option>
+          </select>
+        </div>
+        <div id="libWhyRow" style="display:none;">
+          <textarea id="libWhy" rows="2" placeholder="Why recommend this? (shown to Claude as context)"></textarea>
+        </div>
+        <div>
+          <button class="add-btn" onclick="addLibItem()" style="width:100%;">Add to library</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -470,10 +571,127 @@
   });
   // ── End team manager ───────────────────────────────────────
 
+  // ── Resource library ───────────────────────────────────────
+  const DEFAULT_READ = [
+    { title: 'Never Split the Difference', author: 'Chris Voss', type: 'Book' }
+  ];
+  const DEFAULT_RECOMMEND = [
+    { title: 'SPIN Selling', author: 'Neil Rackham', type: 'Book', why: 'Strong framework for consultative discovery and surfacing implicit needs in complex B2B sales.' },
+    { title: 'The Challenger Sale', author: 'Matthew Dixon & Brent Adamson', type: 'Book', why: 'Teaches reps to reframe the prospect\'s thinking and lead with insight rather than just responding to stated needs.' },
+    { title: 'Gap Selling', author: 'Keenan', type: 'Book', why: 'Problem-centric selling focused on quantifying the gap between current state and desired state — highly applicable to MSSP conversations.' },
+    { title: 'Fanatical Prospecting', author: 'Jeb Blount', type: 'Book', why: 'Pipeline discipline and outreach cadence for reps who need to build consistent top-of-funnel activity.' },
+    { title: 'The Qualified Sales Leader', author: 'John McMahon', type: 'Book', why: 'Enterprise qualification rigor — MEDDIC/MEDDPICC methodology for complex deals with multiple stakeholders.' },
+    { title: 'The JOLT Effect', author: 'Matthew Dixon & Ted McKenna', type: 'Book', why: 'Addresses indecision as the primary reason deals are lost — practical techniques for moving stuck prospects forward.' }
+  ];
+
+  function loadLibrary() {
+    try {
+      const raw = localStorage.getItem('oa_library');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { read: [...DEFAULT_READ], recommend: [...DEFAULT_RECOMMEND] };
+  }
+  function saveLibrary(lib) {
+    try { localStorage.setItem('oa_library', JSON.stringify(lib)); } catch {}
+  }
+
+  let libTab = 'read';
+
+  function setLibTab(tab) {
+    libTab = tab;
+    document.getElementById('tabRead').classList.toggle('active', tab === 'read');
+    document.getElementById('tabRecommend').classList.toggle('active', tab === 'recommend');
+    document.getElementById('libWhyRow').style.display = tab === 'recommend' ? 'block' : 'none';
+  }
+
+  function typeChip(type) {
+    const cls = { Book: 'lib-type-book', Website: 'lib-type-website', Framework: 'lib-type-framework' }[type] || 'lib-type-book';
+    return `<span class="lib-type-chip ${cls}">${escHtml(type)}</span>`;
+  }
+
+  function renderLibrary() {
+    const lib = loadLibrary();
+
+    const readEl = document.getElementById('libReadList');
+    readEl.innerHTML = lib.read.length ? lib.read.map((item, i) => `
+      <div class="lib-item">
+        <div class="lib-item-info">
+          <span class="lib-item-title">${escHtml(item.title)}</span>
+          ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0;">
+          ${typeChip(item.type)}
+          <button class="member-remove" onclick="removeLibItem('read',${i})">Remove</button>
+        </div>
+      </div>`).join('')
+      : '<div class="lib-empty">No items yet.</div>';
+
+    const recEl = document.getElementById('libRecommendList');
+    recEl.innerHTML = lib.recommend.length ? lib.recommend.map((item, i) => `
+      <div class="lib-item">
+        <div class="lib-item-info">
+          <span class="lib-item-title">${escHtml(item.title)}</span>
+          ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
+          ${item.why ? `<span class="lib-item-why">${escHtml(item.why)}</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0;">
+          ${typeChip(item.type)}
+          <button class="member-remove" onclick="removeLibItem('recommend',${i})">Remove</button>
+        </div>
+      </div>`).join('')
+      : '<div class="lib-empty">No items yet.</div>';
+  }
+
+  function addLibItem() {
+    const title = document.getElementById('libTitle').value.trim();
+    const author = document.getElementById('libAuthor').value.trim();
+    const type = document.getElementById('libType').value;
+    const why = document.getElementById('libWhy').value.trim();
+    if (!title) { document.getElementById('libTitle').focus(); return; }
+    const lib = loadLibrary();
+    if (libTab === 'read') {
+      lib.read.push({ title, author, type });
+    } else {
+      lib.recommend.push({ title, author, type, why });
+    }
+    saveLibrary(lib);
+    document.getElementById('libTitle').value = '';
+    document.getElementById('libAuthor').value = '';
+    document.getElementById('libWhy').value = '';
+    renderLibrary();
+  }
+
+  function removeLibItem(section, idx) {
+    const lib = loadLibrary();
+    lib[section].splice(idx, 1);
+    saveLibrary(lib);
+    renderLibrary();
+  }
+
+  function buildLibraryPrompt() {
+    const lib = loadLibrary();
+    const readList = lib.read.map(r => `"${r.title}"${r.author ? ' by ' + r.author : ''}`).join(', ');
+    const recList = lib.recommend.map(r => {
+      let s = `- ${r.title}${r.author ? ' (' + r.author + ')' : ''}`;
+      if (r.why) s += `: ${r.why}`;
+      return s;
+    }).join('\n');
+    const readClause = readList
+      ? `The rep has already read the following — never recommend them: ${readList}.`
+      : '';
+    const recClause = lib.recommend.length
+      ? `Only recommend resources from this approved list when a genuine gap exists:\n${recList}`
+      : 'No recommended resources are configured — omit the recommended_books field entirely.';
+    return `${readClause}\n\n${recClause}`;
+  }
+
+  document.getElementById('libTitle').addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
+  // ── End resource library ───────────────────────────────────
+
   // ── Collapsible panels ─────────────────────────────────────
   function togglePanel(key) {
-    const bodies = { team: 'teamPanelBody', usage: 'usagePanelBody' };
-    const chevrons = { team: 'teamChevron', usage: 'usageChevron' };
+    const bodies = { team: 'teamPanelBody', library: 'libraryPanelBody', usage: 'usagePanelBody' };
+    const chevrons = { team: 'teamChevron', library: 'libraryChevron', usage: 'usageChevron' };
     const body = document.getElementById(bodies[key]);
     const chevron = document.getElementById(chevrons[key]);
     const open = body.style.display === 'none';
@@ -483,9 +701,9 @@
   }
 
   function initPanels() {
-    ['team', 'usage'].forEach(key => {
-      const bodies = { team: 'teamPanelBody', usage: 'usagePanelBody' };
-      const chevrons = { team: 'teamChevron', usage: 'usageChevron' };
+    ['team', 'library', 'usage'].forEach(key => {
+      const bodies = { team: 'teamPanelBody', library: 'libraryPanelBody', usage: 'usagePanelBody' };
+      const chevrons = { team: 'teamChevron', library: 'libraryChevron', usage: 'usageChevron' };
       try {
         const open = localStorage.getItem('oa_panel_' + key) !== 'false';
         if (open) {
@@ -578,7 +796,11 @@
 
     const roleGuidance = buildRoleGuidance(rep);
 
-    const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales. You know "Never Split the Difference" by Chris Voss deeply (the rep has already read this book — never recommend it). Recommend other books only for genuine gaps.
+    const libraryPrompt = buildLibraryPrompt();
+
+    const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales.
+
+${libraryPrompt}
 
 You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${roleGuidance}
 
@@ -632,7 +854,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
   ]
 }
 
-recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candidates: SPIN Selling (Rackham), Challenger Sale (Dixon/Adamson), Gap Selling (Keenan), Fanatical Prospecting (Blount), The Qualified Sales Leader (McMahon), The JOLT Effect (Dixon/McKenna).`;
+recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.`;
 
     const context = [
       rep ? 'Rep: ' + rep.name + ' (' + rep.role + ')' : '',
@@ -899,6 +1121,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   initKeyUI();
   initPanels();
   renderMemberList();
+  renderLibrary();
   initUsageBar();
 </script>
 </body>
