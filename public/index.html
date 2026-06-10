@@ -1231,6 +1231,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 6000,
+          stream: true,
           system: systemPrompt,
           messages: [{ role: 'user', content: context + '\n\n' + notes }]
         })
@@ -1241,10 +1242,39 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         throw new Error(err.error?.message || 'API error ' + resp.status);
       }
 
-      const data = await resp.json();
-      if (data.usage) updateUsageUI(data.usage.input_tokens || 0, data.usage.output_tokens || 0);
-      let raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
-      raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+      // Read the SSE stream
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+      let accumulated = '';
+      let inputTokens = 0, outputTokens = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop(); // hold incomplete line
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(payload);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              accumulated += ev.delta.text;
+              updateStreamProgress(accumulated);
+            } else if (ev.type === 'message_start') {
+              inputTokens = ev.message?.usage?.input_tokens || 0;
+            } else if (ev.type === 'message_delta') {
+              outputTokens = ev.usage?.output_tokens || 0;
+            }
+          } catch {}
+        }
+      }
+
+      if (inputTokens || outputTokens) updateUsageUI(inputTokens, outputTokens);
+      let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
       renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate);
     } catch (err) {
       showError(err.message);
@@ -1393,61 +1423,54 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  const LOAD_PHASES = [
-    'Initializing analysis engine…',
-    'Parsing transcript structure…',
-    'Identifying speaker contributions…',
-    'Evaluating discovery & needs alignment…',
-    'Scoring value framing & demo delivery…',
-    'Analyzing objection handling…',
-    'Checking qualification signals…',
-    'Assessing call control & next steps…',
-    'Mapping SPICED framework components…',
-    'Scoring individual rep performance…',
-    'Generating coaching insights…',
-    'Compiling final report…',
+  // Markers matched against accumulated streaming JSON text — order matters (most specific first within a section)
+  const STREAM_PHASES = [
+    { marker: '"dimensions"',          label: 'Scoring call dimensions…',                pct: 10 },
+    { marker: '"Discovery & needs',    label: 'Evaluating discovery quality…',            pct: 18 },
+    { marker: '"Value framing',        label: 'Scoring value framing & demo delivery…',   pct: 28 },
+    { marker: '"Tactical empathy',     label: 'Analyzing objection handling…',            pct: 40 },
+    { marker: '"Qualification',        label: 'Checking qualification signals…',          pct: 51 },
+    { marker: '"Call control',         label: 'Assessing call control & next steps…',     pct: 60 },
+    { marker: '"total"',               label: 'Calculating overall score…',               pct: 66 },
+    { marker: '"call_summary"',        label: 'Summarizing call highlights…',             pct: 73 },
+    { marker: '"recommended_books"',   label: 'Finalizing resource recommendations…',     pct: 79 },
+    { marker: '"rep_scores"',          label: 'Scoring individual rep performance…',      pct: 86 },
+    { marker: '"spiced"',              label: 'Mapping SPICED framework…',                pct: 93 },
   ];
-  let _loadInterval = null;
-  let _loadStep = 0;
+
+  function updateStreamProgress(text) {
+    let label = 'Parsing transcript…';
+    let pct = 4;
+    for (const phase of STREAM_PHASES) {
+      if (text.includes(phase.marker)) { label = phase.label; pct = phase.pct; }
+    }
+    const phaseEl = document.getElementById('loadPhase');
+    const fillEl  = document.getElementById('loadProgressFill');
+    const stepEl  = document.getElementById('loadStepLabel');
+    if (phaseEl && phaseEl.textContent !== label) {
+      phaseEl.style.animation = 'none';
+      void phaseEl.offsetWidth;
+      phaseEl.style.animation = '';
+      phaseEl.textContent = label;
+    }
+    if (fillEl) fillEl.style.width = pct + '%';
+    if (stepEl) stepEl.textContent = pct + '% complete';
+  }
 
   function setLoading(on, prospect, stage) {
     const el = document.getElementById('loading');
     document.getElementById('submitBtn').disabled = on;
-
     if (on) {
-      _loadStep = 0;
       el.style.display = 'flex';
-
-      // Context line
       const parts = [prospect, stage].filter(Boolean);
       document.getElementById('loadContext').textContent = parts.length ? parts.join(' · ') : 'SIREN · AI Coach';
-
-      // Kick off phase cycling
-      const phaseEl  = document.getElementById('loadPhase');
-      const stepEl   = document.getElementById('loadStepLabel');
-      const fillEl   = document.getElementById('loadProgressFill');
-      const total    = LOAD_PHASES.length;
-
-      function advance() {
-        if (_loadStep >= total) _loadStep = 0;
-        phaseEl.style.animation = 'none';
-        void phaseEl.offsetWidth; // reflow to restart animation
-        phaseEl.style.animation = '';
-        phaseEl.textContent = LOAD_PHASES[_loadStep];
-        stepEl.textContent   = `Step ${_loadStep + 1} of ${total}`;
-        fillEl.style.width   = Math.round(((_loadStep + 1) / total) * 88) + '%';
-        _loadStep++;
-      }
-
-      advance();
-      _loadInterval = setInterval(advance, 2200);
+      document.getElementById('loadPhase').textContent = 'Connecting to analysis engine…';
+      document.getElementById('loadProgressFill').style.width = '2%';
+      document.getElementById('loadStepLabel').textContent = '0% complete';
     } else {
-      clearInterval(_loadInterval);
-      _loadInterval = null;
-      // Flash to 100% briefly before hiding
       const fillEl = document.getElementById('loadProgressFill');
-      if (fillEl) fillEl.style.width = '100%';
-      setTimeout(() => { el.style.display = 'none'; }, 300);
+      if (fillEl) { fillEl.style.transition = 'width 0.2s ease'; fillEl.style.width = '100%'; }
+      setTimeout(() => { el.style.display = 'none'; }, 350);
     }
   }
 
