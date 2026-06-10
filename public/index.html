@@ -3251,6 +3251,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _lcNodes = []; _lcEdges = [];
     _lcAllEntries = entries;
     _lcCompany    = company;
+    _lcT = { x: 0, y: 0, s: 1 }; // reset transform so lcFit always starts clean
 
     // Account hub (center-left)
     const shortName = company.length > 14 ? company.slice(0,13)+'…' : company;
@@ -3300,9 +3301,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _lcEdges.push({ from:'account', to:'ph-comp', style:'dashed' });
     _lcEdges.push({ from:'account', to:'ph-tech', style:'dashed' });
 
-    // Reflect any saved profile data on initial render
+    // Reflect any saved profile data on initial render (also calls drawLcGraph)
     updateLcGraphNodes(company);
-    setTimeout(lcFit, 60);
+    // Fit after a frame so the SVG has dimensions
+    requestAnimationFrame(() => { requestAnimationFrame(lcFit); });
   }
 
   function toggleLcCalls() {
