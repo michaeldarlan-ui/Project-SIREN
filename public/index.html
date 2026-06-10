@@ -3010,16 +3010,19 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     // ── KPIs ──
     const total = history.length;
     const now = new Date();
-    const weekAgo = new Date(now - 7 * 86400000);
-    const monthAgo = new Date(now - 30 * 86400000);
-    const thisWeek = history.filter(h => new Date(h.ts) >= weekAgo).length;
-    const scores = history.map(h => h.total).filter(s => s > 0);
-    const avgNow = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-    const lastMonthScores = history.filter(h => new Date(h.ts) < monthAgo).map(h=>h.total).filter(s=>s>0);
-    const avgLast = lastMonthScores.length ? Math.round(lastMonthScores.reduce((a,b)=>a+b,0)/lastMonthScores.length) : null;
-    const avgDelta = (avgNow !== null && avgLast !== null) ? avgNow - avgLast : null;
+    // Use callDate when set, fall back to grading timestamp
+    const callDateOf = h => h.callDate ? new Date(h.callDate + 'T12:00:00') : new Date(h.ts);
+    const weekAgo        = new Date(now - 7 * 86400000);
+    const calMonthStart  = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const thisWeek  = history.filter(h => callDateOf(h) >= weekAgo).length;
+    const scores    = history.map(h => h.total).filter(s => s > 0);
+    const avgNow    = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+    const lastMonthScores = history.filter(h => { const d=callDateOf(h); return d >= prevMonthStart && d < calMonthStart; }).map(h=>h.total).filter(s=>s>0);
+    const avgLast   = lastMonthScores.length ? Math.round(lastMonthScores.reduce((a,b)=>a+b,0)/lastMonthScores.length) : null;
+    const avgDelta  = (avgNow !== null && avgLast !== null) ? avgNow - avgLast : null;
 
-    const thisMonth = history.filter(h => new Date(h.ts) >= new Date(now.getFullYear(), now.getMonth(), 1));
+    const thisMonth = history.filter(h => callDateOf(h) >= calMonthStart);
     const gradeCounts = {};
     thisMonth.forEach(h => { gradeCounts[h.letter_grade] = (gradeCounts[h.letter_grade]||0)+1; });
     const topGrade = Object.entries(gradeCounts).sort((a,b)=>b[1]-a[1])[0];
