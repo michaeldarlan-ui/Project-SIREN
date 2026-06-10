@@ -2054,7 +2054,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const cx = 70, cy = 70, r = 64;
-    // OneAxiom green
+    // SIREN cyan
     const G  = 'rgba(0,200,255,';
     const OR = 'rgba(232,160,32,';
     let angle = 0;
@@ -2915,10 +2915,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const isLast = i === pts.length - 1;
       if (isLast) {
         content += `<circle cx="${p.x}" cy="${p.y}" r="7" fill="rgba(0,200,255,0.2)" stroke="none"/>`;
-        content += `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#00c8ff" stroke="#0d1822" stroke-width="2"/>`;
+        content += `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#00c8ff" stroke="#061824" stroke-width="2"/>`;
         content += `<text x="${p.x}" y="${p.y-12}" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(0,200,255,0.9)" font-family="system-ui">${p.score}</text>`;
       } else {
-        content += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="rgba(0,200,255,0.5)" stroke="#0d1822" stroke-width="1.5"/>`;
+        content += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="rgba(0,200,255,0.5)" stroke="#061824" stroke-width="1.5"/>`;
       }
     });
 
