@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OneAxiom — Sales Call Grader</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --oa-teal: #004750;
+    --oa-green: #00A983;
+    --oa-orange: #FF751F;
+    --oa-grey: #BBC1C7;
+    --oa-cream: #F9F3EF;
+    --bg: #ffffff;
+    --bg-surface: #f5f5f5;
+    --bg-deep: #ebebeb;
+    --text: #1a1a1a;
+    --text-muted: #666666;
+    --text-faint: #999999;
+    --border: rgba(0,0,0,0.1);
+    --border-mid: rgba(0,0,0,0.18);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161616;
+      --bg-surface: #1f1f1f;
+      --bg-deep: #2a2a2a;
+      --text: #f0f0f0;
+      --text-muted: #aaaaaa;
+      --text-faint: #666666;
+      --border: rgba(255,255,255,0.1);
+      --border-mid: rgba(255,255,255,0.18);
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: var(--oa-cream);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #111; }
+  }
+
+  .shell { max-width: 760px; margin: 0 auto; }
+
+  .header { display: flex; align-items: center; gap: 14px; margin-bottom: 2rem; }
+  .logo-mark {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: var(--oa-teal);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .logo-mark svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .header-text h1 { font-size: 18px; font-weight: 600; color: var(--oa-teal); letter-spacing: -0.3px; }
+  .header-text p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+  .card { background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+
+  .key-banner {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: #e8f7f3;
+    border: 1px solid #b2e8d8;
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: #0a5c45;
+  }
+  @media (prefers-color-scheme: dark) {
+    .key-banner { background: #0d2e26; border-color: #1a5c45; color: #5de0b0; }
+  }
+  .key-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--oa-green); flex-shrink: 0; }
+
+  .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .meta-row input, .manual-key-row input {
+    padding: 9px 12px; font-size: 13px;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
+  }
+  .meta-row input:focus, .manual-key-row input:focus { border-color: var(--oa-green); }
+  .meta-row input::placeholder, .manual-key-row input::placeholder { color: var(--text-faint); }
+
+  .manual-key-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .manual-key-row input { flex: 1; font-family: 'SF Mono', 'Fira Code', monospace; }
+  .key-toggle {
+    padding: 9px 14px; font-size: 12px;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); white-space: nowrap;
+  }
+  .key-toggle:hover { background: var(--bg-deep); }
+  .key-hint { font-size: 12px; color: var(--text-faint); }
+  .key-hint a { color: var(--oa-green); text-decoration: none; }
+  .key-hint a:hover { text-decoration: underline; }
+
+  .stage-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stage-btn {
+    padding: 7px 14px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border-mid); border-radius: 20px;
+    background: var(--bg-surface); color: var(--text-muted); cursor: pointer; transition: all 0.15s;
+  }
+  .stage-btn:hover { border-color: var(--oa-green); color: var(--oa-green); }
+  .stage-btn.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
+
+  textarea {
+    width: 100%; min-height: 220px; resize: vertical;
+    padding: 12px; font-size: 13.5px; line-height: 1.65; font-family: inherit;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); color: var(--text); outline: none;
+  }
+  textarea:focus { border-color: var(--oa-green); }
+  textarea::placeholder { color: var(--text-faint); }
+
+  .submit-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 13px; margin-top: 14px;
+    font-size: 14px; font-weight: 600;
+    background: var(--oa-teal); color: #fff;
+    border: none; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s;
+  }
+  .submit-btn:hover:not(:disabled) { background: var(--oa-green); }
+  .submit-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .loading { display: none; align-items: center; gap: 12px; padding: 1.5rem; color: var(--text-muted); font-size: 14px; }
+  .dots { display: flex; gap: 4px; }
+  .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--oa-green); animation: bounce 1.2s ease-in-out infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.55); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+  .error-box { display: none; padding: 12px 16px; background: #fff0f0; border: 1px solid #fcc; border-radius: var(--radius-sm); color: #c00; font-size: 13px; margin-top: 10px; line-height: 1.5; }
+  @media (prefers-color-scheme: dark) { .error-box { background: #2a1010; border-color: #5a2020; color: #ff8080; } }
+
+  #results { display: none; }
+
+  .banner {
+    border-radius: var(--radius); padding: 20px 24px; margin-bottom: 1rem;
+    display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  }
+  .banner-grade { font-size: 34px; font-weight: 700; color: #fff; }
+  .banner-label { font-size: 13px; color: rgba(255,255,255,0.85); margin-top: 3px; }
+  .banner-right { font-size: 13px; color: rgba(255,255,255,0.9); max-width: 300px; line-height: 1.6; }
+  .banner-right strong { color: #fff; }
+
+  .section-head { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: 1.25rem 0 10px; }
+
+  .dim-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; }
+  .dim-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .dim-name { font-size: 14px; font-weight: 600; }
+  .dim-score { font-size: 14px; font-weight: 600; }
+  .bar-bg { height: 5px; background: var(--bg-deep); border-radius: 4px; margin-bottom: 11px; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .dim-feedback { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+  .book-chip { margin-top: 10px; padding: 9px 12px; background: var(--bg-surface); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); line-height: 1.55; border-left: 3px solid var(--oa-green); }
+  .book-chip strong { color: var(--text); }
+
+  .rec-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px; }
+  .book-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .book-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .book-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--oa-green); flex-shrink: 0; margin-top: 5px; }
+  .book-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .book-author { font-weight: 400; color: var(--text-muted); }
+  .book-why { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+  .reset-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 11px; margin-top: 1rem;
+    font-size: 13px; font-weight: 500;
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border-mid); border-radius: var(--radius-sm); cursor: pointer;
+  }
+  .reset-btn:hover { background: var(--bg-surface); }
+
+  .footer { text-align: center; font-size: 11px; color: var(--text-faint); margin-top: 2rem; padding-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="header">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>OneAxiom Sales Call Grader</h1>
+      <p>Powered by Claude · Internal use only</p>
+    </div>
+  </div>
+
+  <div class="card" id="inputCard">
+    <div class="card-title">API Key</div>
+    <div id="keyStatus"></div>
+
+    <div class="card-title" style="margin-top:1.25rem;">Call details</div>
+    <div class="meta-row">
+      <input type="text" id="prospect" placeholder="Prospect / company name" />
+      <input type="text" id="contactTitle" placeholder="Contact title (e.g. IT Director)" />
+    </div>
+
+    <div class="card-title" style="margin-bottom:8px;">Call stage</div>
+    <div class="stage-row">
+      <button class="stage-btn" onclick="setStage(this,'Cold outreach')">Cold outreach</button>
+      <button class="stage-btn" onclick="setStage(this,'Discovery')">Discovery</button>
+      <button class="stage-btn active" onclick="setStage(this,'Demo / solution presentation')">Demo / solution presentation</button>
+      <button class="stage-btn" onclick="setStage(this,'Proposal / close')">Proposal / close</button>
+    </div>
+
+    <div class="card-title" style="margin-bottom:8px;">Transcript or notes</div>
+    <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here.
+
+Include:
+• How you opened and what you asked
+• What the prospect shared about their environment and pain
+• How you framed OneAxiom's value
+• Objections raised and how you handled them
+• How the call ended and what the next step is"></textarea>
+
+    <button class="submit-btn" id="submitBtn" onclick="gradeCall()">Grade this call</button>
+    <div class="loading" id="loading"><div class="dots"><span></span><span></span><span></span></div>Analyzing your call…</div>
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="footer">OneAxiom · Key is never logged or stored beyond this session</div>
+</div>
+
+<script>
+  let selectedStage = 'Demo / solution presentation';
+
+  // Check if key was injected server-side via window.ENV
+  const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? window.ENV.ANTHROPIC_API_KEY : null;
+
+  function initKeyUI() {
+    const el = document.getElementById('keyStatus');
+    if (injectedKey) {
+      el.innerHTML = `<div class="key-banner"><div class="key-dot"></div>API key loaded from environment — you're good to go.</div>`;
+    } else {
+      el.innerHTML = `
+        <div class="manual-key-row">
+          <input type="password" id="apiKey" placeholder="sk-ant-api03-…" autocomplete="off" />
+          <button class="key-toggle" onclick="toggleKey()">Show</button>
+        </div>
+        <p class="key-hint">Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> · Or set ANTHROPIC_API_KEY in your .env to skip this field</p>`;
+    }
+  }
+
+  function getApiKey() {
+    if (injectedKey) return injectedKey;
+    const el = document.getElementById('apiKey');
+    return el ? el.value.trim() : '';
+  }
+
+  function toggleKey() {
+    const input = document.getElementById('apiKey');
+    const btn = event.target;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? 'Show' : 'Hide';
+  }
+
+  function setStage(btn, stage) {
+    document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedStage = stage;
+  }
+
+  function getBarColor(pct) {
+    if (pct >= 85) return '#00A983';
+    if (pct >= 65) return '#004750';
+    if (pct >= 45) return '#FF751F';
+    return '#BBC1C7';
+  }
+
+  function getBannerColor(grade) {
+    return { A: '#004750', B: '#00A983', C: '#FF751F', D: '#BBC1C7', F: '#BBC1C7' }[grade] || '#004750';
+  }
+
+  async function gradeCall() {
+    const apiKey = getApiKey();
+    const notes = document.getElementById('callNotes').value.trim();
+    const prospect = document.getElementById('prospect').value.trim();
+    const contactTitle = document.getElementById('contactTitle').value.trim();
+
+    if (!apiKey) { showError('No API key found. Add one in .env or enter it above.'); return; }
+    if (!notes) { showError('Please paste your call notes or transcript.'); return; }
+
+    setLoading(true);
+    clearError();
+    document.getElementById('results').style.display = 'none';
+
+    const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales. You know "Never Split the Difference" by Chris Voss deeply (the rep has already read this book — never recommend it). Recommend other books only for genuine gaps.
+
+You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.
+
+Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble:
+
+{
+  "dimensions": [
+    {
+      "name": "Discovery & needs confirmation",
+      "max": 20,
+      "score": 0,
+      "feedback": "2-3 sentences of specific actionable coaching tied to what happened in this call",
+      "book_insight": "1-2 sentences referencing Never Split the Difference techniques (labeling, mirroring, calibrated questions, tactical empathy) where relevant, or name a different book if score under 14"
+    },
+    {
+      "name": "Value framing & demo delivery",
+      "max": 25,
+      "score": 0,
+      "feedback": "2-3 sentences",
+      "book_insight": "1-2 sentences"
+    },
+    {
+      "name": "Tactical empathy & objection handling",
+      "max": 25,
+      "score": 0,
+      "feedback": "2-3 sentences — call out specific Voss techniques used or missed",
+      "book_insight": "1-2 sentences"
+    },
+    {
+      "name": "Qualification & deal mechanics",
+      "max": 15,
+      "score": 0,
+      "feedback": "2-3 sentences covering budget, authority, timeline, competitive landscape, winnability",
+      "book_insight": "1-2 sentences"
+    },
+    {
+      "name": "Call control & next steps",
+      "max": 15,
+      "score": 0,
+      "feedback": "2-3 sentences",
+      "book_insight": "1-2 sentences"
+    }
+  ],
+  "total": 0,
+  "letter_grade": "B",
+  "grade_label": "short evocative phrase",
+  "top_strength": "one specific sentence",
+  "top_priority": "single most important fix for next call",
+  "recommended_books": [
+    { "title": "Book title", "author": "Author", "reason": "1-2 sentences why" }
+  ]
+}
+
+recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candidates: SPIN Selling (Rackham), Challenger Sale (Dixon/Adamson), Gap Selling (Keenan), Fanatical Prospecting (Blount), The Qualified Sales Leader (McMahon), The JOLT Effect (Dixon/McKenna).`;
+
+    const context = [
+      prospect ? 'Prospect: ' + prospect : '',
+      contactTitle ? 'Contact title: ' + contactTitle : '',
+      'Call stage: ' + selectedStage
+    ].filter(Boolean).join(' | ');
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1500,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: context + '\n\n' + notes }]
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'API error ' + resp.status);
+      }
+
+      const data = await resp.json();
+      let raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+      renderResults(JSON.parse(raw), prospect, contactTitle);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResults(r, prospect, contactTitle) {
+    const meta = [prospect, contactTitle, selectedStage].filter(Boolean).join(' · ');
+    const bannerBg = getBannerColor(r.letter_grade);
+
+    const dimsHtml = r.dimensions.map(d => {
+      const pct = Math.round((d.score / d.max) * 100);
+      const col = getBarColor(pct);
+      return `<div class="dim-card">
+        <div class="dim-head"><span class="dim-name">${d.name}</span><span class="dim-score" style="color:${col}">${d.score}/${d.max}</span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col};"></div></div>
+        <div class="dim-feedback">${d.feedback}</div>
+        <div class="book-chip"><strong>Book insight:</strong> ${d.book_insight}</div>
+      </div>`;
+    }).join('');
+
+    let booksHtml = '';
+    if (r.recommended_books?.length) {
+      booksHtml = `<div class="section-head">Recommended reading</div><div class="rec-card">` +
+        r.recommended_books.map(b => `<div class="book-row"><div class="book-dot"></div><div>
+          <div class="book-title">${b.title} <span class="book-author">— ${b.author}</span></div>
+          <div class="book-why">${b.reason}</div></div></div>`).join('') + `</div>`;
+    }
+
+    document.getElementById('results').innerHTML = `
+      <div class="banner" style="background:${bannerBg};">
+        <div>
+          <div class="banner-grade">${r.letter_grade} &nbsp; ${r.total}/100</div>
+          <div class="banner-label">${r.grade_label}</div>
+          ${meta ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:5px;">${meta}</div>` : ''}
+        </div>
+        <div class="banner-right">
+          <div style="margin-bottom:6px;"><strong>Strength:</strong> ${r.top_strength}</div>
+          <div><strong>Priority:</strong> ${r.top_priority}</div>
+        </div>
+      </div>
+      <div class="section-head">Score breakdown</div>
+      ${dimsHtml}${booksHtml}
+      <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>`;
+
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('inputCard').style.display = 'none';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetForm() {
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('inputCard').style.display = 'block';
+    document.getElementById('callNotes').value = '';
+    document.getElementById('prospect').value = '';
+    document.getElementById('contactTitle').value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function setLoading(on) {
+    document.getElementById('loading').style.display = on ? 'flex' : 'none';
+    document.getElementById('submitBtn').disabled = on;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBox');
+    el.textContent = 'Error: ' + msg;
+    el.style.display = 'block';
+  }
+
+  function clearError() {
+    const el = document.getElementById('errorBox');
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+
+  initKeyUI();
+</script>
+</body>
+</html>

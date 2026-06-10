@@ -1,0 +1,14 @@
+# Secret — never commit this
+.env
+
+# Dependencies
+node_modules/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
