@@ -387,6 +387,101 @@
     color: rgba(0,200,255,0.28); font-family: 'SF Mono','Fira Code',monospace;
   }
 
+  /* ── FORGE — Content & Report Studio ── */
+  #page-forge { background: var(--siren-bg-page); min-height: calc(100vh - 56px); }
+  .forge-shell { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .forge-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+  .forge-title { font-family: var(--siren-font-hud); font-size: 18px; font-weight: 700; letter-spacing: .08em; color: var(--siren-cyan-90); margin: 0 0 4px; }
+  .forge-subtitle { font-size: 12px; color: var(--siren-text-muted); font-family: var(--siren-font-hud); letter-spacing: .06em; }
+  .forge-coming-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: rgba(232,160,32,.12); border: 1px solid rgba(232,160,32,.35); border-radius: 20px; font-family: var(--siren-font-hud); font-size: 10px; font-weight: 600; letter-spacing: .1em; color: #e8a020; }
+  .forge-coming-pill::before { content: ''; width: 6px; height: 6px; background: #e8a020; border-radius: 50%; animation: blink-dot 1.4s step-end infinite; }
+
+  .forge-grid { display: grid; grid-template-columns: 260px 1fr; gap: 1.25rem; align-items: start; }
+  @media (max-width: 860px) { .forge-grid { grid-template-columns: 1fr; } }
+
+  /* Left rail */
+  .forge-rail { display: flex; flex-direction: column; gap: 1rem; }
+  .forge-panel { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); overflow: hidden; }
+  .forge-panel-hdr { padding: 10px 14px; border-bottom: 1px solid var(--siren-border); display: flex; align-items: center; justify-content: space-between; }
+  .forge-panel-title { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--siren-text-secondary); }
+  .forge-panel-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+  .forge-select { width: 100%; padding: 7px 10px; background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm); color: var(--siren-text-body); font-family: var(--siren-font-hud); font-size: 11px; cursor: pointer; }
+  .forge-select:focus { outline: none; border-color: var(--siren-border-active); }
+
+  .forge-stage-row { display: flex; align-items: center; gap: 8px; }
+  .forge-stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .forge-stage-label { font-family: var(--siren-font-hud); font-size: 11px; color: var(--siren-text-body); }
+  .forge-stage-sub { font-size: 10px; color: var(--siren-text-muted); margin-top: 1px; }
+
+  .forge-next-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--siren-border); }
+  .forge-next-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .forge-next-num { font-family: var(--siren-font-hud); font-size: 10px; font-weight: 700; color: var(--siren-cyan-50); min-width: 16px; padding-top: 1px; }
+  .forge-next-text { font-size: 12px; color: var(--siren-text-body); line-height: 1.45; }
+  .forge-next-tag { display: inline-block; margin-top: 4px; padding: 2px 7px; background: var(--siren-cyan-08); border: 1px solid var(--siren-border-mid); border-radius: 10px; font-family: var(--siren-font-hud); font-size: 9px; color: var(--siren-cyan-50); }
+
+  .forge-hs-badge { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: rgba(255,122,89,.06); border: 1px dashed rgba(255,122,89,.25); border-radius: var(--siren-radius-sm); }
+  .forge-hs-icon { width: 20px; height: 20px; flex-shrink: 0; opacity: .5; }
+  .forge-hs-text { font-size: 11px; color: rgba(255,255,255,.3); line-height: 1.4; }
+  .forge-hs-text strong { color: rgba(255,122,89,.5); font-family: var(--siren-font-hud); font-size: 10px; letter-spacing: .06em; }
+
+  /* Main canvas */
+  .forge-main { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .forge-template-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+  @media (max-width: 1000px) { .forge-template-row { grid-template-columns: repeat(2,1fr); } }
+  .forge-template-card { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); padding: 14px 16px; cursor: pointer; transition: border-color .15s, background .15s; position: relative; overflow: hidden; }
+  .forge-template-card:hover { border-color: var(--siren-border-mid); background: var(--siren-bg-card-raised); }
+  .forge-template-card.selected { border-color: var(--siren-cyan-70); background: var(--siren-cyan-08); }
+  .forge-template-card.locked { opacity: .45; cursor: default; pointer-events: none; }
+  .forge-template-icon { font-size: 20px; margin-bottom: 8px; }
+  .forge-template-name { font-family: var(--siren-font-hud); font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--siren-cyan-90); margin-bottom: 4px; }
+  .forge-template-desc { font-size: 11px; color: var(--siren-text-muted); line-height: 1.4; }
+  .forge-template-soon { position: absolute; top: 8px; right: 8px; padding: 2px 7px; background: rgba(232,160,32,.15); border: 1px solid rgba(232,160,32,.3); border-radius: 10px; font-family: var(--siren-font-hud); font-size: 8px; font-weight: 600; letter-spacing: .08em; color: #e8a020; }
+
+  .forge-report-preview { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); overflow: hidden; }
+  .forge-report-toolbar { padding: 10px 16px; border-bottom: 1px solid var(--siren-border); display: flex; align-items: center; gap: 10px; background: var(--siren-bg-card-raised); }
+  .forge-report-toolbar-title { font-family: var(--siren-font-hud); font-size: 10px; letter-spacing: .1em; color: var(--siren-text-secondary); flex: 1; }
+  .forge-report-btn { padding: 5px 12px; border-radius: var(--siren-radius-sm); font-family: var(--siren-font-hud); font-size: 10px; font-weight: 600; letter-spacing: .06em; cursor: pointer; border: 1px solid var(--siren-border-mid); background: transparent; color: var(--siren-text-secondary); transition: all .15s; }
+  .forge-report-btn:hover { background: var(--siren-cyan-08); color: var(--siren-cyan-70); }
+  .forge-report-btn.primary { background: var(--siren-cyan); color: var(--siren-bg-page); border-color: var(--siren-cyan); }
+  .forge-report-btn.primary:hover { opacity: .85; }
+  .forge-report-btn:disabled { opacity: .3; cursor: default; }
+
+  .forge-report-body { padding: 24px 28px; min-height: 420px; position: relative; }
+  .forge-report-section { margin-bottom: 24px; }
+  .forge-report-section-label { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--siren-cyan-50); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--siren-border); }
+  .forge-field { background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-sm); padding: 10px 12px; font-size: 12px; color: var(--siren-text-body); line-height: 1.55; margin-bottom: 8px; min-height: 38px; transition: border-color .15s; cursor: text; }
+  .forge-field:hover { border-color: var(--siren-border-mid); }
+  .forge-field.placeholder { color: var(--siren-text-muted); font-style: italic; }
+  .forge-field-label { font-family: var(--siren-font-hud); font-size: 9px; letter-spacing: .1em; color: var(--siren-text-muted); margin-bottom: 4px; }
+  .forge-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 700px) { .forge-field-row { grid-template-columns: 1fr; } }
+
+  .forge-action-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .forge-action-chip { padding: 4px 10px; background: var(--siren-cyan-08); border: 1px solid var(--siren-border-mid); border-radius: 14px; font-family: var(--siren-font-hud); font-size: 10px; color: var(--siren-cyan-50); cursor: default; }
+  .forge-action-chip.add { border-style: dashed; color: var(--siren-text-muted); cursor: pointer; }
+  .forge-action-chip.add:hover { border-color: var(--siren-cyan-50); color: var(--siren-cyan-70); }
+
+  .forge-wip-overlay { position: absolute; inset: 0; background: rgba(4,15,20,.75); backdrop-filter: blur(3px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border-radius: 0 0 var(--siren-radius-lg) var(--siren-radius-lg); }
+  .forge-wip-icon { font-size: 32px; opacity: .6; }
+  .forge-wip-text { font-family: var(--siren-font-hud); font-size: 11px; letter-spacing: .12em; color: var(--siren-cyan-50); text-align: center; line-height: 1.6; }
+  .forge-wip-sub { font-size: 11px; color: var(--siren-text-muted); text-align: center; max-width: 280px; line-height: 1.5; }
+
+  .forge-integrations { display: grid; grid-template-columns: repeat(3,1fr); gap: .75rem; }
+  @media (max-width: 860px) { .forge-integrations { grid-template-columns: 1fr 1fr; } }
+  .forge-int-card { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .forge-int-top { display: flex; align-items: center; gap: 10px; }
+  .forge-int-logo { width: 32px; height: 32px; border-radius: 8px; background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .forge-int-name { font-family: var(--siren-font-hud); font-size: 12px; font-weight: 600; color: var(--siren-text-body); }
+  .forge-int-sub { font-size: 10px; color: var(--siren-text-muted); margin-top: 2px; }
+  .forge-int-status { margin-left: auto; padding: 3px 8px; border-radius: 10px; font-family: var(--siren-font-hud); font-size: 9px; font-weight: 600; letter-spacing: .08em; }
+  .forge-int-status.pending { background: rgba(232,160,32,.12); border: 1px solid rgba(232,160,32,.3); color: #e8a020; }
+  .forge-int-status.planned { background: var(--siren-cyan-08); border: 1px solid var(--siren-border-mid); color: var(--siren-cyan-40); }
+  .forge-int-desc { font-size: 11px; color: var(--siren-text-muted); line-height: 1.45; }
+  .forge-int-footer { padding-top: 8px; border-top: 1px solid var(--siren-border); }
+  .forge-int-cta { width: 100%; padding: 6px; text-align: center; background: transparent; border: 1px dashed var(--siren-border-mid); border-radius: var(--siren-radius-sm); font-family: var(--siren-font-hud); font-size: 10px; color: var(--siren-text-muted); cursor: default; letter-spacing: .06em; }
+
   /* ── Account Intelligence Map ── */
   #page-lifecycle { padding: 0 !important; }
   #page-lifecycle .shell { padding: 0; max-width: 100%; }
@@ -916,6 +1011,7 @@
     <button class="nav-tab" onclick="navTo('pulse')">PULSE</button>
     <button class="nav-tab active" onclick="navTo('grader')">ENGAGE</button>
     <button class="nav-tab" onclick="navTo('lifecycle')">ATLAS</button>
+    <button class="nav-tab" onclick="navTo('forge')">FORGE</button>
   </nav>
   <div class="topbar-settings" id="settingsMenu">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
@@ -1102,6 +1198,269 @@
     <div id="results"></div>
 
     <div class="footer">SIREN · Key is never logged or stored beyond this session</div>
+  </div>
+</div>
+
+<!-- ══ FORGE PAGE ══ -->
+<div class="page" id="page-forge">
+  <div class="forge-shell">
+
+    <!-- Header -->
+    <div class="forge-header">
+      <div>
+        <div class="forge-title">F O R G E</div>
+        <div class="forge-subtitle">Content Studio · Custom Reports · Stage Intelligence</div>
+      </div>
+      <div class="forge-coming-pill">EARLY DESIGN — HUBSPOT PENDING</div>
+    </div>
+
+    <div class="forge-grid">
+
+      <!-- ── Left rail ── -->
+      <div class="forge-rail">
+
+        <!-- Account + Stage selector -->
+        <div class="forge-panel">
+          <div class="forge-panel-hdr">
+            <span class="forge-panel-title">Deal Context</span>
+          </div>
+          <div class="forge-panel-body">
+            <div class="forge-field-label">ACCOUNT</div>
+            <select class="forge-select">
+              <option value="">— Select account —</option>
+              <option>Acme Corp</option>
+              <option>Globex Industries</option>
+              <option>Initech Solutions</option>
+            </select>
+            <div class="forge-field-label" style="margin-top:6px;">CURRENT STAGE</div>
+            <div class="forge-stage-row">
+              <div class="forge-stage-dot" style="background:#4a9eff;"></div>
+              <div>
+                <div class="forge-stage-label">Discovery</div>
+                <div class="forge-stage-sub">Call 2 of ~4 expected</div>
+              </div>
+            </div>
+            <div style="height:1px;background:var(--siren-border);margin:4px 0;"></div>
+            <div class="forge-field-label">LAST SCORE</div>
+            <div style="font-family:var(--siren-font-hud);font-size:20px;font-weight:700;color:#00c8ff;letter-spacing:.04em;">B+ &nbsp;<span style="font-size:13px;color:var(--siren-text-muted);">78/100</span></div>
+          </div>
+        </div>
+
+        <!-- Next steps -->
+        <div class="forge-panel">
+          <div class="forge-panel-hdr">
+            <span class="forge-panel-title">Recommended Next Steps</span>
+          </div>
+          <div class="forge-panel-body">
+            <div class="forge-next-item">
+              <div class="forge-next-num">01</div>
+              <div>
+                <div class="forge-next-text">Send technical deep-dive agenda prior to Demo call</div>
+                <span class="forge-next-tag">Pre-call prep</span>
+              </div>
+            </div>
+            <div class="forge-next-item">
+              <div class="forge-next-num">02</div>
+              <div>
+                <div class="forge-next-text">Confirm champion is looped into the next meeting invite</div>
+                <span class="forge-next-tag">Stakeholder alignment</span>
+              </div>
+            </div>
+            <div class="forge-next-item">
+              <div class="forge-next-num">03</div>
+              <div>
+                <div class="forge-next-text">Share relevant customer case study matching prospect's vertical</div>
+                <span class="forge-next-tag">Content delivery</span>
+              </div>
+            </div>
+            <div style="margin-top:6px;padding:8px 10px;background:var(--siren-cyan-08);border:1px dashed var(--siren-border-mid);border-radius:var(--siren-radius-sm);font-size:11px;color:var(--siren-text-muted);font-style:italic;">
+              AI-generated next steps will auto-populate from your last graded call once HubSpot is connected.
+            </div>
+          </div>
+        </div>
+
+        <!-- HubSpot integration status -->
+        <div class="forge-panel">
+          <div class="forge-panel-hdr">
+            <span class="forge-panel-title">CRM Integration</span>
+          </div>
+          <div class="forge-panel-body">
+            <div class="forge-hs-badge">
+              <svg class="forge-hs-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.5 7.5C17.5 9.43 15.93 11 14 11s-3.5-1.57-3.5-3.5S12.07 4 14 4s3.5 1.57 3.5 3.5z" fill="rgba(255,122,89,.4)"/><path d="M14 12.5v3M9.5 16a4.5 4.5 0 0 0 9 0" stroke="rgba(255,122,89,.4)" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="17" r="2.5" stroke="rgba(255,122,89,.4)" stroke-width="1.5"/><path d="M6 14.5V9" stroke="rgba(255,122,89,.4)" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <div class="forge-hs-text">
+                <strong>HUBSPOT — NOT CONNECTED</strong><br>
+                Stage sync, deal push, and sequence triggers will activate on connect.
+              </div>
+            </div>
+            <div class="forge-int-cta">Connect HubSpot → Coming Soon</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Main canvas ── -->
+      <div class="forge-main">
+
+        <!-- Report template picker -->
+        <div class="forge-panel">
+          <div class="forge-panel-hdr">
+            <span class="forge-panel-title">Report Template</span>
+            <span style="font-size:10px;color:var(--siren-text-muted);">Select a format to generate</span>
+          </div>
+          <div class="forge-panel-body" style="padding-bottom:14px;">
+            <div class="forge-template-row">
+              <div class="forge-template-card selected">
+                <div class="forge-template-icon">📋</div>
+                <div class="forge-template-name">CALL BRIEF</div>
+                <div class="forge-template-desc">Post-call summary with score, highlights, and next steps for internal review.</div>
+              </div>
+              <div class="forge-template-card">
+                <div class="forge-template-icon">📬</div>
+                <div class="forge-template-name">FOLLOW-UP EMAIL</div>
+                <div class="forge-template-desc">Personalized follow-up draft tailored to stage, pain points, and open questions.</div>
+              </div>
+              <div class="forge-template-card">
+                <div class="forge-template-icon">🗂</div>
+                <div class="forge-template-name">STAGE TRANSITION</div>
+                <div class="forge-template-desc">Criteria checklist and summary for moving the deal to the next pipeline stage.</div>
+              </div>
+              <div class="forge-template-card locked">
+                <div class="forge-template-soon">SOON</div>
+                <div class="forge-template-icon">📊</div>
+                <div class="forge-template-name">EXEC SUMMARY</div>
+                <div class="forge-template-desc">Board-ready deal summary with SPICED status and risk indicators.</div>
+              </div>
+              <div class="forge-template-card locked">
+                <div class="forge-template-soon">SOON</div>
+                <div class="forge-template-icon">🔗</div>
+                <div class="forge-template-name">HS DEAL PUSH</div>
+                <div class="forge-template-desc">Auto-populate HubSpot deal fields, contact notes, and stage from call data.</div>
+              </div>
+              <div class="forge-template-card locked">
+                <div class="forge-template-soon">SOON</div>
+                <div class="forge-template-icon">⚡</div>
+                <div class="forge-template-name">SEQUENCE TRIGGER</div>
+                <div class="forge-template-desc">Launch a stage-matched email sequence directly from HubSpot after grading.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Report preview / editor -->
+        <div class="forge-report-preview">
+          <div class="forge-report-toolbar">
+            <span class="forge-report-toolbar-title">⬡ &nbsp;CALL BRIEF — PREVIEW</span>
+            <button class="forge-report-btn" disabled>Copy</button>
+            <button class="forge-report-btn" disabled>Export PDF</button>
+            <button class="forge-report-btn primary" disabled>Generate →</button>
+          </div>
+          <div class="forge-report-body">
+
+            <div class="forge-report-section">
+              <div class="forge-report-section-label">Call Overview</div>
+              <div class="forge-field-row">
+                <div>
+                  <div class="forge-field-label">ACCOUNT</div>
+                  <div class="forge-field placeholder">Account name will populate from selection</div>
+                </div>
+                <div>
+                  <div class="forge-field-label">STAGE</div>
+                  <div class="forge-field placeholder">Deal stage</div>
+                </div>
+              </div>
+              <div class="forge-field-row">
+                <div>
+                  <div class="forge-field-label">GRADE</div>
+                  <div class="forge-field placeholder">B+ · 78/100</div>
+                </div>
+                <div>
+                  <div class="forge-field-label">REP</div>
+                  <div class="forge-field placeholder">Rep name</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="forge-report-section">
+              <div class="forge-report-section-label">Key Takeaways</div>
+              <div class="forge-field-label">TOP STRENGTH</div>
+              <div class="forge-field placeholder">AI-extracted from call transcript after grading…</div>
+              <div class="forge-field-label">TOP PRIORITY / GAP</div>
+              <div class="forge-field placeholder">Coaching focus area from last scored call…</div>
+            </div>
+
+            <div class="forge-report-section">
+              <div class="forge-report-section-label">Recommended Actions</div>
+              <div class="forge-action-chips">
+                <span class="forge-action-chip">Send case study</span>
+                <span class="forge-action-chip">Schedule demo</span>
+                <span class="forge-action-chip">Loop in champion</span>
+                <span class="forge-action-chip add">+ Add action</span>
+              </div>
+            </div>
+
+            <div class="forge-report-section">
+              <div class="forge-report-section-label">SPICED Status</div>
+              <div class="forge-field placeholder" style="min-height:60px;">SPICED coverage summary will be auto-generated from graded call data — Situation, Pain, Impact, Critical Event, Decision criteria.</div>
+            </div>
+
+            <!-- WIP overlay -->
+            <div class="forge-wip-overlay">
+              <div class="forge-wip-icon">⬡</div>
+              <div class="forge-wip-text">SELECT AN ACCOUNT &amp; GENERATE TO POPULATE</div>
+              <div class="forge-wip-sub">Report generation will be powered by SIREN's grading data and HubSpot deal context once integration is live.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Integration roadmap -->
+        <div class="forge-panel">
+          <div class="forge-panel-hdr">
+            <span class="forge-panel-title">Integration Roadmap</span>
+          </div>
+          <div class="forge-panel-body" style="padding-bottom:16px;">
+            <div class="forge-integrations">
+              <div class="forge-int-card">
+                <div class="forge-int-top">
+                  <div class="forge-int-logo">🟠</div>
+                  <div>
+                    <div class="forge-int-name">HubSpot CRM</div>
+                    <div class="forge-int-sub">Deals · Contacts · Sequences</div>
+                  </div>
+                  <div class="forge-int-status pending">IN PROGRESS</div>
+                </div>
+                <div class="forge-int-desc">Sync deal stage, push call summaries to contact timeline, trigger email sequences on stage advance.</div>
+                <div class="forge-int-footer"><div class="forge-int-cta">Awaiting API credentials</div></div>
+              </div>
+              <div class="forge-int-card">
+                <div class="forge-int-top">
+                  <div class="forge-int-logo">📧</div>
+                  <div>
+                    <div class="forge-int-name">Email Draft</div>
+                    <div class="forge-int-sub">Follow-up · Recap · Intro</div>
+                  </div>
+                  <div class="forge-int-status planned">PLANNED</div>
+                </div>
+                <div class="forge-int-desc">Generate stage-aware follow-up emails from call scoring data. Copy-to-clipboard or push directly to HubSpot sequences.</div>
+                <div class="forge-int-footer"><div class="forge-int-cta">Available after HubSpot connect</div></div>
+              </div>
+              <div class="forge-int-card">
+                <div class="forge-int-top">
+                  <div class="forge-int-logo">📂</div>
+                  <div>
+                    <div class="forge-int-name">Content Library</div>
+                    <div class="forge-int-sub">Stage-matched assets</div>
+                  </div>
+                  <div class="forge-int-status planned">PLANNED</div>
+                </div>
+                <div class="forge-int-desc">Auto-suggest case studies, battle cards, and one-pagers from the Resource Library based on current deal stage and competitor flags.</div>
+                <div class="forge-int-footer"><div class="forge-int-cta">Planned — Q3 2026</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1333,7 +1692,8 @@
     document.querySelectorAll('.nav-tab').forEach(t => {
       if ((page === 'grader'    && t.textContent === 'ENGAGE') ||
           (page === 'pulse'     && t.textContent === 'PULSE') ||
-          (page === 'lifecycle' && t.textContent === 'ATLAS')) {
+          (page === 'lifecycle' && t.textContent === 'ATLAS') ||
+          (page === 'forge'     && t.textContent === 'FORGE')) {
         t.classList.add('active');
       }
     });
