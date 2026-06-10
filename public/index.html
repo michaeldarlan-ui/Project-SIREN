@@ -87,6 +87,17 @@
   .meta-row input:focus, .manual-key-row input:focus { border-color: var(--oa-green); }
   .meta-row input::placeholder, .manual-key-row input::placeholder { color: var(--text-faint); }
 
+  select {
+    padding: 9px 12px; font-size: 13px;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
+    width: 100%; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    padding-right: 32px;
+  }
+  select:focus { border-color: var(--oa-green); }
+
   .manual-key-row { display: flex; gap: 8px; margin-bottom: 8px; }
   .manual-key-row input { flex: 1; font-family: 'SF Mono', 'Fira Code', monospace; }
   .key-toggle {
@@ -179,24 +190,59 @@
 
   .footer { text-align: center; font-size: 11px; color: var(--text-faint); margin-top: 2rem; padding-bottom: 1rem; }
 
-  /* Usage bar */
-  .usage-bar {
+  /* Collapsible panels (team + usage share this) */
+  .panel {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     margin-bottom: 1rem;
     overflow: hidden;
   }
-  .usage-bar-header {
+  .panel-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 16px; cursor: pointer; user-select: none;
   }
-  .usage-bar-header:hover { background: var(--bg-surface); }
-  .usage-bar-left { display: flex; align-items: center; gap: 8px; }
-  .usage-bar-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-  .usage-chevron { font-size: 11px; color: var(--text-faint); transition: transform 0.2s; }
-  .usage-chevron.open { transform: rotate(180deg); }
-  .usage-bar-body { border-top: 1px solid var(--border); padding: 14px 16px; }
+  .panel-header:hover { background: var(--bg-surface); }
+  .panel-left { display: flex; align-items: center; gap: 8px; }
+  .panel-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .panel-chevron { font-size: 11px; color: var(--text-faint); transition: transform 0.2s; }
+  .panel-chevron.open { transform: rotate(180deg); }
+  .panel-body { border-top: 1px solid var(--border); padding: 14px 16px; }
+
+  /* Team manager */
+  .team-empty { font-size: 13px; color: var(--text-faint); padding: 6px 0 12px; }
+  .member-list { margin-bottom: 14px; }
+  .member-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--bg-surface); margin-bottom: 6px;
+  }
+  .member-info { display: flex; flex-direction: column; gap: 2px; }
+  .member-name { font-size: 13px; font-weight: 600; }
+  .member-role { font-size: 12px; color: var(--text-muted); }
+  .member-remove {
+    font-size: 12px; color: var(--text-faint); background: none; border: none;
+    cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm);
+  }
+  .member-remove:hover { background: #fff0f0; color: #c00; }
+  @media (prefers-color-scheme: dark) { .member-remove:hover { background: #2a1010; color: #ff8080; } }
+
+  .add-member-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; }
+  .add-member-row input {
+    padding: 8px 10px; font-size: 13px;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); color: var(--text); outline: none; font-family: inherit;
+  }
+  .add-member-row input:focus { border-color: var(--oa-green); }
+  .add-member-row input::placeholder { color: var(--text-faint); }
+  .add-btn {
+    padding: 8px 14px; font-size: 13px; font-weight: 600;
+    background: var(--oa-teal); color: #fff;
+    border: none; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  }
+  .add-btn:hover { background: var(--oa-green); }
+
+  /* Usage bar */
   .usage-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
   .usage-metric {
     background: var(--bg-surface); border-radius: var(--radius-sm);
@@ -223,7 +269,7 @@
   .usage-last-call { font-size: 12px; color: var(--text-faint); }
   .usage-reset { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
   .usage-reset:hover { color: var(--oa-orange); }
-  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--oa-green); display: inline-block; margin-right: 4px; }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -241,16 +287,34 @@
     </div>
   </div>
 
-  <!-- Usage Bar -->
-  <div class="usage-bar" id="usageBar">
-    <div class="usage-bar-header" onclick="toggleUsageBar()">
-      <div class="usage-bar-left">
-        <span class="live-dot" id="usageDot" style="background:var(--oa-grey);"></span>
-        <span class="usage-bar-title">API Usage</span>
+  <!-- Team Manager -->
+  <div class="panel" id="teamPanel">
+    <div class="panel-header" onclick="togglePanel('team')">
+      <div class="panel-left">
+        <span class="panel-title">Sales Team</span>
       </div>
-      <span class="usage-chevron" id="usageChevron">▼</span>
+      <span class="panel-chevron" id="teamChevron">▼</span>
     </div>
-    <div class="usage-bar-body" id="usageBarBody" style="display:none;">
+    <div class="panel-body" id="teamPanelBody" style="display:none;">
+      <div id="memberList"></div>
+      <div class="add-member-row">
+        <input type="text" id="newMemberName" placeholder="Name" />
+        <input type="text" id="newMemberRole" placeholder="Role (e.g. Account Executive)" />
+        <button class="add-btn" onclick="addMember()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage Bar -->
+  <div class="panel" id="usageBar">
+    <div class="panel-header" onclick="togglePanel('usage')">
+      <div class="panel-left">
+        <span class="live-dot" id="usageDot" style="background:var(--oa-grey);"></span>
+        <span class="panel-title">API Usage</span>
+      </div>
+      <span class="panel-chevron" id="usageChevron">▼</span>
+    </div>
+    <div class="panel-body" id="usagePanelBody" style="display:none;">
       <div class="usage-metrics">
         <div class="usage-metric" id="metric-tokens">
           <div class="usage-metric-label">Tokens this call</div>
@@ -289,10 +353,14 @@
     <div id="keyStatus"></div>
 
     <div class="card-title" style="margin-top:1.25rem;">Call details</div>
-    <div class="meta-row">
+    <div class="meta-row" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:10px;">
+      <select id="repSelect" onchange="onRepChange()">
+        <option value="">— Rep (optional) —</option>
+      </select>
       <input type="text" id="prospect" placeholder="Prospect / company name" />
       <input type="text" id="contactTitle" placeholder="Contact title (e.g. IT Director)" />
     </div>
+    <div id="repRoleHint" style="font-size:12px;color:var(--text-faint);margin-bottom:14px;display:none;"></div>
 
     <div class="card-title" style="margin-bottom:8px;">Call stage</div>
     <div class="stage-row">
@@ -325,7 +393,117 @@ Include:
 <script>
   let selectedStage = 'Demo / solution presentation';
 
-  // Check if key was injected server-side via window.ENV
+  // ── Team manager ───────────────────────────────────────────
+  function loadTeam() {
+    try { return JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch { return []; }
+  }
+  function saveTeam(t) {
+    try { localStorage.setItem('oa_team', JSON.stringify(t)); } catch {}
+  }
+
+  function renderMemberList() {
+    const team = loadTeam();
+    const el = document.getElementById('memberList');
+    if (!team.length) {
+      el.innerHTML = '<div class="team-empty">No team members yet. Add someone below.</div>';
+    } else {
+      el.innerHTML = '<div class="member-list">' + team.map((m, i) => `
+        <div class="member-row">
+          <div class="member-info">
+            <span class="member-name">${escHtml(m.name)}</span>
+            <span class="member-role">${escHtml(m.role)}</span>
+          </div>
+          <button class="member-remove" onclick="removeMember(${i})">Remove</button>
+        </div>`).join('') + '</div>';
+    }
+    refreshRepSelect();
+  }
+
+  function addMember() {
+    const name = document.getElementById('newMemberName').value.trim();
+    const role = document.getElementById('newMemberRole').value.trim();
+    if (!name) { document.getElementById('newMemberName').focus(); return; }
+    const team = loadTeam();
+    team.push({ name, role: role || 'Sales Rep' });
+    saveTeam(team);
+    document.getElementById('newMemberName').value = '';
+    document.getElementById('newMemberRole').value = '';
+    renderMemberList();
+  }
+
+  function removeMember(idx) {
+    const team = loadTeam();
+    team.splice(idx, 1);
+    saveTeam(team);
+    renderMemberList();
+  }
+
+  function refreshRepSelect() {
+    const team = loadTeam();
+    const sel = document.getElementById('repSelect');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Rep (optional) —</option>' +
+      team.map(m => `<option value="${escHtml(m.name)}">${escHtml(m.name)} — ${escHtml(m.role)}</option>`).join('');
+    if (current) sel.value = current;
+    onRepChange();
+  }
+
+  function onRepChange() {
+    const team = loadTeam();
+    const name = document.getElementById('repSelect').value;
+    const hint = document.getElementById('repRoleHint');
+    const member = team.find(m => m.name === name);
+    if (member && member.role) {
+      hint.textContent = `Grading as: ${member.role}`;
+      hint.style.display = 'block';
+    } else {
+      hint.style.display = 'none';
+    }
+  }
+
+  function getSelectedRep() {
+    const team = loadTeam();
+    const name = document.getElementById('repSelect').value;
+    return team.find(m => m.name === name) || null;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Enter key submits add-member form
+  ['newMemberName','newMemberRole'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') addMember(); });
+  });
+  // ── End team manager ───────────────────────────────────────
+
+  // ── Collapsible panels ─────────────────────────────────────
+  function togglePanel(key) {
+    const bodies = { team: 'teamPanelBody', usage: 'usagePanelBody' };
+    const chevrons = { team: 'teamChevron', usage: 'usageChevron' };
+    const body = document.getElementById(bodies[key]);
+    const chevron = document.getElementById(chevrons[key]);
+    const open = body.style.display === 'none';
+    body.style.display = open ? 'block' : 'none';
+    chevron.classList.toggle('open', open);
+    try { localStorage.setItem('oa_panel_' + key, open); } catch {}
+  }
+
+  function initPanels() {
+    ['team', 'usage'].forEach(key => {
+      const bodies = { team: 'teamPanelBody', usage: 'usagePanelBody' };
+      const chevrons = { team: 'teamChevron', usage: 'usageChevron' };
+      try {
+        const open = localStorage.getItem('oa_panel_' + key) !== 'false';
+        if (open) {
+          document.getElementById(bodies[key]).style.display = 'block';
+          document.getElementById(chevrons[key]).classList.add('open');
+        }
+      } catch {}
+    });
+  }
+  // ── End collapsible panels ─────────────────────────────────
+
   const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? window.ENV.ANTHROPIC_API_KEY : null;
 
   function initKeyUI() {
@@ -372,11 +550,31 @@ Include:
     return { A: '#004750', B: '#00A983', C: '#FF751F', D: '#BBC1C7', F: '#BBC1C7' }[grade] || '#004750';
   }
 
+  function buildRoleGuidance(rep) {
+    if (!rep) return '';
+    const role = rep.role.toLowerCase();
+    if (role.includes('sdr') || role.includes('bdr') || role.includes('development')) {
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward pipeline generation skills: opening, qualifying interest, booking the next meeting. Hold lighter expectations on deep technical demo delivery or close mechanics, but be rigorous on discovery quality and next-step commitment.`;
+    }
+    if (role.includes('engineer') || role.includes('se') || role.includes('presales') || role.includes('pre-sales')) {
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward technical demo quality, solution fit accuracy, and ability to translate prospect pain into OneAxiom's technical differentiators. Hold lighter expectations on commercial negotiation or close tactics, but be rigorous on demo delivery and objection handling around technical concerns.`;
+    }
+    if (role.includes('manager') || role.includes('director') || role.includes('vp') || role.includes('leader')) {
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward deal strategy, team coaching observable in the call, and executive-level value framing. Expect strong qualification and deal mechanics rigor. Note any coaching or leadership behaviors if this appears to be a joint call.`;
+    }
+    if (role.includes('account manager') || role.includes('csm') || role.includes('success') || role.includes('renewal')) {
+      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight your grading toward expansion discovery, identifying upsell signals, relationship depth, and retention mechanics. Hold lighter expectations on cold prospecting technique, but be rigorous on value confirmation and next-step clarity.`;
+    }
+    // Default: Account Executive or unrecognized role
+    return `\n\nRep role context — ${rep.name} is a ${rep.role}. Grade the full sales cycle with balanced weight across all five dimensions.`;
+  }
+
   async function gradeCall() {
     const apiKey = getApiKey();
     const notes = document.getElementById('callNotes').value.trim();
     const prospect = document.getElementById('prospect').value.trim();
     const contactTitle = document.getElementById('contactTitle').value.trim();
+    const rep = getSelectedRep();
 
     if (!apiKey) { showError('No API key found. Add one in .env or enter it above.'); return; }
     if (!notes) { showError('Please paste your call notes or transcript.'); return; }
@@ -385,9 +583,11 @@ Include:
     clearError();
     document.getElementById('results').style.display = 'none';
 
+    const roleGuidance = buildRoleGuidance(rep);
+
     const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales. You know "Never Split the Difference" by Chris Voss deeply (the rep has already read this book — never recommend it). Recommend other books only for genuine gaps.
 
-You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.
+You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${roleGuidance}
 
 Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble:
 
@@ -442,6 +642,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
 recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candidates: SPIN Selling (Rackham), Challenger Sale (Dixon/Adamson), Gap Selling (Keenan), Fanatical Prospecting (Blount), The Qualified Sales Leader (McMahon), The JOLT Effect (Dixon/McKenna).`;
 
     const context = [
+      rep ? 'Rep: ' + rep.name + ' (' + rep.role + ')' : '',
       prospect ? 'Prospect: ' + prospect : '',
       contactTitle ? 'Contact title: ' + contactTitle : '',
       'Call stage: ' + selectedStage
@@ -475,7 +676,7 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
       }
       let raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
       raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      renderResults(JSON.parse(raw), prospect, contactTitle);
+      renderResults(JSON.parse(raw), prospect, contactTitle, rep);
     } catch (err) {
       showError(err.message);
     } finally {
@@ -483,8 +684,14 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
     }
   }
 
-  function renderResults(r, prospect, contactTitle) {
-    const meta = [prospect, contactTitle, selectedStage].filter(Boolean).join(' · ');
+  function renderResults(r, prospect, contactTitle, rep) {
+    const metaParts = [
+      rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '',
+      prospect,
+      contactTitle,
+      selectedStage
+    ].filter(Boolean);
+    const meta = metaParts.join(' · ');
     const bannerBg = getBannerColor(r.letter_grade);
 
     const dimsHtml = r.dimensions.map(d => {
@@ -554,34 +761,23 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
   }
 
   // ── Usage bar ──────────────────────────────────────────────
-  // Pricing: claude-sonnet-4-6 — $3/M input, $15/M output
   const PRICE_IN  = 3  / 1_000_000;
   const PRICE_OUT = 15 / 1_000_000;
 
-  // Session state (in-memory)
   let sessionCost = 0;
-  let lastCallTokens = null;
-  let lastCallCost = null;
 
-  // Persistent state (localStorage)
   function loadAllTime() {
-    try {
-      return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}');
-    } catch { return { cost: 0, calls: 0 }; }
+    try { return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}'); } catch { return { cost: 0, calls: 0 }; }
   }
   function saveAllTime(data) {
     try { localStorage.setItem('oa_usage', JSON.stringify(data)); } catch {}
   }
   function loadToggles() {
-    try {
-      return JSON.parse(localStorage.getItem('oa_toggles') || '{"tokens":true,"cost-call":true,"cost-session":true,"cost-alltime":true}');
-    } catch { return { tokens: true, 'cost-call': true, 'cost-session': true, 'cost-alltime': true }; }
+    try { return JSON.parse(localStorage.getItem('oa_toggles') || '{"tokens":true,"cost-call":true,"cost-session":true,"cost-alltime":true}'); }
+    catch { return { tokens: true, 'cost-call': true, 'cost-session': true, 'cost-alltime': true }; }
   }
   function saveToggles(t) {
     try { localStorage.setItem('oa_toggles', JSON.stringify(t)); } catch {}
-  }
-  function loadBarOpen() {
-    try { return localStorage.getItem('oa_bar_open') !== 'false'; } catch { return true; }
   }
 
   let metricToggles = loadToggles();
@@ -603,20 +799,9 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
     applyToggles();
   }
 
-  function toggleUsageBar() {
-    const body = document.getElementById('usageBarBody');
-    const chevron = document.getElementById('usageChevron');
-    const open = body.style.display === 'none';
-    body.style.display = open ? 'block' : 'none';
-    chevron.classList.toggle('open', open);
-    try { localStorage.setItem('oa_bar_open', open); } catch {}
-  }
-
   function updateUsageUI(inputTokens, outputTokens) {
     const callCost = (inputTokens * PRICE_IN) + (outputTokens * PRICE_OUT);
     const totalTokens = inputTokens + outputTokens;
-    lastCallTokens = totalTokens;
-    lastCallCost = callCost;
     sessionCost += callCost;
 
     const allTime = loadAllTime();
@@ -634,11 +819,9 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
     document.getElementById('lastCallLabel').textContent =
       'Last call: ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Green dot = active
     document.getElementById('usageDot').style.background = '#00A983';
 
-    // Auto-open the bar after first call
-    const body = document.getElementById('usageBarBody');
+    const body = document.getElementById('usagePanelBody');
     if (body.style.display === 'none') {
       body.style.display = 'block';
       document.getElementById('usageChevron').classList.add('open');
@@ -657,15 +840,12 @@ recommended_books: 1-3 books NOT already read. Only if genuine gaps exist. Candi
     document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
     document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
     applyToggles();
-    const open = loadBarOpen();
-    if (open) {
-      document.getElementById('usageBarBody').style.display = 'block';
-      document.getElementById('usageChevron').classList.add('open');
-    }
   }
   // ── End usage bar ──────────────────────────────────────────
 
   initKeyUI();
+  initPanels();
+  renderMemberList();
   initUsageBar();
 </script>
 </body>
