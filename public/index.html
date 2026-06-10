@@ -80,6 +80,32 @@
   .nav-tab:hover { color: rgba(255,255,255,0.9); }
   .nav-tab.active { color: #fff; border-bottom-color: var(--oa-green); }
 
+  /* ── Settings icon ── */
+  .topbar-settings { position: relative; margin-left: auto; display: flex; align-items: center; }
+  .settings-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: none; cursor: pointer;
+    background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .settings-btn:hover { background: rgba(255,255,255,0.18); }
+  .settings-btn svg { width: 17px; height: 17px; fill: none; stroke: rgba(255,255,255,0.8); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .settings-dropdown {
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: 200;
+    background: var(--bg); border: 1px solid var(--border-mid); border-radius: var(--radius-sm);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 180px;
+    display: none; flex-direction: column; overflow: hidden;
+  }
+  .settings-dropdown.open { display: flex; }
+  .settings-item {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    font-size: 13px; font-weight: 500; color: var(--text);
+    background: none; border: none; cursor: pointer; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-item:last-child { border-bottom: none; }
+  .settings-item:hover { background: var(--bg-surface); }
+  .settings-item svg { width: 15px; height: 15px; fill: none; stroke: var(--text-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
   /* ── Page shell ── */
   .page { display: none; padding: 2rem 1rem; min-height: calc(100vh - 52px); }
   .page.active { display: block; }
@@ -321,6 +347,92 @@
   }
   .hud-readout-item span { color: rgba(0,195,255,0.7); }
 
+  /* ── Deal Lifecycle ── */
+  .lc-company-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.75rem; }
+  .lc-company-row select { max-width: 320px; }
+  .lc-empty { font-size: 14px; color: var(--text-faint); padding: 3rem 0; text-align: center; line-height: 1.8; }
+
+  /* Timeline */
+  .tl-outer { overflow-x: auto; padding: 0.5rem 0 1.5rem; }
+  .tl-nodes {
+    display: flex; align-items: flex-start; position: relative;
+    padding: 0 40px; min-width: max-content;
+  }
+  .tl-nodes::before {
+    content: ''; position: absolute;
+    top: 68px; left: 66px; right: 66px; height: 2px;
+    background: var(--border-mid); z-index: 0;
+  }
+  .tl-node {
+    display: flex; flex-direction: column; align-items: center;
+    width: 130px; position: relative; z-index: 1; cursor: pointer;
+    padding: 0 5px;
+  }
+  .tl-node-stage {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-align: center; line-height: 1.35; min-height: 30px;
+    display: flex; align-items: flex-end; justify-content: center;
+    margin-bottom: 8px;
+  }
+  .tl-node-dot {
+    width: 60px; height: 60px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; border: 3px solid rgba(255,255,255,0.25);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+    transition: transform 0.15s, box-shadow 0.15s; flex-shrink: 0;
+    line-height: 1.1;
+  }
+  .tl-node:hover .tl-node-dot { transform: scale(1.12); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+  .tl-node-letter { font-size: 15px; }
+  .tl-node-score  { font-size: 10px; opacity: 0.85; }
+  .tl-node-date   { font-size: 11px; color: var(--text-faint); margin-top: 9px; text-align: center; }
+
+  /* Hover tooltip */
+  #tlTooltip {
+    position: fixed; z-index: 500; pointer-events: none;
+    background: var(--bg); border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm); box-shadow: 0 8px 28px rgba(0,0,0,0.15);
+    padding: 12px 14px; width: 240px; display: none;
+  }
+  .tt-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tt-grade { font-size: 22px; font-weight: 700; color: #fff; padding: 3px 11px; border-radius: var(--radius-sm); flex-shrink: 0; }
+  .tt-stage { font-size: 13px; font-weight: 600; }
+  .tt-date  { font-size: 12px; color: var(--text-faint); margin-bottom: 7px; }
+  .tt-rep   { font-size: 12px; color: var(--text-muted); margin-bottom: 7px; }
+  .tt-strength { font-size: 12px; color: var(--text-muted); line-height: 1.5; border-top: 1px solid var(--border); padding-top: 7px; }
+  .tt-strength strong { color: var(--oa-teal); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+  .tt-hint { font-size: 11px; color: var(--text-faint); margin-top: 6px; font-style: italic; }
+
+  /* Click modal */
+  #lcModal {
+    position: fixed; inset: 0; z-index: 600;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 2rem 1rem; overflow-y: auto;
+  }
+  #lcModal.open { display: flex; }
+  .lc-modal-box {
+    background: var(--bg); border-radius: var(--radius); border: 1px solid var(--border);
+    width: 100%; max-width: 740px; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    position: relative; margin: auto;
+  }
+  .lc-modal-hdr {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  }
+  .lc-modal-hdr-left { display: flex; align-items: center; gap: 12px; }
+  .lc-modal-badge { font-size: 18px; font-weight: 700; color: #fff; padding: 5px 14px; border-radius: var(--radius-sm); flex-shrink: 0; }
+  .lc-modal-title { font-size: 15px; font-weight: 700; }
+  .lc-modal-sub   { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .lc-modal-close {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    background: var(--bg-surface); border: 1px solid var(--border-mid);
+    font-size: 20px; line-height: 1; cursor: pointer; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lc-modal-close:hover { background: var(--bg-deep); color: var(--text); }
+  .lc-modal-body { padding: 20px; max-height: calc(100vh - 180px); overflow-y: auto; }
+
   .error-box { display: none; padding: 12px 16px; background: #fff0f0; border: 1px solid #fcc; border-radius: var(--radius-sm); color: #c00; font-size: 13px; margin-top: 10px; line-height: 1.5; }
   @media (prefers-color-scheme: dark) { .error-box { background: #2a1010; border-color: #5a2020; color: #ff8080; } }
 
@@ -533,10 +645,44 @@
   </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="navTo('grader')">Grader</button>
-    <button class="nav-tab" onclick="navTo('team')">Sales Team</button>
-    <button class="nav-tab" onclick="navTo('library')">Resource Library</button>
     <button class="nav-tab" onclick="navTo('history')">History</button>
+    <button class="nav-tab" onclick="navTo('lifecycle')">Deal Lifecycle</button>
   </nav>
+  <div class="topbar-settings" id="settingsMenu">
+    <button class="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
+      <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <div class="settings-dropdown" id="settingsDropdown">
+      <button class="settings-item" onclick="navTo('team');closeSettingsMenu()">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Sales Team
+      </button>
+      <button class="settings-item" onclick="navTo('library');closeSettingsMenu()">
+        <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Resource Library
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Hover tooltip (global) -->
+<div id="tlTooltip"></div>
+
+<!-- Meeting detail modal (global) -->
+<div id="lcModal" onclick="onLcModalOverlayClick(event)">
+  <div class="lc-modal-box" id="lcModalBox">
+    <div class="lc-modal-hdr">
+      <div class="lc-modal-hdr-left">
+        <div class="lc-modal-badge" id="lcModalBadge"></div>
+        <div>
+          <div class="lc-modal-title" id="lcModalTitle"></div>
+          <div class="lc-modal-sub"   id="lcModalSub"></div>
+        </div>
+      </div>
+      <button class="lc-modal-close" onclick="closeLcModal()">&#215;</button>
+    </div>
+    <div class="lc-modal-body" id="lcModalBody"></div>
+  </div>
 </div>
 
 <!-- ══ GRADER PAGE ══ -->
@@ -752,6 +898,23 @@
   </div>
 </div>
 
+<!-- ══ DEAL LIFECYCLE PAGE ══ -->
+<div class="page" id="page-lifecycle">
+  <div class="shell">
+    <div class="page-heading">
+      <h2>Deal Lifecycle</h2>
+      <p>Select a company to view a timeline of every analyzed call, from first touch to close.</p>
+    </div>
+    <div class="lc-company-row">
+      <select id="lcCompanySelect" onchange="onLcCompanyChange()" style="max-width:320px;">
+        <option value="">— Select a company —</option>
+      </select>
+    </div>
+    <div id="lcTimeline"></div>
+    <div class="footer">SIREN · Internal use only</div>
+  </div>
+</div>
+
 <!-- ══ HISTORY PAGE ══ -->
 <div class="page" id="page-history">
   <div class="shell">
@@ -777,17 +940,27 @@
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
     document.querySelectorAll('.nav-tab').forEach(t => {
-      if ((page === 'grader' && t.textContent === 'Grader') ||
-          (page === 'team' && t.textContent === 'Sales Team') ||
-          (page === 'library' && t.textContent === 'Resource Library') ||
-          (page === 'history' && t.textContent === 'History')) {
+      if ((page === 'grader'    && t.textContent === 'Grader') ||
+          (page === 'history'   && t.textContent === 'History') ||
+          (page === 'lifecycle' && t.textContent === 'Deal Lifecycle')) {
         t.classList.add('active');
       }
     });
     currentPage = page;
     window.scrollTo(0, 0);
-    if (page === 'history') renderHistory();
+    if (page === 'history')   renderHistory();
+    if (page === 'lifecycle') renderLifecyclePage();
   }
+
+  // ── Settings menu ──────────────────────────────────────────
+  function toggleSettingsMenu(e) {
+    e.stopPropagation();
+    document.getElementById('settingsDropdown').classList.toggle('open');
+  }
+  function closeSettingsMenu() {
+    document.getElementById('settingsDropdown').classList.remove('open');
+  }
+  document.addEventListener('click', () => closeSettingsMenu());
 
   // ── Helpers ────────────────────────────────────────────────
   function escHtml(s) {
@@ -1894,6 +2067,160 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     saveHistoryData([]);
     renderHistory();
   }
+
+  // ── Deal Lifecycle ─────────────────────────────────────────
+  function getLcCompanies() {
+    const seen = new Set();
+    const out = [];
+    for (const h of loadHistory()) {
+      const name = (h.prospect || '').trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase()); out.push(name);
+      }
+    }
+    return out.sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderLifecyclePage() {
+    const companies = getLcCompanies();
+    const sel = document.getElementById('lcCompanySelect');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— Select a company —</option>' +
+      companies.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+    if (prev && companies.includes(prev)) sel.value = prev;
+    onLcCompanyChange();
+  }
+
+  function onLcCompanyChange() {
+    const company = document.getElementById('lcCompanySelect').value;
+    const el = document.getElementById('lcTimeline');
+    if (!company) {
+      el.innerHTML = '<div class="lc-empty">Select a company above to view its deal timeline.</div>';
+      return;
+    }
+    const entries = loadHistory()
+      .filter(h => (h.prospect || '').trim().toLowerCase() === company.toLowerCase())
+      .sort((a, b) => {
+        const da = a.callDate || a.ts.slice(0,10);
+        const db = b.callDate || b.ts.slice(0,10);
+        return da < db ? -1 : da > db ? 1 : 0;
+      });
+    if (!entries.length) {
+      el.innerHTML = '<div class="lc-empty">No calls found for this company.</div>';
+      return;
+    }
+    el.innerHTML = buildTimeline(entries);
+  }
+
+  function stageAbbrev(stage) {
+    return {
+      'Cold outreach': 'Cold Outreach',
+      'Discovery': 'Discovery',
+      'Demo / solution presentation': 'Demo',
+      'Proposal / close': 'Proposal / Close',
+      'Touchpoint': 'Touchpoint',
+      'Security Observability Scorecard': 'Scorecard',
+    }[stage] || stage;
+  }
+
+  function buildTimeline(entries) {
+    const nodes = entries.map(h => {
+      const bg = getBannerColor(h.letter_grade);
+      const dateStr = h.callDate
+        ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: '2-digit' })
+        : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: '2-digit' });
+      return `<div class="tl-node"
+          onmouseenter="showTLTooltip(event,${h.id})"
+          onmousemove="moveTLTooltip(event)"
+          onmouseleave="hideTLTooltip()"
+          onclick="openLcModal(${h.id})">
+        <div class="tl-node-stage">${escHtml(stageAbbrev(h.stage || ''))}</div>
+        <div class="tl-node-dot" style="background:${bg};">
+          <span class="tl-node-letter">${escHtml(h.letter_grade)}</span>
+          <span class="tl-node-score">${h.total}</span>
+        </div>
+        <div class="tl-node-date">${escHtml(dateStr)}</div>
+      </div>`;
+    }).join('');
+    return `<div class="card" style="padding:1.25rem 1rem;">
+      <div class="tl-outer"><div class="tl-nodes">${nodes}</div></div>
+    </div>`;
+  }
+
+  function getHistoryEntry(id) {
+    return loadHistory().find(h => h.id === id) || null;
+  }
+
+  function showTLTooltip(e, id) {
+    const h = getHistoryEntry(id);
+    if (!h) return;
+    const bg = getBannerColor(h.letter_grade);
+    const dateStr = h.callDate
+      ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+      : new Date(h.ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const repLine = [h.rep, h.repRole].filter(Boolean).join(' · ');
+    const tt = document.getElementById('tlTooltip');
+    tt.innerHTML = `
+      <div class="tt-head">
+        <div class="tt-grade" style="background:${bg};">${escHtml(h.letter_grade)} ${h.total}</div>
+        <div class="tt-stage">${escHtml(stageAbbrev(h.stage || ''))}</div>
+      </div>
+      <div class="tt-date">${escHtml(dateStr)}</div>
+      ${repLine ? `<div class="tt-rep">${escHtml(repLine)}</div>` : ''}
+      ${h.top_strength ? `<div class="tt-strength"><strong>Strength</strong>${escHtml(h.top_strength)}</div>` : ''}
+      <div class="tt-hint">Click to see full report</div>`;
+    tt.style.display = 'block';
+    moveTLTooltip(e);
+  }
+
+  function moveTLTooltip(e) {
+    const tt = document.getElementById('tlTooltip');
+    const pad = 14, w = 240, h = tt.offsetHeight;
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > window.innerWidth - 8) x = e.clientX - w - pad;
+    if (y + h > window.innerHeight - 8) y = e.clientY - h - pad;
+    tt.style.left = x + 'px';
+    tt.style.top  = y + 'px';
+  }
+
+  function hideTLTooltip() {
+    document.getElementById('tlTooltip').style.display = 'none';
+  }
+
+  function openLcModal(id) {
+    hideTLTooltip();
+    const h = getHistoryEntry(id);
+    if (!h) return;
+    const bg = getBannerColor(h.letter_grade);
+    const dateStr = h.callDate
+      ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      : new Date(h.ts).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const subParts = [h.rep, h.repRole, h.contactTitle, dateStr].filter(Boolean);
+    document.getElementById('lcModalBadge').style.background = bg;
+    document.getElementById('lcModalBadge').textContent = h.letter_grade + ' ' + h.total;
+    document.getElementById('lcModalTitle').textContent = (h.prospect || 'Unknown company') + ' — ' + stageAbbrev(h.stage || '');
+    document.getElementById('lcModalSub').textContent = subParts.join(' · ');
+    // Strip the "Grade another call" button and rep toggle from the stored HTML
+    const body = (h.resultsHtml || '')
+      .replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '')
+      .replace(/<div class="rep-toggle">[\s\S]*?<\/div>/, '')
+      .replace(/<div class="score-view(?!.*active)[^"]*"[\s\S]*?(?=<div class="score-view active|$)/, '');
+    document.getElementById('lcModalBody').innerHTML = body || '<p style="color:var(--text-faint);font-size:13px;">No detailed report available.</p>';
+    document.getElementById('lcModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLcModal() {
+    document.getElementById('lcModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function onLcModalOverlayClick(e) {
+    if (e.target === document.getElementById('lcModal')) closeLcModal();
+  }
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLcModal(); });
 
   // ── Init ───────────────────────────────────────────────────
   initKeyUI();
