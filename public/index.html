@@ -354,6 +354,24 @@
   .upload-area-sub { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
   .upload-progress { font-size: 12px; color: var(--oa-green); margin-top: 8px; display: none; }
 
+  /* ── Company combobox ── */
+  .combobox { position: relative; }
+  .combobox-dropdown {
+    position: absolute; top: calc(100% + 3px); left: 0; right: 0; z-index: 300;
+    background: var(--bg); border: 1px solid var(--border-mid); border-radius: var(--radius-sm);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12); max-height: 210px; overflow-y: auto; display: none;
+  }
+  .combobox-dropdown.open { display: block; }
+  .combobox-option {
+    padding: 9px 13px; font-size: 13px; cursor: pointer; color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .combobox-option:last-child { border-bottom: none; }
+  .combobox-option:hover, .combobox-option.kb-focused { background: var(--bg-surface); }
+  .combobox-option.add-new { color: var(--oa-green); font-weight: 600; }
+  .combobox-option.empty-state { color: var(--text-faint); font-style: italic; cursor: default; }
+  .combobox-option.empty-state:hover { background: none; }
+
   /* ── Footer ── */
   .footer { text-align: center; font-size: 11px; color: var(--text-faint); padding: 1.5rem 0 1rem; }
 </style>
@@ -432,7 +450,11 @@
         <select id="repSelect" onchange="onRepChange()">
           <option value="">— Rep (optional) —</option>
         </select>
-        <input type="text" id="prospect" placeholder="Prospect / company name" />
+        <div class="combobox" id="prospectCombobox">
+          <input type="text" id="prospect" placeholder="Select or add company…" autocomplete="off"
+            oninput="onProspectInput()" onfocus="openProspectDropdown()" onkeydown="onProspectKeydown(event)" />
+          <div class="combobox-dropdown" id="prospectDropdown"></div>
+        </div>
         <input type="text" id="contactTitle" placeholder="Contact title (e.g. IT Director)" />
       </div>
       <div class="meta-row" style="grid-template-columns:auto 1fr;margin-bottom:10px;">
@@ -786,8 +808,6 @@
   }
 
   document.getElementById('libTitle').addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
-  document.getElementById('prospect').addEventListener('input', updateHistoryHint);
-
   // Default call date to today
   document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
 
@@ -876,6 +896,100 @@
 
     return `\n\nPrevious call history for this account/rep (use for context and to track progression across calls — note improvement or regression trends):\n${sections}`;
   }
+
+  // ── Company combobox ───────────────────────────────────────
+  let comboboxKbIndex = -1;
+
+  function getKnownCompanies() {
+    const history = loadHistory();
+    const seen = new Set();
+    const out = [];
+    for (const h of history) {
+      const name = (h.prospect || '').trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        out.push(name);
+      }
+    }
+    return out.sort((a, b) => a.localeCompare(b));
+  }
+
+  function buildProspectOptions(query) {
+    const companies = getKnownCompanies();
+    const q = (query || '').toLowerCase().trim();
+    const filtered = q ? companies.filter(c => c.toLowerCase().includes(q)) : companies;
+    const exactMatch = companies.some(c => c.toLowerCase() === q);
+    const dd = document.getElementById('prospectDropdown');
+    const items = [];
+
+    if (!filtered.length && !q) {
+      items.push(`<div class="combobox-option empty-state">No companies in history yet — type to add one</div>`);
+    } else {
+      filtered.forEach((c, i) => {
+        items.push(`<div class="combobox-option" data-value="${escHtml(c)}" onmousedown="selectProspect('${escHtml(c)}')">${escHtml(c)}</div>`);
+      });
+    }
+
+    if (q && !exactMatch) {
+      items.push(`<div class="combobox-option add-new" data-value="${escHtml(query.trim())}" onmousedown="selectProspect('${escHtml(query.trim())}')">+ Add &ldquo;${escHtml(query.trim())}&rdquo;</div>`);
+    }
+
+    dd.innerHTML = items.join('');
+    comboboxKbIndex = -1;
+  }
+
+  function openProspectDropdown() {
+    buildProspectOptions(document.getElementById('prospect').value);
+    document.getElementById('prospectDropdown').classList.add('open');
+  }
+
+  function closeProspectDropdown() {
+    document.getElementById('prospectDropdown').classList.remove('open');
+    comboboxKbIndex = -1;
+  }
+
+  function onProspectInput() {
+    buildProspectOptions(document.getElementById('prospect').value);
+    document.getElementById('prospectDropdown').classList.add('open');
+    updateHistoryHint();
+  }
+
+  function selectProspect(name) {
+    document.getElementById('prospect').value = name;
+    closeProspectDropdown();
+    updateHistoryHint();
+  }
+
+  function onProspectKeydown(e) {
+    const dd = document.getElementById('prospectDropdown');
+    const opts = dd.querySelectorAll('.combobox-option:not(.empty-state)');
+    if (!dd.classList.contains('open') || !opts.length) {
+      if (e.key === 'Enter') return;
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      comboboxKbIndex = Math.min(comboboxKbIndex + 1, opts.length - 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      comboboxKbIndex = Math.max(comboboxKbIndex - 1, 0);
+    } else if (e.key === 'Enter' && comboboxKbIndex >= 0) {
+      e.preventDefault();
+      selectProspect(opts[comboboxKbIndex].dataset.value);
+      return;
+    } else if (e.key === 'Escape') {
+      closeProspectDropdown(); return;
+    } else { return; }
+    opts.forEach((o, i) => o.classList.toggle('kb-focused', i === comboboxKbIndex));
+    opts[comboboxKbIndex]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('mousedown', e => {
+    if (!document.getElementById('prospectCombobox').contains(e.target)) {
+      closeProspectDropdown();
+    }
+  });
 
   function updateHistoryHint() {
     const prospect = document.getElementById('prospect').value.trim();
