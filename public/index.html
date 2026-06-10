@@ -435,6 +435,13 @@
         <input type="text" id="prospect" placeholder="Prospect / company name" />
         <input type="text" id="contactTitle" placeholder="Contact title (e.g. IT Director)" />
       </div>
+      <div class="meta-row" style="grid-template-columns:auto 1fr;margin-bottom:10px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <label style="font-size:11px;color:var(--text-faint);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Call date</label>
+          <input type="date" id="callDate" style="width:auto;" />
+        </div>
+        <div id="historyContextHint" style="font-size:12px;color:var(--text-faint);align-self:flex-end;padding-bottom:2px;display:none;"></div>
+      </div>
       <div id="repRoleHint" style="font-size:12px;color:var(--text-faint);margin-bottom:14px;display:none;"></div>
 
       <div class="card-title" style="margin-bottom:8px;">Call stage</div>
@@ -653,6 +660,7 @@
     } else {
       hint.style.display = 'none';
     }
+    updateHistoryHint();
   }
 
   function getSelectedRep() {
@@ -778,6 +786,10 @@
   }
 
   document.getElementById('libTitle').addEventListener('keydown', e => { if (e.key === 'Enter') addLibItem(); });
+  document.getElementById('prospect').addEventListener('input', updateHistoryHint);
+
+  // Default call date to today
+  document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
 
   // ── Grader ─────────────────────────────────────────────────
   const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? window.ENV.ANTHROPIC_API_KEY : null;
@@ -839,11 +851,59 @@
     return `\n\nRep role context — ${rep.name} is a ${rep.role}. Grade the full sales cycle with balanced weight across all five dimensions.`;
   }
 
+  function buildHistoryContext(prospect, rep) {
+    const history = loadHistory();
+    if (!history.length) return '';
+
+    // Match by prospect name (case-insensitive) or by rep name
+    const prospectNorm = (prospect || '').toLowerCase().trim();
+    const repNorm = rep ? rep.name.toLowerCase().trim() : '';
+
+    const matches = history.filter(h => {
+      const hProspect = (h.prospect || '').toLowerCase().trim();
+      const hRep = (h.rep || '').toLowerCase().trim();
+      return (prospectNorm && hProspect && hProspect === prospectNorm) ||
+             (repNorm && hRep && hRep === repNorm);
+    }).slice(0, 5); // cap at 5 most recent matching calls
+
+    if (!matches.length) return '';
+
+    const sections = matches.map(h => {
+      const dateStr = h.callDate ? h.callDate : (h.ts ? h.ts.slice(0, 10) : 'unknown date');
+      const label = [h.stage, h.callDate || h.ts?.slice(0,10)].filter(Boolean).join(' — ');
+      return `Previous call (${label}): Grade ${h.letter_grade} ${h.total}/100. ${h.grade_label ? '"' + h.grade_label + '". ' : ''}Strength: ${h.top_strength || 'n/a'}. Priority: ${h.top_priority || 'n/a'}.`;
+    }).join('\n');
+
+    return `\n\nPrevious call history for this account/rep (use for context and to track progression across calls — note improvement or regression trends):\n${sections}`;
+  }
+
+  function updateHistoryHint() {
+    const prospect = document.getElementById('prospect').value.trim();
+    const rep = getSelectedRep();
+    const hint = document.getElementById('historyContextHint');
+    const history = loadHistory();
+    const prospectNorm = prospect.toLowerCase().trim();
+    const repNorm = rep ? rep.name.toLowerCase().trim() : '';
+    const count = history.filter(h => {
+      const hP = (h.prospect || '').toLowerCase().trim();
+      const hR = (h.rep || '').toLowerCase().trim();
+      return (prospectNorm && hP && hP === prospectNorm) ||
+             (repNorm && hR && hR === repNorm);
+    }).length;
+    if (count > 0) {
+      hint.textContent = count + ' previous call' + (count !== 1 ? 's' : '') + ' found — history will be included in grading context.';
+      hint.style.display = 'block';
+    } else {
+      hint.style.display = 'none';
+    }
+  }
+
   async function gradeCall() {
     const apiKey = getApiKey();
     const notes = document.getElementById('callNotes').value.trim();
     const prospect = document.getElementById('prospect').value.trim();
     const contactTitle = document.getElementById('contactTitle').value.trim();
+    const callDate = document.getElementById('callDate').value;
     const rep = getSelectedRep();
 
     if (!apiKey) { showError('No API key found. Add one in .env or enter it above.'); return; }
@@ -855,7 +915,7 @@
 
     const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales.
 
-${buildLibraryPrompt()}${buildDocsPrompt()}
+${buildLibraryPrompt()}${buildDocsPrompt()}${buildHistoryContext(prospect, rep)}
 
 You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
 
@@ -900,6 +960,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       rep ? 'Rep: ' + rep.name + ' (' + rep.role + ')' : '',
       prospect ? 'Prospect: ' + prospect : '',
       contactTitle ? 'Contact title: ' + contactTitle : '',
+      callDate ? 'Call date: ' + callDate : '',
       'Call stage: ' + selectedStage
     ].filter(Boolean).join(' | ');
 
@@ -929,7 +990,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       if (data.usage) updateUsageUI(data.usage.input_tokens || 0, data.usage.output_tokens || 0);
       let raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
       raw = raw.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      renderResults(JSON.parse(raw), prospect, contactTitle, rep);
+      renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate);
     } catch (err) {
       showError(err.message);
     } finally {
@@ -937,8 +998,9 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     }
   }
 
-  function renderResults(r, prospect, contactTitle, rep) {
-    const meta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage].filter(Boolean).join(' · ');
+  function renderResults(r, prospect, contactTitle, rep, callDate) {
+    const formattedDate = callDate ? new Date(callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    const meta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage, formattedDate].filter(Boolean).join(' · ');
     const bannerBg = getBannerColor(r.letter_grade);
 
     const dimsHtml = r.dimensions.map(d => {
@@ -1015,7 +1077,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     document.getElementById('inputCard').style.display = 'none';
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    saveToHistory(r, prospect, contactTitle, rep, resultsHtml);
+    saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml);
   }
 
   function autoSaveRecommendations(books) {
@@ -1038,6 +1100,8 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     document.getElementById('callNotes').value = '';
     document.getElementById('prospect').value = '';
     document.getElementById('contactTitle').value = '';
+    document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('historyContextHint').style.display = 'none';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1296,11 +1360,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
   function saveHistoryData(h) { try { localStorage.setItem('oa_history', JSON.stringify(h)); } catch {} }
 
-  function saveToHistory(r, prospect, contactTitle, rep, resultsHtml) {
+  function saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml) {
     const history = loadHistory();
     history.unshift({
       id: Date.now(),
       ts: new Date().toISOString(),
+      callDate: callDate || '',
       rep: rep ? rep.name : '',
       repRole: rep ? rep.role : '',
       prospect: prospect || '',
@@ -1325,34 +1390,62 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       el.innerHTML = '<div class="hist-empty">No graded calls yet. Grade a call on the Grader page and it will appear here.</div>';
       return;
     }
-    el.innerHTML = history.map(h => {
-      const date = new Date(h.ts);
-      const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const titleParts = [h.prospect, h.rep].filter(Boolean);
-      const title = titleParts.length ? titleParts.join(' · ') : 'Unnamed call';
-      const metaParts = [h.stage, h.repRole, h.contactTitle].filter(Boolean);
-      const bannerBg = getBannerColor(h.letter_grade);
-      // Strip the "Grade another call" reset button from inline history view
-      const bodyHtml = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
-      return `<div class="hist-card" id="hist-${h.id}">
-        <div class="hist-card-header" onclick="toggleHistCard(${h.id})">
-          <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
-          <div class="hist-card-center">
-            <div class="hist-card-title">${escHtml(title)}</div>
-            ${metaParts.length ? `<div class="hist-card-meta">${escHtml(metaParts.join(' · '))}</div>` : ''}
+    // Group by company (prospect), entries without a prospect get their own "Unnamed" bucket
+    const groups = {};
+    history.forEach(h => {
+      const key = (h.prospect || '').trim() || '(No company)';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(h);
+    });
+
+    el.innerHTML = Object.entries(groups).map(([company, entries]) => {
+      const stages = [...new Set(entries.map(h => h.stage).filter(Boolean))];
+      const stagesLabel = stages.length ? stages.join(', ') : '';
+      const repNames = [...new Set(entries.map(h => h.rep).filter(Boolean))];
+      const repLabel = repNames.length ? repNames.join(', ') : '';
+      const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
+      const groupId = 'grp-' + company.replace(/\W+/g, '_');
+
+      const callCards = entries.map(h => {
+        const displayDate = h.callDate
+          ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+          : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+        const bannerBg = getBannerColor(h.letter_grade);
+        const bodyHtml = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
+        const metaParts = [h.stage, h.rep, h.repRole, h.contactTitle].filter(Boolean);
+        return `<div class="hist-card" id="hist-${h.id}" style="margin-bottom:8px;border-radius:var(--radius-sm);">
+          <div class="hist-card-header" onclick="toggleHistCard(${h.id})" style="padding:10px 14px;">
+            <div class="hist-grade-badge" style="background:${bannerBg};font-size:15px;padding:4px 10px;">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
+            <div class="hist-card-center">
+              <div class="hist-card-title" style="font-size:13px;">${escHtml(h.stage || 'Unknown stage')}</div>
+              ${metaParts.length ? `<div class="hist-card-meta" style="font-size:11px;">${escHtml(metaParts.join(' · '))}</div>` : ''}
+            </div>
+            <div class="hist-card-right">
+              <span class="hist-card-date" style="font-size:11px;">${escHtml(displayDate)}</span>
+              <span class="hist-card-chevron" id="hist-chev-${h.id}">&#9660;</span>
+            </div>
           </div>
-          <div class="hist-card-right">
-            <span class="hist-card-date">${escHtml(dateStr)}<br>${escHtml(timeStr)}</span>
-            <span class="hist-card-chevron" id="hist-chev-${h.id}">&#9660;</span>
+          <div class="hist-card-body" id="hist-body-${h.id}">
+            ${bodyHtml}
+            <div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--border);padding-top:12px;">
+              <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div style="margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">
+          <div>
+            <span style="font-size:16px;font-weight:700;color:var(--oa-teal);">${escHtml(company)}</span>
+            <span style="font-size:12px;color:var(--text-faint);margin-left:10px;">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
+            ${stagesLabel ? stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--bg-deep);color:var(--text-muted);">${escHtml(s)}</span>`).join('') : ''}
+            ${repLabel ? `<span style="font-size:11px;color:var(--text-faint);">${escHtml(repLabel)}</span>` : ''}
           </div>
         </div>
-        <div class="hist-card-body" id="hist-body-${h.id}">
-          ${bodyHtml}
-          <div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--border);padding-top:12px;">
-            <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
-          </div>
-        </div>
+        <div id="${groupId}">${callCards}</div>
       </div>`;
     }).join('');
   }
@@ -1363,6 +1456,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const open = body.style.display !== 'block';
     body.style.display = open ? 'block' : 'none';
     chev.classList.toggle('open', open);
+  }
+
+  function toggleGroupCards(groupId) {
+    const el = document.getElementById(groupId);
+    if (!el) return;
+    el.style.display = el.style.display === 'none' ? '' : 'none';
   }
 
   function deleteHistEntry(id, e) {
