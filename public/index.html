@@ -1918,36 +1918,8 @@
   }
 
   function renderLibrary() {
-    const lib = loadLibrary();
-
-    document.getElementById('libReadList').innerHTML = lib.read.length
-      ? lib.read.map((item, i) => `
-          <div class="lib-item">
-            <div class="lib-item-info">
-              <span class="lib-item-title">${escHtml(item.title)}</span>
-              ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:6px;flex-shrink:0;">
-              ${typeChip(item.type)}
-              <button class="member-remove" onclick="removeLibItem('read',${i})">Remove</button>
-            </div>
-          </div>`).join('')
-      : '<div class="lib-empty">No items yet.</div>';
-
-    document.getElementById('libRecommendList').innerHTML = lib.recommend.length
-      ? lib.recommend.map((item, i) => `
-          <div class="lib-item">
-            <div class="lib-item-info">
-              <span class="lib-item-title">${escHtml(item.title)}</span>
-              ${item.author ? `<span class="lib-item-meta">${escHtml(item.author)}</span>` : ''}
-              ${item.why ? `<span class="lib-item-why">${escHtml(item.why)}</span>` : ''}
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:6px;flex-shrink:0;">
-              ${typeChip(item.type)}
-              <button class="member-remove" onclick="removeLibItem('recommend',${i})">Remove</button>
-            </div>
-          </div>`).join('')
-      : '<div class="lib-empty">No items yet.</div>';
+    renderDocList();
+    renderTemplates();
   }
 
   function addLibItem() {
@@ -2425,7 +2397,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: 'claude-sonnet-4-5',
           max_tokens: 6000,
           stream: true,
           system: systemPrompt,
@@ -4628,7 +4600,7 @@ INSTRUCTIONS:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: 'claude-sonnet-4-5',
           max_tokens: 600,
           stream: true,
           system: 'You are a Solutions Engineer writing concise, professional sales emails.',
