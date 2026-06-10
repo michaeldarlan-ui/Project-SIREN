@@ -4608,10 +4608,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       empty.style.display=''; formWrap.style.display='none'; return;
     }
     // Ensure a record exists in storage so future visits show the form
-    if(!scopeHasData(company)){
-      const s=loadScopeAll(company);
-      saveScopeAll(company, s);
-    }
+    saveScopeAll(company, loadScopeAll(company));
     empty.style.display='none'; formWrap.style.display='';
     renderScopeRevBar(company);
     renderScopeFormBody(company);
