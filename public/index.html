@@ -1616,7 +1616,7 @@
         onmouseleave="lcPanEnd()"
         onwheel="lcWheel(event)">
         <!-- Top bar -->
-        <div class="lc-graph-topbar">
+        <div class="lc-graph-topbar" onmousedown="event.stopPropagation()">
           <span class="lc-graph-topbar-title">ATLAS</span>
           <select id="lcCompanySelect" onchange="onLcCompanyChange()">
             <option value="">— Select an account —</option>
@@ -1653,7 +1653,7 @@
           <span>Select an account to build the investigation graph</span>
         </div>
         <!-- Zoom controls -->
-        <div class="lc-zoom-controls">
+        <div class="lc-zoom-controls" onmousedown="event.stopPropagation()">
           <button class="lc-zoom-btn" onclick="lcZoom(1.25)" title="Zoom in">+</button>
           <button class="lc-zoom-btn" onclick="lcFit()" title="Fit to screen" style="font-size:13px;">⊡</button>
           <button class="lc-zoom-btn" onclick="lcZoom(0.8)" title="Zoom out">−</button>
