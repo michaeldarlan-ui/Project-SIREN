@@ -4506,9 +4506,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     localStorage.setItem('oa_scope_v2', JSON.stringify(all));
   }
   function scopeHasData(company){
-    const s=loadScopeAll(company);
-    if(s.revisions && s.revisions.length>0) return true;
-    return Object.values(s.draft||{}).some(f=>f.value||f.notes);
+    try{
+      const all=JSON.parse(localStorage.getItem('oa_scope_v2')||'{}');
+      return Object.prototype.hasOwnProperty.call(all, company);
+    }catch(e){ return false; }
   }
 
   let _scopeViewingRevision = null; // null = draft, number = revision index
