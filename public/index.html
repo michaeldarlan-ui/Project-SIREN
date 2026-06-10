@@ -1177,7 +1177,7 @@
   document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
 
   // ── Grader ─────────────────────────────────────────────────
-  const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? window.ENV.ANTHROPIC_API_KEY : null;
+  const injectedKey = (typeof window.ENV !== 'undefined' && window.ENV.ANTHROPIC_API_KEY) ? String(window.ENV.ANTHROPIC_API_KEY).trim() : null;
 
   function initKeyUI() {
     const el = document.getElementById('keyStatus');
@@ -1519,7 +1519,12 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
       renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate);
     } catch (err) {
-      showError(err.message);
+      const msg = err.message || String(err);
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('networkerror')) {
+        showError('Network error — could not reach the Anthropic API. Check your internet connection, verify the API key is valid, and ensure no browser extension is blocking the request.');
+      } else {
+        showError(msg);
+      }
     } finally {
       setLoading(false);
     }
