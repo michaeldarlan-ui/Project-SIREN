@@ -1361,8 +1361,6 @@
                 <div class="forge-template-desc">Board-ready deal summary with SPICED status and risk indicators.</div>
               </div>
             </div>
-            <!-- User-defined templates from Resource Library -->
-            <div id="forgeUserTemplates"></div>
           </div>
         </div>
 
@@ -3693,9 +3691,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     root.innerHTML = edgeSvg + nodeSvg;
     root.querySelectorAll('.lc-collapse-toggle').forEach(el => {
       el.setAttribute('title', _lcCallsCollapsed ? 'Expand calls' : 'Collapse calls');
+      el.addEventListener('mousedown', ev => { ev.stopPropagation(); });
       el.addEventListener('click', ev => { ev.stopPropagation(); toggleLcCalls(); });
     });
     root.querySelectorAll('.lc-node-hit').forEach(el => {
+      el.addEventListener('mousedown', ev => { ev.stopPropagation(); });
       el.addEventListener('click', ev => { ev.stopPropagation(); lcSelectNode(el.getAttribute('data-id')); });
       // Double-click on first call node (or summary node) toggles collapse
       const id = el.getAttribute('data-id');
