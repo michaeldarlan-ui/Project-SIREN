@@ -289,6 +289,24 @@
   .lib-add-grid input::placeholder, .lib-add-grid textarea::placeholder { color: var(--text-faint); }
   .lib-add-grid textarea { min-height: unset; resize: none; }
 
+  /* ── PDF documents ── */
+  .doc-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--bg-surface); margin-bottom: 8px; }
+  .doc-item-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+  .doc-item-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc-item-meta { font-size: 12px; color: var(--text-muted); }
+  .doc-item-warn { font-size: 11px; color: var(--oa-orange); margin-top: 2px; }
+  .upload-area {
+    border: 2px dashed var(--border-mid); border-radius: var(--radius-sm);
+    padding: 24px; text-align: center; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .upload-area:hover, .upload-area.drag-over { border-color: var(--oa-green); background: #f0fdf8; }
+  @media (prefers-color-scheme: dark) { .upload-area:hover, .upload-area.drag-over { background: #0d2e26; } }
+  .upload-area-text { font-size: 13px; color: var(--text-muted); }
+  .upload-area-text strong { color: var(--oa-teal); }
+  .upload-area-sub { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
+  .upload-progress { font-size: 12px; color: var(--oa-green); margin-top: 8px; display: none; }
+
   /* ── Footer ── */
   .footer { text-align: center; font-size: 11px; color: var(--text-faint); padding: 1.5rem 0 1rem; }
 </style>
@@ -461,6 +479,20 @@
         </div>
         <button class="add-btn" onclick="addLibItem()">Add to library</button>
       </div>
+    </div>
+
+    <!-- Reference Documents -->
+    <div class="card">
+      <div class="card-title">Reference Documents</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.55;">Upload PDF files — extracted text is injected into the grading prompt as reference context. Each document is capped at 3,000 characters.</p>
+      <div id="docList"></div>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('pdfInput').click()"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <div class="upload-area-text"><strong>Click to upload</strong> or drag and drop</div>
+        <div class="upload-area-sub">PDF files only</div>
+        <div class="upload-progress" id="uploadProgress">Extracting text…</div>
+      </div>
+      <input type="file" id="pdfInput" accept="application/pdf" multiple style="display:none;" onchange="onFileSelect(event)" />
     </div>
 
     <div class="footer">OneAxiom · Internal use only</div>
@@ -759,7 +791,7 @@
 
     const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales.
 
-${buildLibraryPrompt()}
+${buildLibraryPrompt()}${buildDocsPrompt()}
 
 You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
 
@@ -1034,10 +1066,102 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     callNotesEl.removeEventListener('focus', onFocus);
   });
 
+  // ── Reference documents ────────────────────────────────────
+  const DOC_CHAR_LIMIT = 3000;
+
+  function loadDocs() {
+    try { return JSON.parse(localStorage.getItem('oa_docs') || '[]'); } catch { return []; }
+  }
+  function saveDocs(d) { try { localStorage.setItem('oa_docs', JSON.stringify(d)); } catch {} }
+
+  function renderDocList() {
+    const docs = loadDocs();
+    const el = document.getElementById('docList');
+    if (!el) return;
+    el.innerHTML = docs.length
+      ? docs.map((d, i) => `
+          <div class="doc-item">
+            <div class="doc-item-info">
+              <span class="doc-item-name" title="${escHtml(d.name)}">${escHtml(d.name)}</span>
+              <span class="doc-item-meta">${d.pages} page${d.pages !== 1 ? 's' : ''} · ${d.chars.toLocaleString()} chars extracted</span>
+              ${d.truncated ? `<span class="doc-item-warn">Truncated to ${DOC_CHAR_LIMIT.toLocaleString()} chars for prompt injection</span>` : ''}
+            </div>
+            <button class="member-remove" onclick="removeDoc(${i})">Remove</button>
+          </div>`).join('')
+      : '';
+  }
+
+  function removeDoc(idx) {
+    const docs = loadDocs();
+    docs.splice(idx, 1);
+    saveDocs(docs);
+    renderDocList();
+  }
+
+  async function extractPdfText(file) {
+    // Dynamically import PDF.js as an ES module
+    const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      text += content.items.map(i => i.str).join(' ') + '\n';
+    }
+    return { text: text.trim(), pages: pdf.numPages };
+  }
+
+  async function processFiles(files) {
+    const progress = document.getElementById('uploadProgress');
+    progress.style.display = 'block';
+    const docs = loadDocs();
+
+    for (const file of files) {
+      if (file.type !== 'application/pdf') continue;
+      progress.textContent = `Extracting: ${file.name}…`;
+      try {
+        const { text, pages } = await extractPdfText(file);
+        const truncated = text.length > DOC_CHAR_LIMIT;
+        const excerpt = truncated ? text.slice(0, DOC_CHAR_LIMIT) : text;
+        docs.push({ name: file.name, pages, chars: text.length, truncated, excerpt });
+      } catch (err) {
+        console.error('PDF extraction failed for', file.name, err);
+        progress.textContent = `Failed to read ${file.name} — is it a valid PDF?`;
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    saveDocs(docs);
+    renderDocList();
+    progress.style.display = 'none';
+    document.getElementById('pdfInput').value = '';
+  }
+
+  function onFileSelect(e) { processFiles(Array.from(e.target.files)); }
+  function onDragOver(e) { e.preventDefault(); document.getElementById('uploadArea').classList.add('drag-over'); }
+  function onDragLeave() { document.getElementById('uploadArea').classList.remove('drag-over'); }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadArea').classList.remove('drag-over');
+    processFiles(Array.from(e.dataTransfer.files));
+  }
+
+  function buildDocsPrompt() {
+    const docs = loadDocs();
+    if (!docs.length) return '';
+    const sections = docs.map(d => `--- ${d.name} ---\n${d.excerpt}`).join('\n\n');
+    return `\n\nReference documents (use as additional context where relevant):\n${sections}`;
+  }
+  // ── End reference documents ────────────────────────────────
+
   // ── Init ───────────────────────────────────────────────────
   initKeyUI();
   renderMemberList();
   renderLibrary();
+  renderDocList();
   initUsageBar();
 </script>
 </body>
