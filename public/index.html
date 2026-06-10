@@ -3293,13 +3293,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function drawLcGraph() {
-    try { _drawLcGraphInner(); } catch(err) {
-      console.error('[ATLAS] drawLcGraph error:', err);
-      const root = document.getElementById('lcGraphRoot');
-      if (root) root.innerHTML = `<text x="20" y="40" fill="#e05050" font-size="13" font-family="monospace">ATLAS render error: ${escHtml(String(err))}</text>`;
-    }
-  }
-  function _drawLcGraphInner() {
     const root = document.getElementById('lcGraphRoot');
     if (!root) return;
     root.setAttribute('transform', `translate(${_lcT.x},${_lcT.y}) scale(${_lcT.s})`);
@@ -3372,7 +3365,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     });
 
     root.innerHTML = edgeSvg + nodeSvg;
-    console.log('[ATLAS] drew', _lcNodes.length, 'nodes,', _lcEdges.length, 'edges. transform:', JSON.stringify(_lcT));
     root.querySelectorAll('.lc-node-hit').forEach(el => {
       el.addEventListener('click', ev => { ev.stopPropagation(); lcSelectNode(el.getAttribute('data-id')); });
       // Double-click on first call node (or summary node) toggles collapse
