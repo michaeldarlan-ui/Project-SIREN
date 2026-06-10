@@ -586,6 +586,17 @@
   .hist-card-body { display: none; border-top: 1px solid var(--border); padding: 16px 18px; }
   .hist-delete-btn { font-size: 12px; color: var(--text-faint); background: none; border: none; cursor: pointer; padding: 4px 0; text-decoration: underline; }
   .hist-delete-btn:hover { color: #c00; }
+  .hist-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 1.25rem; }
+  .hist-sort-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .hist-sort-btn {
+    padding: 6px 14px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border-mid); border-radius: 20px;
+    background: var(--bg-surface); color: var(--text-muted); cursor: pointer;
+    display: flex; align-items: center; gap: 5px; transition: all 0.15s;
+  }
+  .hist-sort-btn:hover { border-color: var(--oa-teal); color: var(--oa-teal); }
+  .hist-sort-btn.active { background: var(--oa-teal); border-color: var(--oa-teal); color: #fff; }
+  .hist-sort-arrow { font-size: 10px; }
   .hist-actions { display: flex; justify-content: flex-end; margin-bottom: 1.25rem; }
   .clear-hist-btn { font-size: 12px; color: var(--text-faint); background: none; border: 1px solid var(--border-mid); border-radius: var(--radius-sm); cursor: pointer; padding: 6px 14px; }
   .clear-hist-btn:hover { background: #fff0f0; color: #c00; border-color: #fcc; }
@@ -922,7 +933,13 @@
       <h2>Call History</h2>
       <p>Previous graded calls, saved automatically. Click a card to expand the full results.</p>
     </div>
-    <div class="hist-actions">
+    <div class="hist-toolbar">
+      <div class="hist-sort-row">
+        <button class="hist-sort-btn active" id="hsort-company" onclick="setHistSort('company')">Company</button>
+        <button class="hist-sort-btn" id="hsort-date"    onclick="setHistSort('date')">Date <span class="hist-sort-arrow" id="hsort-date-arrow">↓</span></button>
+        <button class="hist-sort-btn" id="hsort-score"   onclick="setHistSort('score')">Score <span class="hist-sort-arrow" id="hsort-score-arrow">↓</span></button>
+        <button class="hist-sort-btn" id="hsort-stage"   onclick="setHistSort('stage')">Meeting Type <span class="hist-sort-arrow" id="hsort-stage-arrow">↑</span></button>
+      </div>
       <button class="clear-hist-btn" onclick="clearHistory()">Clear all history</button>
     </div>
     <div id="historyList"></div>
@@ -1973,6 +1990,62 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     saveHistoryData(history);
   }
 
+  // Sort state: 'company' | 'date' | 'score' | 'stage'  +  direction per key
+  const histSortDir = { date: -1, score: -1, stage: 1 }; // -1=desc, 1=asc
+  let histSort = 'company';
+
+  function setHistSort(key) {
+    if (key !== 'company' && key === histSort) {
+      histSortDir[key] *= -1; // toggle direction on repeat click
+    }
+    histSort = key;
+    // Update button states
+    ['company','date','score','stage'].forEach(k => {
+      document.getElementById('hsort-' + k)?.classList.toggle('active', k === key);
+    });
+    // Update arrows for sortable keys
+    ['date','score','stage'].forEach(k => {
+      const arrow = document.getElementById('hsort-' + k + '-arrow');
+      if (arrow) arrow.textContent = histSortDir[k] === -1 ? '↓' : '↑';
+    });
+    renderHistory();
+  }
+
+  function histEntryDate(h) {
+    return h.callDate || h.ts.slice(0, 10);
+  }
+
+  function buildHistCard(h, showCompany) {
+    const displayDate = h.callDate
+      ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+      : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    const bannerBg = getBannerColor(h.letter_grade);
+    const bodyHtml = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
+    const titleLine = showCompany && h.prospect
+      ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
+      : escHtml(h.stage || 'Unknown stage');
+    const metaParts = [showCompany ? null : null, h.rep, h.repRole, h.contactTitle].filter(Boolean);
+    return `<div class="hist-card" id="hist-${h.id}">
+      <div class="hist-card-header" onclick="toggleHistCard(${h.id})">
+        <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
+        <div class="hist-card-center">
+          <div class="hist-card-title">${titleLine}</div>
+          ${metaParts.length ? `<div class="hist-card-meta">${escHtml(metaParts.join(' · '))}</div>` : ''}
+        </div>
+        <div class="hist-card-right">
+          <span class="hist-card-date">${escHtml(displayDate)}</span>
+          <span class="hist-card-chevron" id="hist-chev-${h.id}">&#9660;</span>
+        </div>
+      </div>
+      <div class="hist-card-body" id="hist-body-${h.id}">
+        ${bodyHtml}
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--border);padding-top:12px;">
+          <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function renderHistory() {
     const history = loadHistory();
     const el = document.getElementById('historyList');
@@ -1981,64 +2054,66 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       el.innerHTML = '<div class="hist-empty">No graded calls yet. Grade a call on the Grader page and it will appear here.</div>';
       return;
     }
-    // Group by company (prospect), entries without a prospect get their own "Unnamed" bucket
-    const groups = {};
-    history.forEach(h => {
-      const key = (h.prospect || '').trim() || '(No company)';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(h);
-    });
 
-    el.innerHTML = Object.entries(groups).map(([company, entries]) => {
-      const stages = [...new Set(entries.map(h => h.stage).filter(Boolean))];
-      const stagesLabel = stages.length ? stages.join(', ') : '';
-      const repNames = [...new Set(entries.map(h => h.rep).filter(Boolean))];
-      const repLabel = repNames.length ? repNames.join(', ') : '';
-      const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
-      const groupId = 'grp-' + company.replace(/\W+/g, '_');
-
-      const callCards = entries.map(h => {
-        const displayDate = h.callDate
-          ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-          : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-        const bannerBg = getBannerColor(h.letter_grade);
-        const bodyHtml = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
-        const metaParts = [h.stage, h.rep, h.repRole, h.contactTitle].filter(Boolean);
-        return `<div class="hist-card" id="hist-${h.id}" style="margin-bottom:8px;border-radius:var(--radius-sm);">
-          <div class="hist-card-header" onclick="toggleHistCard(${h.id})" style="padding:10px 14px;">
-            <div class="hist-grade-badge" style="background:${bannerBg};font-size:15px;padding:4px 10px;">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
-            <div class="hist-card-center">
-              <div class="hist-card-title" style="font-size:13px;">${escHtml(h.stage || 'Unknown stage')}</div>
-              ${metaParts.length ? `<div class="hist-card-meta" style="font-size:11px;">${escHtml(metaParts.join(' · '))}</div>` : ''}
+    if (histSort === 'company') {
+      // Grouped by company
+      const groups = {};
+      history.forEach(h => {
+        const key = (h.prospect || '').trim() || '(No company)';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(h);
+      });
+      el.innerHTML = Object.entries(groups).map(([company, entries]) => {
+        const stages   = [...new Set(entries.map(h => h.stage).filter(Boolean))];
+        const repNames = [...new Set(entries.map(h => h.rep).filter(Boolean))];
+        const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
+        const groupId  = 'grp-' + company.replace(/\W+/g, '_');
+        return `<div style="margin-bottom:1.5rem;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">
+            <div>
+              <span style="font-size:16px;font-weight:700;color:var(--oa-teal);">${escHtml(company)}</span>
+              <span style="font-size:12px;color:var(--text-faint);margin-left:10px;">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
             </div>
-            <div class="hist-card-right">
-              <span class="hist-card-date" style="font-size:11px;">${escHtml(displayDate)}</span>
-              <span class="hist-card-chevron" id="hist-chev-${h.id}">&#9660;</span>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
+              ${stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--bg-deep);color:var(--text-muted);">${escHtml(s)}</span>`).join('')}
+              ${repNames.length ? `<span style="font-size:11px;color:var(--text-faint);">${escHtml(repNames.join(', '))}</span>` : ''}
             </div>
           </div>
-          <div class="hist-card-body" id="hist-body-${h.id}">
-            ${bodyHtml}
-            <div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--border);padding-top:12px;">
-              <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
-            </div>
-          </div>
+          <div id="${groupId}">${entries.map(h => buildHistCard(h, false)).join('')}</div>
         </div>`;
       }).join('');
+      return;
+    }
 
-      return `<div style="margin-bottom:1.5rem;">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">
-          <div>
-            <span style="font-size:16px;font-weight:700;color:var(--oa-teal);">${escHtml(company)}</span>
-            <span style="font-size:12px;color:var(--text-faint);margin-left:10px;">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
-            ${stagesLabel ? stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--bg-deep);color:var(--text-muted);">${escHtml(s)}</span>`).join('') : ''}
-            ${repLabel ? `<span style="font-size:11px;color:var(--text-faint);">${escHtml(repLabel)}</span>` : ''}
-          </div>
-        </div>
-        <div id="${groupId}">${callCards}</div>
-      </div>`;
-    }).join('');
+    // Flat sorted views
+    const sorted = [...history].sort((a, b) => {
+      if (histSort === 'date') {
+        const da = histEntryDate(a), db = histEntryDate(b);
+        return (da < db ? -1 : da > db ? 1 : 0) * histSortDir.date;
+      }
+      if (histSort === 'score') {
+        return ((a.total || 0) - (b.total || 0)) * histSortDir.score;
+      }
+      if (histSort === 'stage') {
+        return (a.stage || '').localeCompare(b.stage || '') * histSortDir.stage;
+      }
+      return 0;
+    });
+
+    // For stage sort, add section headers when the stage changes
+    if (histSort === 'stage') {
+      let lastStage = null;
+      el.innerHTML = sorted.map(h => {
+        const stage = h.stage || 'Unknown';
+        const header = stage !== lastStage
+          ? `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.07em;margin:1.25rem 0 8px;">${escHtml(stage)}</div>`
+          : '';
+        lastStage = stage;
+        return header + buildHistCard(h, true);
+      }).join('');
+    } else {
+      el.innerHTML = sorted.map(h => buildHistCard(h, true)).join('');
+    }
   }
 
   function toggleHistCard(id) {
