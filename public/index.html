@@ -4538,6 +4538,7 @@ INSTRUCTIONS:
           model: 'claude-sonnet-4-6',
           max_tokens: 600,
           stream: true,
+          system: 'You are a Solutions Engineer writing concise, professional sales emails.',
           messages: [{ role: 'user', content: prompt }]
         })
       });
@@ -4545,8 +4546,10 @@ INSTRUCTIONS:
       spinner.style.display = 'none';
 
       if (!resp.ok) {
-        const err = await resp.json().catch(()=>({}));
-        throw new Error(err?.error?.message || 'API error ' + resp.status);
+        const raw = await resp.text().catch(()=>'');
+        let msg = 'API error ' + resp.status;
+        try { const err = JSON.parse(raw); msg = err?.error?.message || msg; } catch {}
+        throw new Error(msg + (raw && !raw.startsWith('{') ? ': ' + raw.slice(0,120) : ''));
       }
 
       let sseBuffer = '';
