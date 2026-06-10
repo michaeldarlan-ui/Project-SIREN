@@ -289,6 +289,20 @@
   .lib-add-grid input::placeholder, .lib-add-grid textarea::placeholder { color: var(--text-faint); }
   .lib-add-grid textarea { min-height: unset; resize: none; }
 
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  @media (max-width: 600px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .summary-card-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+  .summary-card-head.positives { color: #00A983; }
+  .summary-card-head.missed { color: #FF751F; }
+  .summary-card-head.improvements { color: #004750; }
+  .summary-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .summary-list li { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; padding-left: 12px; position: relative; }
+  .summary-list li::before { content: ''; position: absolute; left: 0; top: 7px; width: 5px; height: 5px; border-radius: 50%; }
+  .summary-list .positives li::before { background: #00A983; }
+  .summary-list .missed li::before { background: #FF751F; }
+  .summary-list .improvements li::before { background: #004750; }
+
   /* ── PDF documents ── */
   .doc-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--bg-surface); margin-bottom: 8px; }
   .doc-item-info { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
@@ -810,9 +824,17 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
   "grade_label": "short evocative phrase",
   "top_strength": "one specific sentence",
   "top_priority": "single most important fix for next call",
+  "call_summary": {
+    "positives": ["specific thing done well", "another positive"],
+    "missed": ["opportunity or technique not attempted", "another missed moment"],
+    "improvements": ["concrete thing to do differently next call", "another improvement"]
+  },
   "recommended_books": [{ "title": "Resource title", "author": "Author", "reason": "1-2 sentences why" }]
 }
 
+call_summary.positives: 2-4 specific strengths observed in this call.
+call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
+call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.`;
 
     const context = [
@@ -833,7 +855,7 @@ recommended_books: only recommend resources from the approved list above. If no 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 2500,
+          max_tokens: 3000,
           system: systemPrompt,
           messages: [{ role: 'user', content: context + '\n\n' + notes }]
         })
@@ -871,12 +893,26 @@ recommended_books: only recommend resources from the approved list above. If no 
       </div>`;
     }).join('');
 
-    const booksHtml = r.recommended_books?.length
-      ? `<div class="section-head">Recommended reading</div><div class="rec-card">` +
-        r.recommended_books.map(b => `<div class="book-row"><div class="book-dot"></div><div>
-          <div class="book-title">${b.title} <span class="book-author">— ${b.author}</span></div>
-          <div class="book-why">${b.reason}</div></div></div>`).join('') + `</div>`
-      : '';
+    // Auto-save new recommendations to library before rendering
+    if (r.recommended_books?.length) autoSaveRecommendations(r.recommended_books);
+
+    const s = r.call_summary || {};
+    const summaryHtml = (s.positives?.length || s.missed?.length || s.improvements?.length) ? `
+      <div class="section-head">Call summary</div>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-card-head positives">Positives</div>
+          <ul class="summary-list positives">${(s.positives||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-head missed">Missed</div>
+          <ul class="summary-list missed">${(s.missed||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-head improvements">Improvements</div>
+          <ul class="summary-list improvements">${(s.improvements||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
+        </div>
+      </div>` : '';
 
     document.getElementById('results').innerHTML = `
       <div class="banner" style="background:${bannerBg};">
@@ -890,13 +926,28 @@ recommended_books: only recommend resources from the approved list above. If no 
           <div><strong>Priority:</strong> ${r.top_priority}</div>
         </div>
       </div>
+      ${summaryHtml}
       <div class="section-head">Score breakdown</div>
-      ${dimsHtml}${booksHtml}
+      ${dimsHtml}
       <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>`;
 
     document.getElementById('results').style.display = 'block';
     document.getElementById('inputCard').style.display = 'none';
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function autoSaveRecommendations(books) {
+    if (!books?.length) return;
+    const lib = loadLibrary();
+    const existingTitles = new Set(lib.recommend.map(r => r.title.toLowerCase()));
+    let added = false;
+    for (const b of books) {
+      if (!b.title || existingTitles.has(b.title.toLowerCase())) continue;
+      lib.recommend.push({ title: b.title, author: b.author || '', type: 'Book', why: b.reason || '' });
+      existingTitles.add(b.title.toLowerCase());
+      added = true;
+    }
+    if (added) { saveLibrary(lib); renderLibrary(); }
   }
 
   function resetForm() {
