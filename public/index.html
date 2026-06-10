@@ -3258,14 +3258,41 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (nd) lcShowSidebar(nd);
   }
   function updateLcGraphNodes(company) {
-    // Rebuild the graph visuals to reflect profile data (filled vs placeholder styling)
-    const prof=loadAccountProfile(company);
+    const prof        = loadAccountProfile(company);
+    const contacts    = prof.contacts     || [];
+    const stakeholders= prof.stakeholders || [];
+    const competitors = prof.competitors  || [];
+    const techstack   = prof.techstack    || [];
+    const champion    = prof.champion;
+
     _lcNodes.forEach(nd => {
-      if (nd.type==='contact')     nd.hasData=(prof.contacts||[]).length>0;
-      if (nd.type==='champion')    nd.hasData=!!prof.champion;
-      if (nd.type==='stakeholder') nd.hasData=(prof.stakeholders||[]).length>0;
-      if (nd.type==='competitor')  nd.hasData=(prof.competitors||[]).length>0;
-      if (nd.type==='techstack')   nd.hasData=(prof.techstack||[]).length>0;
+      switch (nd.type) {
+        case 'contact':
+          nd.hasData  = contacts.length > 0;
+          nd.label    = contacts.length    ? contacts[0].name    : 'Key Contact';
+          nd.sublabel = contacts.length > 1 ? `+${contacts.length-1} more` : (contacts[0]?.title || 'Decision maker');
+          break;
+        case 'champion':
+          nd.hasData  = !!champion;
+          nd.label    = champion ? champion.name : 'Champion';
+          nd.sublabel = champion ? (champion.title || 'Internal ally') : 'Internal ally';
+          break;
+        case 'stakeholder':
+          nd.hasData  = stakeholders.length > 0;
+          nd.label    = stakeholders.length    ? stakeholders[0].name    : 'Stakeholder';
+          nd.sublabel = stakeholders.length > 1 ? `+${stakeholders.length-1} more` : (stakeholders[0]?.title || 'Evaluator / IT');
+          break;
+        case 'competitor':
+          nd.hasData  = competitors.length > 0;
+          nd.label    = competitors.length    ? competitors[0]    : 'Competitor';
+          nd.sublabel = competitors.length > 1 ? `+${competitors.length-1} more` : 'Competing solution';
+          break;
+        case 'techstack':
+          nd.hasData  = techstack.length > 0;
+          nd.label    = techstack.length    ? techstack[0]    : 'Tech Stack';
+          nd.sublabel = techstack.length > 1 ? `+${techstack.length-1} more` : 'Existing tooling';
+          break;
+      }
     });
     drawLcGraph();
   }
