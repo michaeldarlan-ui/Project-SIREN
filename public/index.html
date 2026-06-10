@@ -343,7 +343,7 @@
     color: rgba(0,169,131,0.28); font-family: 'SF Mono','Fira Code',monospace;
   }
 
-  /* ── Investigation Graph ── */
+  /* ── Account Intelligence Map ── */
   #page-lifecycle { padding: 0 !important; }
   #page-lifecycle .shell { padding: 0; max-width: 100%; }
   .lc-graph-page {
@@ -1028,7 +1028,7 @@
         onwheel="lcWheel(event)">
         <!-- Top bar -->
         <div class="lc-graph-topbar">
-          <span class="lc-graph-topbar-title">Investigation Graph</span>
+          <span class="lc-graph-topbar-title">Account Intelligence Map</span>
           <select id="lcCompanySelect" onchange="onLcCompanyChange()">
             <option value="">— Select an account —</option>
           </select>
@@ -2519,14 +2519,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       _lcEdges.push({ from: i===0?'account':'call-'+entries[i-1].id, to:'call-'+h.id, style:'solid', arrow:'teal' });
     });
 
-    // Competitor + Tech Stack hang off last call (or account)
-    const anchorId = n > 0 ? 'call-'+entries[n-1].id : 'account';
-    const anchor   = _lcNodes.find(nd => nd.id === anchorId);
-    const ax = anchor ? anchor.x : 0;
-    _lcNodes.push({ id:'ph-comp', type:'competitor', x:ax+160, y:130,  label:'Competitor', sublabel:'Competing solution', ph:true });
-    _lcNodes.push({ id:'ph-tech', type:'techstack',  x:ax+160, y:-150, label:'Tech Stack', sublabel:'Existing tooling',   ph:true });
-    _lcEdges.push({ from:anchorId, to:'ph-comp', style:'dashed' });
-    _lcEdges.push({ from:anchorId, to:'ph-tech', style:'dashed' });
+    // Competitor + Tech Stack rooted on the account node (below/above the left cluster)
+    _lcNodes.push({ id:'ph-comp', type:'competitor', x:-20,  y:200,  label:'Competitor', sublabel:'Competing solution', ph:true });
+    _lcNodes.push({ id:'ph-tech', type:'techstack',  x:180,  y:200,  label:'Tech Stack', sublabel:'Existing tooling',   ph:true });
+    _lcEdges.push({ from:'account', to:'ph-comp', style:'dashed' });
+    _lcEdges.push({ from:'account', to:'ph-tech', style:'dashed' });
 
     drawLcGraph();
     setTimeout(lcFit, 60);
