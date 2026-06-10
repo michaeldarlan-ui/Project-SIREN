@@ -1213,56 +1213,36 @@
           </div>
           <div class="forge-panel-body">
             <div class="forge-field-label">ACCOUNT</div>
-            <select class="forge-select">
+            <select class="forge-select" id="forgeAccountSelect" onchange="forgeSelectAccount(this.value)">
               <option value="">— Select account —</option>
-              <option>Acme Corp</option>
-              <option>Globex Industries</option>
-              <option>Initech Solutions</option>
             </select>
-            <div class="forge-field-label" style="margin-top:6px;">CURRENT STAGE</div>
-            <div class="forge-stage-row">
-              <div class="forge-stage-dot" style="background:#4a9eff;"></div>
-              <div>
-                <div class="forge-stage-label">Discovery</div>
-                <div class="forge-stage-sub">Call 2 of ~4 expected</div>
-              </div>
+            <div id="forgeCallPickerWrap" style="display:none;">
+              <div class="forge-field-label" style="margin-top:8px;">CALL</div>
+              <select class="forge-select" id="forgeCallSelect" onchange="forgeSelectCall(this.value)"></select>
             </div>
-            <div style="height:1px;background:var(--siren-border);margin:4px 0;"></div>
-            <div class="forge-field-label">LAST SCORE</div>
-            <div style="font-family:var(--siren-font-hud);font-size:20px;font-weight:700;color:#00c8ff;letter-spacing:.04em;">B+ &nbsp;<span style="font-size:13px;color:var(--siren-text-muted);">78/100</span></div>
+            <div id="forgeContextPanel" style="display:none;">
+              <div style="height:1px;background:var(--siren-border);margin:8px 0;"></div>
+              <div class="forge-field-label">STAGE</div>
+              <div class="forge-stage-row" style="margin-bottom:6px;">
+                <div class="forge-stage-dot" id="forgeStageDot" style="background:#4a9eff;"></div>
+                <div>
+                  <div class="forge-stage-label" id="forgeStageLabel">—</div>
+                  <div class="forge-stage-sub" id="forgeCallCount">—</div>
+                </div>
+              </div>
+              <div class="forge-field-label">SCORE</div>
+              <div id="forgeScoreDisplay" style="font-family:var(--siren-font-hud);font-size:20px;font-weight:700;letter-spacing:.04em;">—</div>
+            </div>
           </div>
         </div>
 
-        <!-- Next steps -->
+        <!-- Signals from grading data -->
         <div class="forge-panel">
           <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Recommended Next Steps</span>
+            <span class="forge-panel-title">Call Signals</span>
           </div>
-          <div class="forge-panel-body">
-            <div class="forge-next-item">
-              <div class="forge-next-num">01</div>
-              <div>
-                <div class="forge-next-text">Send technical deep-dive agenda prior to Demo call</div>
-                <span class="forge-next-tag">Pre-call prep</span>
-              </div>
-            </div>
-            <div class="forge-next-item">
-              <div class="forge-next-num">02</div>
-              <div>
-                <div class="forge-next-text">Confirm champion is looped into the next meeting invite</div>
-                <span class="forge-next-tag">Stakeholder alignment</span>
-              </div>
-            </div>
-            <div class="forge-next-item">
-              <div class="forge-next-num">03</div>
-              <div>
-                <div class="forge-next-text">Share relevant customer case study matching prospect's vertical</div>
-                <span class="forge-next-tag">Content delivery</span>
-              </div>
-            </div>
-            <div style="margin-top:6px;padding:8px 10px;background:var(--siren-cyan-08);border:1px dashed var(--siren-border-mid);border-radius:var(--siren-radius-sm);font-size:11px;color:var(--siren-text-muted);font-style:italic;">
-              AI-generated next steps will auto-populate from your last graded call once HubSpot is connected.
-            </div>
+          <div class="forge-panel-body" id="forgeSignalsBody">
+            <div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>
           </div>
         </div>
 
@@ -1336,33 +1316,38 @@
         <!-- Report preview / editor -->
         <div class="forge-report-preview">
           <div class="forge-report-toolbar">
-            <span class="forge-report-toolbar-title">⬡ &nbsp;CALL BRIEF — PREVIEW</span>
-            <button class="forge-report-btn" disabled>Copy</button>
-            <button class="forge-report-btn" disabled>Export PDF</button>
-            <button class="forge-report-btn primary" disabled>Generate →</button>
+            <span class="forge-report-toolbar-title" id="forgeReportTitle">⬡ &nbsp;CALL BRIEF — PREVIEW</span>
+            <button class="forge-report-btn" id="forgeCopyBtn" onclick="forgeCopy()" disabled>Copy</button>
+            <button class="forge-report-btn primary" id="forgeGenBtn" onclick="forgeGenerate()" disabled>Generate →</button>
           </div>
-          <div class="forge-report-body">
+          <div class="forge-report-body" id="forgeReportBody">
+            <!-- WIP overlay shown until an account is selected -->
+            <div class="forge-wip-overlay" id="forgeWipOverlay">
+              <div class="forge-wip-icon">⬡</div>
+              <div class="forge-wip-text">SELECT AN ACCOUNT TO LOAD CALL DATA</div>
+              <div class="forge-wip-sub">Graded call data from your history will populate the report automatically.</div>
+            </div>
 
             <div class="forge-report-section">
               <div class="forge-report-section-label">Call Overview</div>
               <div class="forge-field-row">
                 <div>
                   <div class="forge-field-label">ACCOUNT</div>
-                  <div class="forge-field placeholder">Account name will populate from selection</div>
+                  <div class="forge-field placeholder" id="fr-account">—</div>
                 </div>
                 <div>
                   <div class="forge-field-label">STAGE</div>
-                  <div class="forge-field placeholder">Deal stage</div>
+                  <div class="forge-field placeholder" id="fr-stage">—</div>
                 </div>
               </div>
               <div class="forge-field-row">
                 <div>
                   <div class="forge-field-label">GRADE</div>
-                  <div class="forge-field placeholder">B+ · 78/100</div>
+                  <div class="forge-field placeholder" id="fr-grade">—</div>
                 </div>
                 <div>
-                  <div class="forge-field-label">REP</div>
-                  <div class="forge-field placeholder">Rep name</div>
+                  <div class="forge-field-label">DATE</div>
+                  <div class="forge-field placeholder" id="fr-date">—</div>
                 </div>
               </div>
             </div>
@@ -1370,31 +1355,24 @@
             <div class="forge-report-section">
               <div class="forge-report-section-label">Key Takeaways</div>
               <div class="forge-field-label">TOP STRENGTH</div>
-              <div class="forge-field placeholder">AI-extracted from call transcript after grading…</div>
+              <div class="forge-field placeholder" id="fr-strength">—</div>
               <div class="forge-field-label">TOP PRIORITY / GAP</div>
-              <div class="forge-field placeholder">Coaching focus area from last scored call…</div>
+              <div class="forge-field placeholder" id="fr-priority">—</div>
             </div>
 
-            <div class="forge-report-section">
-              <div class="forge-report-section-label">Recommended Actions</div>
-              <div class="forge-action-chips">
-                <span class="forge-action-chip">Send case study</span>
-                <span class="forge-action-chip">Schedule demo</span>
-                <span class="forge-action-chip">Loop in champion</span>
-                <span class="forge-action-chip add">+ Add action</span>
-              </div>
+            <div class="forge-report-section" id="fr-dims-section" style="display:none;">
+              <div class="forge-report-section-label">Dimension Scores</div>
+              <div id="fr-dims"></div>
             </div>
 
-            <div class="forge-report-section">
-              <div class="forge-report-section-label">SPICED Status</div>
-              <div class="forge-field placeholder" style="min-height:60px;">SPICED coverage summary will be auto-generated from graded call data — Situation, Pain, Impact, Critical Event, Decision criteria.</div>
+            <div class="forge-report-section" id="fr-spiced-section" style="display:none;">
+              <div class="forge-report-section-label">SPICED Coverage</div>
+              <div id="fr-spiced"></div>
             </div>
 
-            <!-- WIP overlay -->
-            <div class="forge-wip-overlay">
-              <div class="forge-wip-icon">⬡</div>
-              <div class="forge-wip-text">SELECT AN ACCOUNT &amp; GENERATE TO POPULATE</div>
-              <div class="forge-wip-sub">Report generation will be powered by SIREN's grading data and HubSpot deal context once integration is live.</div>
+            <div class="forge-report-section" id="fr-generated-section" style="display:none;">
+              <div class="forge-report-section-label">Generated Report</div>
+              <div class="forge-field" id="fr-generated" style="min-height:140px;white-space:pre-wrap;line-height:1.65;"></div>
             </div>
           </div>
         </div>
@@ -1478,47 +1456,7 @@
   <div class="shell">
     <div class="page-heading">
       <h2>Resource Library</h2>
-      <p>Manage the resources Claude uses when grading calls. Already Read items are never recommended. Recommended items replace the default candidate list.</p>
-    </div>
-
-    <div class="lib-columns">
-      <!-- Already Read -->
-      <div class="card" style="margin-bottom:0;">
-        <div class="lib-col-head">Already Read</div>
-        <div class="lib-col-sub">Claude will never recommend these.</div>
-        <div id="libReadList"></div>
-      </div>
-
-      <!-- Recommended -->
-      <div class="card" style="margin-bottom:0;">
-        <div class="lib-col-head">Recommended</div>
-        <div class="lib-col-sub">Claude recommends from this list when gaps exist.</div>
-        <div id="libRecommendList"></div>
-      </div>
-    </div>
-
-    <!-- Add resource -->
-    <div class="card">
-      <div class="card-title">Add resource</div>
-      <div class="lib-add-tabs">
-        <button class="lib-add-tab active" id="tabRead" onclick="setLibTab('read')">Already Read</button>
-        <button class="lib-add-tab" id="tabRecommend" onclick="setLibTab('recommend')">Recommended</button>
-      </div>
-      <div class="lib-add-grid">
-        <div class="lib-add-row">
-          <input type="text" id="libTitle" placeholder="Title" />
-          <input type="text" id="libAuthor" placeholder="Author / source (optional)" />
-          <select id="libType" style="width:auto;">
-            <option value="Book">Book</option>
-            <option value="Website">Website</option>
-            <option value="Framework">Framework</option>
-          </select>
-        </div>
-        <div id="libWhyRow" style="display:none;">
-          <textarea id="libWhy" rows="2" placeholder="Why recommend this? (shown to Claude as context)"></textarea>
-        </div>
-        <button class="add-btn" onclick="addLibItem()">Add to library</button>
-      </div>
+      <p>Upload reference documents that SIREN injects as context when grading calls.</p>
     </div>
 
     <!-- Reference Documents -->
@@ -1689,6 +1627,7 @@
     if (page === 'pulse')     renderPulse();
     if (page === 'history')   renderHistory();
     if (page === 'lifecycle') renderLifecyclePage();
+    if (page === 'forge')     forgeInit();
   }
 
   // ── Settings menu ──────────────────────────────────────────
@@ -3869,6 +3808,238 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // Close modal on Escape key
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLcModal(); });
 
+  // ── FORGE ──────────────────────────────────────────────────
+  const STAGE_COLORS = {
+    'Cold outreach': '#8899aa', 'Discovery': '#4a9eff',
+    'Demo / solution presentation': '#e8a020', 'Proposal / close': '#00c8ff',
+    'Touchpoint': '#6b7e8a', 'Security Observability Scorecard': '#9b59b6'
+  };
+
+  let _forgeHistory = [];   // all calls for selected account
+  let _forgeCall    = null; // currently selected call entry
+
+  function forgeInit() {
+    const hist = loadHistory();
+    const sel  = document.getElementById('forgeAccountSelect');
+    if (!sel) return;
+    const seen = new Set();
+    const companies = [];
+    hist.forEach(h => {
+      const n = (h.prospect||'').trim();
+      if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); companies.push(n); }
+    });
+    companies.sort((a,b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">— Select account —</option>' +
+      companies.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  }
+
+  function forgeSelectAccount(company) {
+    if (!company) { _forgeHistory = []; _forgeCall = null; forgeRenderEmpty(); return; }
+    _forgeHistory = loadHistory()
+      .filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase())
+      .sort((a,b) => { const da=a.callDate||a.ts.slice(0,10), db=b.callDate||b.ts.slice(0,10); return da>db?-1:da<db?1:0; });
+    const picker = document.getElementById('forgeCallPickerWrap');
+    const callSel = document.getElementById('forgeCallSelect');
+    if (_forgeHistory.length > 1) {
+      callSel.innerHTML = _forgeHistory.map((h,i) => {
+        const ds = h.callDate || h.ts.slice(0,10);
+        return `<option value="${i}">${escHtml(ds)} — ${escHtml(h.stage||'Call')} — ${escHtml(h.letter_grade)} ${h.total}</option>`;
+      }).join('');
+      picker.style.display = '';
+    } else {
+      picker.style.display = 'none';
+    }
+    forgeLoadCall(_forgeHistory[0]);
+  }
+
+  function forgeSelectCall(idx) {
+    forgeLoadCall(_forgeHistory[parseInt(idx)] || _forgeHistory[0]);
+  }
+
+  function forgeLoadCall(h) {
+    _forgeCall = h;
+    if (!h) { forgeRenderEmpty(); return; }
+
+    // Left rail — context
+    document.getElementById('forgeContextPanel').style.display = '';
+    const stageColor = STAGE_COLORS[h.stage] || '#8899aa';
+    document.getElementById('forgeStageDot').style.background = stageColor;
+    document.getElementById('forgeStageLabel').textContent = h.stage || '—';
+    document.getElementById('forgeCallCount').textContent =
+      _forgeHistory.length + ' call' + (_forgeHistory.length !== 1 ? 's' : '') + ' on record';
+    const gradeColor = gradeRingColor(h.letter_grade);
+    document.getElementById('forgeScoreDisplay').innerHTML =
+      `<span style="color:${gradeColor}">${escHtml(h.letter_grade)}</span>&nbsp;<span style="font-size:13px;color:var(--siren-text-muted);">${h.total}/100</span>`;
+
+    // Left rail — signals panel
+    forgeRenderSignals(h);
+
+    // Report fields
+    document.getElementById('forgeWipOverlay').style.display = 'none';
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    forgeSetField('fr-account', h.prospect || '—', false);
+    forgeSetField('fr-stage',   h.stage    || '—', false);
+    forgeSetField('fr-grade',   `${h.letter_grade} · ${h.total}/100`, false);
+    forgeSetField('fr-date',    ds, false);
+    forgeSetField('fr-strength', h.top_strength || '—', !h.top_strength);
+    forgeSetField('fr-priority', h.top_priority || '—', !h.top_priority);
+
+    // Dimension scores
+    if (h.dimensions && Object.keys(h.dimensions).length) {
+      const dimsEl = document.getElementById('fr-dims');
+      dimsEl.innerHTML = Object.entries(h.dimensions).map(([name, d]) => {
+        const score = d.score ?? 0;
+        const pct = Math.round(score);
+        const color = pct >= 75 ? '#00c8ff' : pct >= 55 ? '#00c896' : '#e8a020';
+        return `<div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:11px;color:var(--siren-text-body);">${escHtml(name)}</span>
+            <span style="font-family:var(--siren-font-hud);font-size:11px;color:${color};font-weight:700;">${pct}</span>
+          </div>
+          <div style="height:4px;background:var(--siren-bg-card-raised);border-radius:2px;">
+            <div style="height:4px;width:${pct}%;background:${color};border-radius:2px;transition:width .4s;"></div>
+          </div>
+          ${d.feedback?`<div style="font-size:11px;color:var(--siren-text-muted);margin-top:3px;line-height:1.45;">${escHtml(d.feedback)}</div>`:''}
+        </div>`;
+      }).join('');
+      document.getElementById('fr-dims-section').style.display = '';
+    } else {
+      document.getElementById('fr-dims-section').style.display = 'none';
+    }
+
+    // SPICED
+    if (h.spiced) {
+      const spicedEl = document.getElementById('fr-spiced');
+      spicedEl.innerHTML = Object.entries(h.spiced).map(([key, v]) => {
+        const label = key.charAt(0).toUpperCase() + key.slice(1).replace('_',' ');
+        const color = v.touched ? '#00c8ff' : 'var(--siren-text-muted)';
+        return `<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+          <span style="font-family:var(--siren-font-hud);font-size:9px;font-weight:700;color:${color};min-width:80px;padding-top:2px;letter-spacing:.06em;">${escHtml(label.toUpperCase())}</span>
+          <span style="font-size:11px;color:${v.touched?'var(--siren-text-body)':'var(--siren-text-muted)'};line-height:1.45;">${v.summary ? escHtml(v.summary) : (v.touched ? 'Covered' : 'Not addressed')}</span>
+        </div>`;
+      }).join('');
+      document.getElementById('fr-spiced-section').style.display = '';
+    } else {
+      document.getElementById('fr-spiced-section').style.display = 'none';
+    }
+
+    document.getElementById('fr-generated-section').style.display = 'none';
+    document.getElementById('forgeCopyBtn').disabled = false;
+    document.getElementById('forgeGenBtn').disabled = false;
+    forgeUpdateTemplateTitles();
+  }
+
+  function forgeRenderSignals(h) {
+    const el = document.getElementById('forgeSignalsBody');
+    if (!el) return;
+    let html = '';
+    if (h.top_strength) html += `<div class="forge-next-item">
+      <div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div>
+      <div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Strength</span></div>
+    </div>`;
+    if (h.top_priority) html += `<div class="forge-next-item">
+      <div class="forge-next-num" style="color:#e8a020;">▼</div>
+      <div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Priority gap</span></div>
+    </div>`;
+    if (h.grade_label) html += `<div class="forge-next-item">
+      <div class="forge-next-num" style="color:var(--siren-cyan-50);">⬡</div>
+      <div><div class="forge-next-text">${escHtml(h.grade_label)}</div><span class="forge-next-tag">Grade label</span></div>
+    </div>`;
+    if (!html) html = '<div style="font-size:11px;color:var(--siren-text-muted);padding:4px 0;">No signals extracted from this call.</div>';
+    el.innerHTML = html;
+  }
+
+  function forgeRenderEmpty() {
+    document.getElementById('forgeContextPanel').style.display = 'none';
+    document.getElementById('forgeCallPickerWrap').style.display = 'none';
+    document.getElementById('forgeSignalsBody').innerHTML =
+      '<div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>';
+    document.getElementById('forgeWipOverlay').style.display = '';
+    document.getElementById('forgeCopyBtn').disabled = true;
+    document.getElementById('forgeGenBtn').disabled = true;
+    ['fr-account','fr-stage','fr-grade','fr-date','fr-strength','fr-priority'].forEach(id => forgeSetField(id,'—',true));
+    document.getElementById('fr-dims-section').style.display = 'none';
+    document.getElementById('fr-spiced-section').style.display = 'none';
+    document.getElementById('fr-generated-section').style.display = 'none';
+  }
+
+  function forgeSetField(id, text, isPlaceholder) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('placeholder', isPlaceholder);
+  }
+
+  function forgeUpdateTemplateTitles() {
+    const active = document.querySelector('.forge-template-card.selected .forge-template-name');
+    const name = active ? active.textContent : 'CALL BRIEF';
+    document.getElementById('forgeReportTitle').textContent = `⬡  ${name} — ${_forgeCall ? escHtml(_forgeCall.prospect||'') : 'PREVIEW'}`;
+  }
+
+  function forgeCopy() {
+    if (!_forgeCall) return;
+    const h = _forgeCall;
+    const generated = document.getElementById('fr-generated');
+    const text = generated && generated.textContent.trim()
+      ? generated.textContent
+      : forgeComposeText(h);
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('forgeCopyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+    });
+  }
+
+  function forgeComposeText(h) {
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    let out = `CALL BRIEF — ${(h.prospect||'').toUpperCase()}\n`;
+    out += `${'─'.repeat(40)}\n`;
+    out += `Date:    ${ds}\n`;
+    out += `Stage:   ${h.stage||'—'}\n`;
+    out += `Grade:   ${h.letter_grade} · ${h.total}/100\n`;
+    if (h.grade_label) out += `Summary: ${h.grade_label}\n`;
+    out += `\nSTRENGTH\n${h.top_strength||'—'}\n`;
+    out += `\nPRIORITY GAP\n${h.top_priority||'—'}\n`;
+    if (h.spiced) {
+      out += `\nSPICED COVERAGE\n`;
+      Object.entries(h.spiced).forEach(([k,v]) => {
+        const label = k.charAt(0).toUpperCase()+k.slice(1).replace('_',' ');
+        out += `  ${label}: ${v.touched ? (v.summary||'Covered') : 'Not addressed'}\n`;
+      });
+    }
+    if (h.dimensions) {
+      out += `\nDIMENSION SCORES\n`;
+      Object.entries(h.dimensions).forEach(([name, d]) => {
+        out += `  ${name}: ${d.score??0}/100\n`;
+      });
+    }
+    return out;
+  }
+
+  function forgeGenerate() {
+    if (!_forgeCall) return;
+    const h = _forgeCall;
+    const text = forgeComposeText(h);
+    const genEl = document.getElementById('fr-generated');
+    genEl.textContent = text;
+    document.getElementById('fr-generated-section').style.display = '';
+    genEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('forgeGenBtn').textContent = 'Regenerate';
+  }
+
+  // Template card click
+  document.querySelectorAll('.forge-template-card:not(.locked)').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.forge-template-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      forgeUpdateTemplateTitles();
+    });
+  });
+
   // ── Init ───────────────────────────────────────────────────
   initKeyUI();
   renderMemberList();
@@ -3876,6 +4047,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   renderDocList();
   renderHistory();
   initUsageBar();
+  forgeInit();
 </script>
 </body>
 </html>
