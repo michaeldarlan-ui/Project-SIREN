@@ -855,7 +855,7 @@ recommended_books: only recommend resources from the approved list above. If no 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 3000,
+          max_tokens: 4000,
           system: systemPrompt,
           messages: [{ role: 'user', content: context + '\n\n' + notes }]
         })
@@ -1118,7 +1118,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   });
 
   // ── Reference documents ────────────────────────────────────
-  const DOC_CHAR_LIMIT = 3000;
+  const DOC_CHAR_LIMIT = 10000;
 
   function loadDocs() {
     try { return JSON.parse(localStorage.getItem('oa_docs') || '[]'); } catch { return []; }
