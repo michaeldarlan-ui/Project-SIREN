@@ -487,6 +487,42 @@
   .lc-sb-btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
   .lc-sb-btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
+  /* Account profile editor */
+  .lc-profile-section { padding: 14px 16px 0; }
+  .lc-profile-section-hdr {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+  }
+  .lc-profile-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; min-height: 20px; }
+  .lc-profile-chip {
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px; padding: 3px 8px; font-size: 11px; color: rgba(255,255,255,0.75);
+  }
+  .lc-profile-chip.person { background: rgba(255,117,31,0.1); border-color: rgba(255,117,31,0.25); }
+  .lc-profile-chip.champion-chip { background: rgba(0,169,131,0.12); border-color: rgba(0,169,131,0.3); color: #00A983; }
+  .lc-chip-remove {
+    background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer;
+    font-size: 12px; padding: 0 0 0 2px; line-height: 1; display: flex; align-items: center;
+  }
+  .lc-chip-remove:hover { color: rgba(255,100,100,0.8); }
+  .lc-profile-add-row { display: flex; gap: 5px; margin-bottom: 14px; }
+  .lc-profile-input {
+    flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 5px; padding: 5px 8px; font-size: 11px; color: #fff; outline: none;
+    min-width: 0;
+  }
+  .lc-profile-input::placeholder { color: rgba(255,255,255,0.2); }
+  .lc-profile-input:focus { border-color: rgba(0,169,131,0.5); }
+  .lc-profile-input-sm { width: 80px; flex: none; }
+  .lc-profile-add-btn {
+    background: rgba(0,169,131,0.15); border: 1px solid rgba(0,169,131,0.3);
+    border-radius: 5px; color: #00A983; font-size: 16px; cursor: pointer;
+    padding: 0 10px; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; flex-shrink: 0;
+  }
+  .lc-profile-add-btn:hover { background: rgba(0,169,131,0.28); }
+  .lc-profile-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0 14px; }
+
   /* Click modal */
   #lcModal {
     position: fixed; inset: 0; z-index: 600;
@@ -2525,7 +2561,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _lcEdges.push({ from:'account', to:'ph-comp', style:'dashed' });
     _lcEdges.push({ from:'account', to:'ph-tech', style:'dashed' });
 
-    drawLcGraph();
+    // Reflect any saved profile data on initial render
+    updateLcGraphNodes(company);
     setTimeout(lcFit, 60);
   }
 
@@ -2563,8 +2600,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r+11}" fill="none" stroke="${ring}" stroke-width="1" opacity="0.25"/>`;
         nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r+6}"  fill="none" stroke="${ring}" stroke-width="1.5" opacity="0.5"/>`;
       }
-      nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r+3}" fill="none" stroke="${ring}" stroke-width="1.5" opacity="${ph?0.35:0.8}" ${ph?'stroke-dasharray="4,3"':''}/>`;
-      nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2" opacity="${ph?0.55:1}" class="lc-node-hit" data-id="${nd.id}" style="cursor:pointer;"/>`;
+      const populated = ph && nd.hasData;
+      const ringOpacity = populated ? 0.75 : (ph ? 0.35 : 0.8);
+      const dashAttr = ph && !populated ? 'stroke-dasharray="4,3"' : '';
+      const nodeOpacity = populated ? 0.88 : (ph ? 0.55 : 1);
+      nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r+3}" fill="none" stroke="${ring}" stroke-width="1.5" opacity="${ringOpacity}" ${dashAttr}/>`;
+      nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2" opacity="${nodeOpacity}" class="lc-node-hit" data-id="${nd.id}" style="cursor:pointer;"/>`;
 
       // Inner text
       let inner='', sub='';
@@ -2649,31 +2690,199 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const scores=calls.map(n=>n.data?.total||0).filter(s=>s>0);
       const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):'—';
       const stages=[...new Set(calls.map(n=>stageAbbrev(n.data?.stage||'')).filter(Boolean))];
+      const company=nd.sublabel||nd.label;
+      const prof=loadAccountProfile(company);
+
       html += `<div class="lc-sb-section">
         <div class="lc-sb-section-label">Account Overview</div>
         <div class="lc-sb-row"><span class="lc-sb-key">Total Calls</span><span class="lc-sb-val">${calls.length}</span></div>
         <div class="lc-sb-row"><span class="lc-sb-key">Avg Score</span><span class="lc-sb-val">${avg}${avg!=='—'?'/100':''}</span></div>
         <div class="lc-sb-row"><span class="lc-sb-key">Stages</span><span class="lc-sb-val" style="text-align:right;">${stages.join(', ')||'—'}</span></div>
       </div>
-      <div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-ghost" onclick="navTo('history')">View in History</button></div>`;
+      <div class="lc-profile-divider"></div>`;
+
+      // ── Key Contacts ──
+      html += `<div class="lc-profile-section">
+        <div class="lc-profile-section-hdr">
+          <div class="lc-sb-section-label" style="margin:0;">Key Contacts</div>
+        </div>
+        <div class="lc-profile-chips" id="prof-contacts">
+          ${(prof.contacts||[]).map((c,i)=>`<span class="lc-profile-chip person">${escHtml(c.name)}${c.title?` · <em style="opacity:.6">${escHtml(c.title)}</em>`:''}<button class="lc-chip-remove" onclick="profRemove('${escHtml(company)}','contacts',${i})">×</button></span>`).join('')}
+        </div>
+        <div class="lc-profile-add-row">
+          <input class="lc-profile-input" id="prof-con-name" placeholder="Name" onkeydown="if(event.key==='Enter')profAddContact('${escHtml(company)}')"/>
+          <input class="lc-profile-input lc-profile-input-sm" id="prof-con-title" placeholder="Title" onkeydown="if(event.key==='Enter')profAddContact('${escHtml(company)}')"/>
+          <button class="lc-profile-add-btn" onclick="profAddContact('${escHtml(company)}')">+</button>
+        </div>
+      </div>`;
+
+      // ── Champion ──
+      const champ=prof.champion||null;
+      html += `<div class="lc-profile-section">
+        <div class="lc-profile-section-hdr">
+          <div class="lc-sb-section-label" style="margin:0;">Champion</div>
+        </div>
+        <div class="lc-profile-chips" id="prof-champion">
+          ${champ?`<span class="lc-profile-chip champion-chip">★ ${escHtml(champ.name)}${champ.title?` · <em style="opacity:.7">${escHtml(champ.title)}</em>`:''}<button class="lc-chip-remove" onclick="profClearChampion('${escHtml(company)}')">×</button></span>`:''}
+        </div>
+        ${!champ?`<div class="lc-profile-add-row">
+          <input class="lc-profile-input" id="prof-champ-name" placeholder="Name" onkeydown="if(event.key==='Enter')profSetChampion('${escHtml(company)}')"/>
+          <input class="lc-profile-input lc-profile-input-sm" id="prof-champ-title" placeholder="Title" onkeydown="if(event.key==='Enter')profSetChampion('${escHtml(company)}')"/>
+          <button class="lc-profile-add-btn" onclick="profSetChampion('${escHtml(company)}')">+</button>
+        </div>`:''}
+      </div>`;
+
+      // ── Stakeholders ──
+      html += `<div class="lc-profile-section">
+        <div class="lc-profile-section-hdr">
+          <div class="lc-sb-section-label" style="margin:0;">Stakeholders</div>
+        </div>
+        <div class="lc-profile-chips" id="prof-stakeholders">
+          ${(prof.stakeholders||[]).map((s,i)=>`<span class="lc-profile-chip person">${escHtml(s.name)}${s.title?` · <em style="opacity:.6">${escHtml(s.title)}</em>`:''}<button class="lc-chip-remove" onclick="profRemove('${escHtml(company)}','stakeholders',${i})">×</button></span>`).join('')}
+        </div>
+        <div class="lc-profile-add-row">
+          <input class="lc-profile-input" id="prof-stake-name" placeholder="Name" onkeydown="if(event.key==='Enter')profAddStakeholder('${escHtml(company)}')"/>
+          <input class="lc-profile-input lc-profile-input-sm" id="prof-stake-title" placeholder="Title" onkeydown="if(event.key==='Enter')profAddStakeholder('${escHtml(company)}')"/>
+          <button class="lc-profile-add-btn" onclick="profAddStakeholder('${escHtml(company)}')">+</button>
+        </div>
+      </div>`;
+
+      // ── Competitors ──
+      html += `<div class="lc-profile-section">
+        <div class="lc-profile-section-hdr">
+          <div class="lc-sb-section-label" style="margin:0;">Competitors</div>
+        </div>
+        <div class="lc-profile-chips" id="prof-competitors">
+          ${(prof.competitors||[]).map((c,i)=>`<span class="lc-profile-chip">${escHtml(c)}<button class="lc-chip-remove" onclick="profRemoveStr('${escHtml(company)}','competitors',${i})">×</button></span>`).join('')}
+        </div>
+        <div class="lc-profile-add-row">
+          <input class="lc-profile-input" id="prof-comp-name" placeholder="e.g. Palo Alto Networks" onkeydown="if(event.key==='Enter')profAddStr('${escHtml(company)}','competitors','prof-comp-name')"/>
+          <button class="lc-profile-add-btn" onclick="profAddStr('${escHtml(company)}','competitors','prof-comp-name')">+</button>
+        </div>
+      </div>`;
+
+      // ── Tech Stack ──
+      html += `<div class="lc-profile-section">
+        <div class="lc-profile-section-hdr">
+          <div class="lc-sb-section-label" style="margin:0;">Tech Stack</div>
+        </div>
+        <div class="lc-profile-chips" id="prof-techstack">
+          ${(prof.techstack||[]).map((t,i)=>`<span class="lc-profile-chip">${escHtml(t)}<button class="lc-chip-remove" onclick="profRemoveStr('${escHtml(company)}','techstack',${i})">×</button></span>`).join('')}
+        </div>
+        <div class="lc-profile-add-row">
+          <input class="lc-profile-input" id="prof-tech-name" placeholder="e.g. CrowdStrike, Splunk" onkeydown="if(event.key==='Enter')profAddStr('${escHtml(company)}','techstack','prof-tech-name')"/>
+          <button class="lc-profile-add-btn" onclick="profAddStr('${escHtml(company)}','techstack','prof-tech-name')">+</button>
+        </div>
+      </div>`;
+
+      html += `<div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-ghost" onclick="navTo('history')">View in History</button></div>`;
 
     } else {
-      const desc={
-        opportunity:'Track deal stage, ARR, close date, and forecast category. Sync with your CRM to auto-populate.',
-        champion:'Identify and track your internal champion — their sentiment, influence level, and engagement score.',
-        contact:'Key decision maker or economic buyer. Track title, department, engagement history, and sentiment.',
-        competitor:'Log competing solutions in play. Track win/loss context, differentiators, and battle card links.',
-        techstack:'Document the prospect\'s existing technology stack, integrations, and relevant security tooling.',
-        stakeholder:'Additional stakeholders, evaluators, or technical buyers involved in the decision process.',
-      };
+      // Placeholder node — direct user to account profile
+      const accountNd = _lcNodes.find(n=>n.type==='account');
+      const nodeLabels = { opportunity:'Opportunity', champion:'Champion', contact:'Key Contact', competitor:'Competitor', techstack:'Tech Stack', stakeholder:'Stakeholder' };
       html += `<div class="lc-sb-placeholder-note">
         <div style="font-size:22px;margin-bottom:8px;opacity:0.45;">${PH_SYMBOLS[nd.type]||'?'}</div>
-        <strong style="color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">Placeholder Asset</strong>
-        ${desc[nd.type]||'Coming soon.'}
+        <strong style="color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">${nodeLabels[nd.type]||nd.label}</strong>
+        Edit this in the Account Profile — select the <strong style="color:rgba(255,255,255,0.6);">Account</strong> node to add ${nodeLabels[nd.type]||''}s.
       </div>
-      <div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-ghost" disabled style="opacity:0.4;cursor:not-allowed;">Coming Soon</button></div>`;
+      <div class="lc-sb-actions">
+        <button class="lc-sb-btn lc-sb-btn-primary" onclick="lcSelectNode('account')">Open Account Profile</button>
+      </div>`;
     }
     inner.innerHTML = html;
+  }
+
+  // ── Account Profile storage ──
+  function loadAccountProfiles() {
+    try { return JSON.parse(localStorage.getItem('siren_account_profiles') || '{}'); } catch { return {}; }
+  }
+  function saveAccountProfiles(profiles) {
+    localStorage.setItem('siren_account_profiles', JSON.stringify(profiles));
+  }
+  function loadAccountProfile(company) {
+    const key = company.trim().toLowerCase();
+    return loadAccountProfiles()[key] || { contacts:[], champion:null, stakeholders:[], competitors:[], techstack:[] };
+  }
+  function saveAccountProfile(company, prof) {
+    const profiles = loadAccountProfiles();
+    profiles[company.trim().toLowerCase()] = prof;
+    saveAccountProfiles(profiles);
+    // Refresh graph nodes to reflect populated state
+    updateLcGraphNodes(company);
+  }
+
+  function profAddContact(company) {
+    const nameEl=document.getElementById('prof-con-name'), titleEl=document.getElementById('prof-con-title');
+    if (!nameEl) return;
+    const name=nameEl.value.trim(); if (!name) return;
+    const prof=loadAccountProfile(company);
+    prof.contacts=(prof.contacts||[]);
+    prof.contacts.push({ name, title:titleEl?.value.trim()||'' });
+    saveAccountProfile(company, prof);
+    nameEl.value=''; if (titleEl) titleEl.value='';
+    reopenAccountSidebar(company);
+  }
+  function profSetChampion(company) {
+    const nameEl=document.getElementById('prof-champ-name'), titleEl=document.getElementById('prof-champ-title');
+    if (!nameEl) return;
+    const name=nameEl.value.trim(); if (!name) return;
+    const prof=loadAccountProfile(company);
+    prof.champion={ name, title:titleEl?.value.trim()||'' };
+    saveAccountProfile(company, prof);
+    reopenAccountSidebar(company);
+  }
+  function profClearChampion(company) {
+    const prof=loadAccountProfile(company);
+    prof.champion=null;
+    saveAccountProfile(company, prof);
+    reopenAccountSidebar(company);
+  }
+  function profAddStakeholder(company) {
+    const nameEl=document.getElementById('prof-stake-name'), titleEl=document.getElementById('prof-stake-title');
+    if (!nameEl) return;
+    const name=nameEl.value.trim(); if (!name) return;
+    const prof=loadAccountProfile(company);
+    prof.stakeholders=(prof.stakeholders||[]);
+    prof.stakeholders.push({ name, title:titleEl?.value.trim()||'' });
+    saveAccountProfile(company, prof);
+    nameEl.value=''; if (titleEl) titleEl.value='';
+    reopenAccountSidebar(company);
+  }
+  function profAddStr(company, field, inputId) {
+    const el=document.getElementById(inputId); if (!el) return;
+    const val=el.value.trim(); if (!val) return;
+    const prof=loadAccountProfile(company);
+    prof[field]=(prof[field]||[]);
+    prof[field].push(val);
+    saveAccountProfile(company, prof);
+    el.value='';
+    reopenAccountSidebar(company);
+  }
+  function profRemove(company, field, idx) {
+    const prof=loadAccountProfile(company);
+    if (prof[field]) prof[field].splice(idx,1);
+    saveAccountProfile(company, prof);
+    reopenAccountSidebar(company);
+  }
+  function profRemoveStr(company, field, idx) {
+    profRemove(company, field, idx);
+  }
+  function reopenAccountSidebar(company) {
+    const nd=_lcNodes.find(n=>n.type==='account');
+    if (nd) lcShowSidebar(nd);
+  }
+  function updateLcGraphNodes(company) {
+    // Rebuild the graph visuals to reflect profile data (filled vs placeholder styling)
+    const prof=loadAccountProfile(company);
+    _lcNodes.forEach(nd => {
+      if (nd.type==='contact')     nd.hasData=(prof.contacts||[]).length>0;
+      if (nd.type==='champion')    nd.hasData=!!prof.champion;
+      if (nd.type==='stakeholder') nd.hasData=(prof.stakeholders||[]).length>0;
+      if (nd.type==='competitor')  nd.hasData=(prof.competitors||[]).length>0;
+      if (nd.type==='techstack')   nd.hasData=(prof.techstack||[]).length>0;
+    });
+    drawLcGraph();
   }
 
   function lcCloseSidebar() {
