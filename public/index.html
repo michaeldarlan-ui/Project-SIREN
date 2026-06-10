@@ -869,8 +869,8 @@
     </div>
   </div>
   <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="navTo('grader')">Grader</button>
     <button class="nav-tab" onclick="navTo('pulse')">PULSE</button>
+    <button class="nav-tab active" onclick="navTo('grader')">ENGAGE</button>
     <button class="nav-tab" onclick="navTo('history')">History</button>
     <button class="nav-tab" onclick="navTo('lifecycle')">Deal Lifecycle</button>
   </nav>
@@ -1063,7 +1063,7 @@
   <div class="shell">
     <div class="page-heading">
       <h2>Sales Team</h2>
-      <p>Manage team members and their roles. The selected rep and role are used to tailor grading on the Grader page.</p>
+      <p>Manage team members and their roles. The selected rep and role are used to tailor grading on the ENGAGE page.</p>
     </div>
 
     <div class="card">
@@ -1199,6 +1199,7 @@
           <button class="lc-zoom-btn" onclick="lcZoom(1.25)" title="Zoom in">+</button>
           <button class="lc-zoom-btn" onclick="lcFit()" title="Fit to screen" style="font-size:13px;">⊡</button>
           <button class="lc-zoom-btn" onclick="lcZoom(0.8)" title="Zoom out">−</button>
+          <button class="lc-zoom-btn" id="lcCollapseBtn" onclick="toggleLcCalls()" title="Collapse / expand calls" style="font-size:14px;">⊞</button>
         </div>
       </div>
       <!-- Sidebar -->
@@ -1283,7 +1284,7 @@
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
     document.querySelectorAll('.nav-tab').forEach(t => {
-      if ((page === 'grader'    && t.textContent === 'Grader') ||
+      if ((page === 'grader'    && t.textContent === 'ENGAGE') ||
           (page === 'pulse'     && t.textContent === 'PULSE') ||
           (page === 'history'   && t.textContent === 'History') ||
           (page === 'lifecycle' && t.textContent === 'Deal Lifecycle')) {
@@ -2637,21 +2638,25 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   // ── Deal Lifecycle ─────────────────────────────────────────
   // ── Graph state ──
-  let _lcT    = { x: 0, y: 0, s: 1 };
-  let _lcPan  = null;
-  let _lcNodes = [];
-  let _lcEdges = [];
-  let _lcSelId = null;
+  let _lcT              = { x: 0, y: 0, s: 1 };
+  let _lcPan            = null;
+  let _lcNodes          = [];
+  let _lcEdges          = [];
+  let _lcSelId          = null;
+  let _lcCallsCollapsed = false;
+  let _lcAllEntries     = [];   // full entry list, preserved across collapse
+  let _lcCompany        = '';
 
   const NODE_DEFS = {
-    account:     { color: '#02232a', ring: '#00A983', r: 40, label: 'ACCOUNT' },
-    call:        { color: '#0d1f18', ring: '#00A983', r: 30, label: 'CALL' },
-    contact:     { color: '#1f1408', ring: '#FF751F', r: 26, label: 'CONTACT',     ph: true },
-    champion:    { color: '#0d1f0d', ring: '#00A983', r: 26, label: 'CHAMPION',    ph: true },
-    opportunity: { color: '#081428', ring: '#4a9eff', r: 26, label: 'OPPORTUNITY', ph: true },
-    competitor:  { color: '#200a0a', ring: '#c0392b', r: 26, label: 'COMPETITOR',  ph: true },
-    techstack:   { color: '#130d20', ring: '#9b59b6', r: 26, label: 'TECH STACK',  ph: true },
-    stakeholder: { color: '#141414', ring: '#FF751F', r: 26, label: 'STAKEHOLDER', ph: true },
+    account:       { color: '#02232a', ring: '#00A983', r: 40, label: 'ACCOUNT' },
+    call:          { color: '#0d1f18', ring: '#00A983', r: 30, label: 'CALL' },
+    'calls-summary': { color: '#02232a', ring: '#00A983', r: 38, label: 'ALL CALLS' },
+    contact:       { color: '#1f1408', ring: '#FF751F', r: 26, label: 'CONTACT',     ph: true },
+    champion:      { color: '#0d1f0d', ring: '#00A983', r: 26, label: 'CHAMPION',    ph: true },
+    opportunity:   { color: '#081428', ring: '#4a9eff', r: 26, label: 'OPPORTUNITY', ph: true },
+    competitor:    { color: '#200a0a', ring: '#c0392b', r: 26, label: 'COMPETITOR',  ph: true },
+    techstack:     { color: '#130d20', ring: '#9b59b6', r: 26, label: 'TECH STACK',  ph: true },
+    stakeholder:   { color: '#141414', ring: '#FF751F', r: 26, label: 'STAKEHOLDER', ph: true },
   };
 
   const PH_SYMBOLS = { opportunity:'◆', champion:'★', contact:'◉', competitor:'✕', techstack:'⬡', stakeholder:'◈' };
@@ -2911,6 +2916,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function buildLcGraph(entries, company) {
     _lcNodes = []; _lcEdges = [];
+    _lcAllEntries = entries;
+    _lcCompany    = company;
 
     // Account hub (center-left)
     const shortName = company.length > 14 ? company.slice(0,13)+'…' : company;
@@ -2926,19 +2933,33 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _lcEdges.push({ from:'account',  to:'ph-con',   style:'dashed' });
     _lcEdges.push({ from:'ph-con',   to:'ph-stake', style:'dashed' });
 
-    // Call nodes chained chronologically to the right
-    const n = entries.length;
-    entries.forEach((h, i) => {
-      const t  = n === 1 ? 0.5 : i / (n - 1);
-      const x  = 180 + i * 170;
-      const y  = (Math.sin(t * Math.PI) * -70) + (i % 2 === 0 ? -20 : 20);
-      const ds = h.callDate
-        ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'})
-        : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'});
-      _lcNodes.push({ id:'call-'+h.id, type:'call', x, y, label:h.letter_grade+' · '+h.total,
-        sublabel:stageAbbrev(h.stage||''), dateStr:ds, data:h, ringColor:gradeRingColor(h.letter_grade) });
-      _lcEdges.push({ from: i===0?'account':'call-'+entries[i-1].id, to:'call-'+h.id, style:'solid', arrow:'teal' });
-    });
+    if (_lcCallsCollapsed && entries.length > 0) {
+      // Single summary node
+      const scores   = entries.map(h => h.total||0).filter(s => s > 0);
+      const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+      const grades   = entries.map(h => h.letter_grade||'?');
+      const bestGrade = grades.sort((a,b)=>['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(a)-['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(b))[0]||'?';
+      _lcNodes.push({ id:'calls-summary', type:'calls-summary', x:220, y:0,
+        label: bestGrade + ' · ' + avgScore,
+        sublabel: entries.length + (entries.length===1?' call':' calls'),
+        summaryData: { entries, avgScore, grades },
+        ringColor: gradeRingColor(bestGrade) });
+      _lcEdges.push({ from:'account', to:'calls-summary', style:'solid', arrow:'teal' });
+    } else {
+      // Call nodes chained chronologically to the right
+      const n = entries.length;
+      entries.forEach((h, i) => {
+        const t  = n === 1 ? 0.5 : i / (n - 1);
+        const x  = 180 + i * 170;
+        const y  = (Math.sin(t * Math.PI) * -70) + (i % 2 === 0 ? -20 : 20);
+        const ds = h.callDate
+          ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'})
+          : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'});
+        _lcNodes.push({ id:'call-'+h.id, type:'call', x, y, label:h.letter_grade+' · '+h.total,
+          sublabel:stageAbbrev(h.stage||''), dateStr:ds, data:h, ringColor:gradeRingColor(h.letter_grade) });
+        _lcEdges.push({ from: i===0?'account':'call-'+entries[i-1].id, to:'call-'+h.id, style:'solid', arrow:'teal' });
+      });
+    }
 
     // Competitor + Tech Stack rooted on the account node (below/above the left cluster)
     _lcNodes.push({ id:'ph-comp', type:'competitor', x:-20,  y:200,  label:'Competitor', sublabel:'Competing solution', ph:true });
@@ -2949,6 +2970,14 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     // Reflect any saved profile data on initial render
     updateLcGraphNodes(company);
     setTimeout(lcFit, 60);
+  }
+
+  function toggleLcCalls() {
+    _lcCallsCollapsed = !_lcCallsCollapsed;
+    _lcSelId = null;
+    const btn = document.getElementById('lcCollapseBtn');
+    if (btn) btn.style.color = _lcCallsCollapsed ? '#00A983' : '';
+    buildLcGraph(_lcAllEntries, _lcCompany);
   }
 
   function drawLcGraph() {
@@ -3070,8 +3099,29 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       }
       html += `<div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-primary" onclick="openLcModal(${h.id})">View Full Report</button></div>`;
 
+    } else if (nd.type==='calls-summary' && nd.summaryData) {
+      const { entries: es, avgScore, grades } = nd.summaryData;
+      const gradeCounts = {};
+      grades.forEach(g => { gradeCounts[g] = (gradeCounts[g]||0) + 1; });
+      const gradeOrder = ['A+','A','A-','B+','B','B-','C+','C','C-','D','F'];
+      const gradeRows = gradeOrder.filter(g => gradeCounts[g]).map(g =>
+        `<div class="lc-sb-row"><span class="lc-sb-key" style="color:${gradeRingColor(g)};font-weight:700;">${g}</span><span class="lc-sb-val">${gradeCounts[g]} call${gradeCounts[g]>1?'s':''}</span></div>`
+      ).join('');
+      html += `<div class="lc-sb-section">
+        <div class="lc-sb-section-label">Call Summary</div>
+        <div class="lc-sb-row"><span class="lc-sb-key">Total Calls</span><span class="lc-sb-val">${es.length}</span></div>
+        <div class="lc-sb-row"><span class="lc-sb-key">Avg Score</span><span class="lc-sb-val">${avgScore}/100</span></div>
+      </div>
+      <div class="lc-sb-section">
+        <div class="lc-sb-section-label">Grade Distribution</div>
+        ${gradeRows||'<div style="opacity:.4;font-size:11px;padding:4px 0;">No grades yet</div>'}
+      </div>
+      <div class="lc-sb-actions">
+        <button class="lc-sb-btn lc-sb-btn-primary" onclick="toggleLcCalls()">Expand Calls</button>
+      </div>`;
+
     } else if (nd.type==='account') {
-      const calls=_lcNodes.filter(n=>n.type==='call');
+      const calls=_lcNodes.filter(n=>n.type==='call'||n.type==='calls-summary');
       const scores=calls.map(n=>n.data?.total||0).filter(s=>s>0);
       const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):'—';
       const stages=[...new Set(calls.map(n=>stageAbbrev(n.data?.stage||'')).filter(Boolean))];
