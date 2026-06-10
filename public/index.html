@@ -690,6 +690,88 @@
   .spiced-label.not-touched { color: var(--text-faint); }
   .spiced-summary { font-size: 13px; color: var(--text-muted); line-height: 1.55; flex: 1; }
 
+  /* ── PULSE Dashboard ── */
+  #page-pulse { background: var(--bg-page); }
+  .pulse-shell { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+  .pulse-section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.18em; color: rgba(0,169,131,0.6);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+
+  /* KPI row */
+  .pulse-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 800px) { .pulse-kpi-row { grid-template-columns: repeat(2,1fr); } }
+  .pulse-kpi-card {
+    background: #0d1822; border: 1px solid rgba(0,169,131,0.12);
+    border-radius: 10px; padding: 18px 20px;
+  }
+  .pulse-kpi-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 8px; }
+  .pulse-kpi-value { font-size: 36px; font-weight: 800; color: #fff; line-height: 1; margin-bottom: 6px; font-family: system-ui,sans-serif; }
+  .pulse-kpi-sub { font-size: 11px; color: rgba(0,169,131,0.7); }
+  .pulse-kpi-sub.down { color: rgba(255,117,31,0.8); }
+  .pulse-kpi-sub.neutral { color: rgba(255,255,255,0.25); }
+
+  /* 2-col grid */
+  .pulse-grid-2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 900px) { .pulse-grid-2 { grid-template-columns: 1fr; } }
+  .pulse-card {
+    background: #0d1822; border: 1px solid rgba(0,169,131,0.1);
+    border-radius: 10px; padding: 20px 22px;
+  }
+  .pulse-card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 16px; }
+
+  /* Score trend chart */
+  .pulse-trend-svg { display: block; width: 100%; }
+
+  /* Dimension bars */
+  .pulse-dim-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pulse-dim-row:last-child { margin-bottom: 0; }
+  .pulse-dim-name { font-size: 12px; color: rgba(255,255,255,0.65); width: 145px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pulse-dim-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; }
+  .pulse-dim-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .pulse-dim-score { font-size: 11px; color: rgba(255,255,255,0.4); width: 42px; text-align: right; flex-shrink: 0; font-family: 'SF Mono','Fira Code',monospace; }
+
+  /* Recent calls list */
+  .pulse-call-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+  .pulse-call-row:last-child { border-bottom: none; }
+  .pulse-call-row:hover .pulse-call-company { color: #00A983; }
+  .pulse-call-badge { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .pulse-call-info { flex: 1; min-width: 0; }
+  .pulse-call-company { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.15s; }
+  .pulse-call-meta { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+  .pulse-call-score { font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.7); flex-shrink: 0; font-family: system-ui,sans-serif; }
+
+  /* Rep leaderboard */
+  .pulse-rep-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .pulse-rep-row:last-child { margin-bottom: 0; }
+  .pulse-rep-rank { font-size: 12px; color: rgba(255,255,255,0.2); width: 16px; flex-shrink: 0; text-align: center; }
+  .pulse-rep-avatar { width: 34px; height: 34px; border-radius: 50%; background: #1a3040; border: 1px solid rgba(0,169,131,0.3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: rgba(0,169,131,0.9); flex-shrink: 0; }
+  .pulse-rep-avatar.empty { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.2); }
+  .pulse-rep-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.8); width: 120px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pulse-rep-name.empty { color: rgba(255,255,255,0.2); font-weight: 400; }
+  .pulse-rep-track { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; }
+  .pulse-rep-fill { height: 100%; border-radius: 2px; background: rgba(0,169,131,0.6); }
+  .pulse-rep-score { font-size: 12px; color: rgba(255,255,255,0.4); width: 52px; text-align: right; flex-shrink: 0; font-family: 'SF Mono','Fira Code',monospace; }
+
+  .pulse-weak-dim { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .pulse-weak-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.25); text-transform: uppercase; margin-bottom: 6px; }
+  .pulse-weak-name { font-size: 14px; font-weight: 700; color: #FF751F; margin-bottom: 4px; }
+  .pulse-weak-sub { font-size: 11px; color: rgba(255,255,255,0.3); line-height: 1.5; }
+
+  /* Bottom API strip */
+  .pulse-api-strip {
+    display: flex; align-items: center; gap: 0;
+    background: #060b10; border-top: 1px solid rgba(0,169,131,0.1);
+    padding: 10px 24px; font-size: 11px; flex-wrap: wrap; gap: 0;
+    margin: 0 -1.5rem -3rem; border-radius: 0 0 10px 10px;
+  }
+  .pulse-api-item { display: flex; align-items: center; gap: 6px; padding: 0 20px 0 0; margin-right: 20px; border-right: 1px solid rgba(255,255,255,0.06); }
+  .pulse-api-item:last-child { border-right: none; margin-left: auto; }
+  .pulse-api-dot { width: 6px; height: 6px; border-radius: 50%; background: #00A983; flex-shrink: 0; }
+  .pulse-api-key { color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
+  .pulse-api-val { font-weight: 600; color: rgba(255,255,255,0.7); }
+  .pulse-api-brand { color: rgba(0,169,131,0.4); letter-spacing: 0.12em; font-size: 10px; }
+
   /* ── History page ── */
   .hist-empty { font-size: 14px; color: var(--text-faint); padding: 3rem 0; text-align: center; }
   .hist-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
@@ -788,6 +870,7 @@
   </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="navTo('grader')">Grader</button>
+    <button class="nav-tab" onclick="navTo('pulse')">PULSE</button>
     <button class="nav-tab" onclick="navTo('history')">History</button>
     <button class="nav-tab" onclick="navTo('lifecycle')">Deal Lifecycle</button>
   </nav>
@@ -1126,6 +1209,49 @@
   </div>
 </div>
 
+<!-- ══ PULSE DASHBOARD PAGE ══ -->
+<div class="page" id="page-pulse">
+  <div class="pulse-shell">
+    <div class="pulse-section-label">Intelligence Overview</div>
+    <div class="pulse-kpi-row" id="pulseKpiRow">
+      <div class="pulse-kpi-card"><div class="pulse-kpi-label">Calls Graded</div><div class="pulse-kpi-value" id="pkv-calls">—</div><div class="pulse-kpi-sub neutral" id="pks-calls"></div></div>
+      <div class="pulse-kpi-card"><div class="pulse-kpi-label">Avg Score</div><div class="pulse-kpi-value" id="pkv-avg">—</div><div class="pulse-kpi-sub" id="pks-avg"></div></div>
+      <div class="pulse-kpi-card"><div class="pulse-kpi-label">Top Grade</div><div class="pulse-kpi-value" id="pkv-grade">—</div><div class="pulse-kpi-sub neutral" id="pks-grade"></div></div>
+      <div class="pulse-kpi-card"><div class="pulse-kpi-label">API Cost</div><div class="pulse-kpi-value" id="pkv-cost">—</div><div class="pulse-kpi-sub neutral" id="pks-cost"></div></div>
+    </div>
+
+    <div class="pulse-grid-2">
+      <div class="pulse-card">
+        <div class="pulse-card-title">Score Trend — Last 8 Calls</div>
+        <svg id="pulseTrendSvg" class="pulse-trend-svg" height="160" viewBox="0 0 540 160" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="pulse-card">
+        <div class="pulse-card-title">Avg Score by Dimension</div>
+        <div id="pulseDimBars"></div>
+      </div>
+    </div>
+
+    <div class="pulse-grid-2">
+      <div class="pulse-card">
+        <div class="pulse-card-title">Recent Calls</div>
+        <div id="pulseRecentCalls"></div>
+      </div>
+      <div class="pulse-card">
+        <div class="pulse-card-title">Rep Leaderboard</div>
+        <div id="pulseLeaderboard"></div>
+        <div class="pulse-weak-dim" id="pulseWeakDim" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="pulse-api-strip" id="pulseApiStrip">
+      <div class="pulse-api-item"><div class="pulse-api-dot"></div><span class="pulse-api-key">Last Call</span><span class="pulse-api-val" id="pulse-last-tokens">—</span></div>
+      <div class="pulse-api-item"><span class="pulse-api-key">Session</span><span class="pulse-api-val" id="pulse-session-cost">—</span></div>
+      <div class="pulse-api-item"><span class="pulse-api-key">All-Time</span><span class="pulse-api-val" id="pulse-alltime-cost">—</span></div>
+      <div class="pulse-api-item"><span class="pulse-api-brand">SIREN · SALES INTELLIGENCE · REVIEW · ENABLEMENT · NETWORK</span></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ HISTORY PAGE ══ -->
 <div class="page" id="page-history">
   <div class="shell">
@@ -1158,6 +1284,7 @@
     document.getElementById('page-' + page).classList.add('active');
     document.querySelectorAll('.nav-tab').forEach(t => {
       if ((page === 'grader'    && t.textContent === 'Grader') ||
+          (page === 'pulse'     && t.textContent === 'PULSE') ||
           (page === 'history'   && t.textContent === 'History') ||
           (page === 'lifecycle' && t.textContent === 'Deal Lifecycle')) {
         t.classList.add('active');
@@ -1165,6 +1292,7 @@
     });
     currentPage = page;
     window.scrollTo(0, 0);
+    if (page === 'pulse')     renderPulse();
     if (page === 'history')   renderHistory();
     if (page === 'lifecycle') renderLifecyclePage();
   }
@@ -2535,6 +2663,225 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); out.push(name); }
     }
     return out.sort((a,b) => a.localeCompare(b));
+  }
+
+  // ── PULSE Dashboard ────────────────────────────────────────
+  function renderPulse() {
+    const history = loadHistory();
+    const allTime = loadAllTime();
+
+    // ── KPIs ──
+    const total = history.length;
+    const now = new Date();
+    const weekAgo = new Date(now - 7 * 86400000);
+    const monthAgo = new Date(now - 30 * 86400000);
+    const thisWeek = history.filter(h => new Date(h.ts) >= weekAgo).length;
+    const scores = history.map(h => h.total).filter(s => s > 0);
+    const avgNow = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+    const lastMonthScores = history.filter(h => new Date(h.ts) < monthAgo).map(h=>h.total).filter(s=>s>0);
+    const avgLast = lastMonthScores.length ? Math.round(lastMonthScores.reduce((a,b)=>a+b,0)/lastMonthScores.length) : null;
+    const avgDelta = (avgNow !== null && avgLast !== null) ? avgNow - avgLast : null;
+
+    const thisMonth = history.filter(h => new Date(h.ts) >= new Date(now.getFullYear(), now.getMonth(), 1));
+    const gradeCounts = {};
+    thisMonth.forEach(h => { gradeCounts[h.letter_grade] = (gradeCounts[h.letter_grade]||0)+1; });
+    const topGrade = Object.entries(gradeCounts).sort((a,b)=>b[1]-a[1])[0];
+
+    document.getElementById('pkv-calls').textContent = total || '0';
+    document.getElementById('pks-calls').textContent = thisWeek ? `↑ ${thisWeek} this week` : 'no calls this week';
+    document.getElementById('pkv-avg').textContent = avgNow !== null ? avgNow : '—';
+    const avgSubEl = document.getElementById('pks-avg');
+    if (avgDelta !== null) {
+      avgSubEl.textContent = (avgDelta >= 0 ? '↑' : '↓') + ' ' + Math.abs(avgDelta) + ' pts vs last month';
+      avgSubEl.className = 'pulse-kpi-sub' + (avgDelta < 0 ? ' down' : '');
+    } else { avgSubEl.textContent = avgNow !== null ? 'no prior baseline' : 'no data yet'; avgSubEl.className='pulse-kpi-sub neutral'; }
+    document.getElementById('pkv-grade').textContent = topGrade ? topGrade[0] : '—';
+    document.getElementById('pks-grade').textContent = topGrade ? `${topGrade[1]} call${topGrade[1]!==1?'s':''} this month` : 'no calls this month';
+    document.getElementById('pkv-cost').textContent = allTime.cost > 0 ? '$' + allTime.cost.toFixed(2) : '$0.00';
+    document.getElementById('pks-cost').textContent = `all-time · ${allTime.calls} call${allTime.calls!==1?'s':''}`;
+
+    // ── Score Trend (last 8 calls) ──
+    const trendData = history.slice(0, 8).reverse();
+    drawPulseTrend(trendData);
+
+    // ── Dimension Averages ──
+    const dimTotals = {}, dimMaxes = {}, dimCounts = {};
+    history.forEach(h => {
+      (h.dimensions||[]).forEach(d => {
+        if (!d.name) return;
+        const key = d.name;
+        dimTotals[key] = (dimTotals[key]||0) + d.score;
+        dimMaxes[key]  = d.max || 20;
+        dimCounts[key] = (dimCounts[key]||0) + 1;
+      });
+    });
+    const dims = Object.keys(dimTotals).map(k => ({
+      name: k, avg: dimTotals[k]/dimCounts[k], max: dimMaxes[k],
+      pct: (dimTotals[k]/dimCounts[k]) / dimMaxes[k]
+    })).sort((a,b) => b.pct - a.pct);
+
+    const dimEl = document.getElementById('pulseDimBars');
+    if (dims.length) {
+      dimEl.innerHTML = dims.map(d => {
+        const shortName = d.name.replace(' & needs assessment','').replace(' & demo delivery','').replace(' & objection handling','').replace(' & MEDDIC signals','').replace(' & next steps','');
+        const pct = Math.round(d.pct * 100);
+        const color = pct >= 75 ? 'rgba(0,169,131,0.75)' : pct >= 55 ? 'rgba(0,169,131,0.45)' : 'rgba(255,117,31,0.7)';
+        return `<div class="pulse-dim-row">
+          <span class="pulse-dim-name" title="${escHtml(d.name)}">${escHtml(shortName)}</span>
+          <div class="pulse-dim-track"><div class="pulse-dim-fill" style="width:${pct}%;background:${color};"></div></div>
+          <span class="pulse-dim-score">${Math.round(d.avg)}/${d.max}</span>
+        </div>`;
+      }).join('');
+    } else {
+      dimEl.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.2);padding:1rem 0;">Grade calls to see dimension breakdown.</div>';
+    }
+
+    // ── Recent Calls ──
+    const recentEl = document.getElementById('pulseRecentCalls');
+    const recent = history.slice(0, 6);
+    if (recent.length) {
+      recentEl.innerHTML = recent.map(h => {
+        const bg = getBannerColor(h.letter_grade);
+        const ds = h.callDate
+          ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'})
+          : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric'});
+        const meta = [h.rep ? h.rep.split(' ')[0]+(h.rep.split(' ')[1]?' '+h.rep.split(' ')[1][0]+'.':'') : null, stageAbbrev(h.stage||''), ds].filter(Boolean).join(' · ');
+        return `<div class="pulse-call-row" onclick="navTo('history')">
+          <div class="pulse-call-badge" style="background:${bg};">${escHtml(h.letter_grade)}</div>
+          <div class="pulse-call-info">
+            <div class="pulse-call-company">${escHtml(h.prospect||'Unknown')}</div>
+            <div class="pulse-call-meta">${escHtml(meta)}</div>
+          </div>
+          <div class="pulse-call-score">${h.total}</div>
+        </div>`;
+      }).join('');
+    } else {
+      recentEl.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.2);padding:1rem 0;">No calls graded yet.</div>';
+    }
+
+    // ── Rep Leaderboard ──
+    const repMap = {};
+    history.forEach(h => {
+      if (!h.rep) return;
+      if (!repMap[h.rep]) repMap[h.rep] = { scores:[], initials: h.rep.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() };
+      if (h.total > 0) repMap[h.rep].scores.push(h.total);
+    });
+    const reps = Object.entries(repMap).map(([name, d]) => ({
+      name, initials: d.initials,
+      avg: d.scores.length ? Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length) : 0,
+      calls: d.scores.length
+    })).filter(r => r.calls > 0).sort((a,b) => b.avg - a.avg);
+
+    const topScore = reps.length ? reps[0].avg : 100;
+    const lbEl = document.getElementById('pulseLeaderboard');
+    const slots = Math.max(3, reps.length);
+    let lbHtml = '';
+    for (let i = 0; i < Math.min(slots, 5); i++) {
+      const rep = reps[i];
+      if (rep) {
+        const barW = Math.round((rep.avg / Math.max(topScore, 1)) * 100);
+        lbHtml += `<div class="pulse-rep-row">
+          <span class="pulse-rep-rank">${i+1}</span>
+          <div class="pulse-rep-avatar">${escHtml(rep.initials)}</div>
+          <span class="pulse-rep-name">${escHtml(rep.name)}</span>
+          <div class="pulse-rep-track"><div class="pulse-rep-fill" style="width:${barW}%;"></div></div>
+          <span class="pulse-rep-score">${rep.avg} avg</span>
+        </div>`;
+      } else {
+        lbHtml += `<div class="pulse-rep-row">
+          <span class="pulse-rep-rank">${i+1}</span>
+          <div class="pulse-rep-avatar empty">+</div>
+          <span class="pulse-rep-name empty">Add rep</span>
+          <div class="pulse-rep-track"><div class="pulse-rep-fill" style="width:0%;"></div></div>
+          <span class="pulse-rep-score" style="color:rgba(255,255,255,0.1);">—</span>
+        </div>`;
+      }
+    }
+    lbEl.innerHTML = lbHtml;
+
+    // Weakest shared dimension
+    const weakDimEl = document.getElementById('pulseWeakDim');
+    if (dims.length) {
+      const weakest = [...dims].sort((a,b) => a.pct - b.pct)[0];
+      const weakPct = Math.round(weakest.pct * 100);
+      weakDimEl.style.display = 'block';
+      weakDimEl.innerHTML = `<div class="pulse-weak-label">Weakest Dimension — Team</div>
+        <div class="pulse-weak-name">${escHtml(weakest.name)}</div>
+        <div class="pulse-weak-sub">Avg ${weakPct}% · Focus coaching effort here</div>`;
+    } else {
+      weakDimEl.style.display = 'none';
+    }
+
+    // ── API strip ──
+    document.getElementById('pulse-session-cost').textContent = '$' + sessionCost.toFixed(4);
+    document.getElementById('pulse-alltime-cost').textContent = '$' + allTime.cost.toFixed(2) + ' · ' + allTime.calls + ' calls';
+    const lastTokensEl = document.getElementById('pulse-last-tokens');
+    const lastTokensVal = document.getElementById('val-tokens')?.textContent;
+    const lastCostVal   = document.getElementById('val-cost-call')?.textContent;
+    if (lastTokensVal && lastTokensVal !== '—') {
+      lastTokensEl.textContent = lastTokensVal + ' · ' + (lastCostVal||'');
+    } else { lastTokensEl.textContent = '—'; }
+  }
+
+  function drawPulseTrend(data) {
+    const svg = document.getElementById('pulseTrendSvg');
+    if (!svg) return;
+    const W=540, H=160, PAD={top:14,right:16,bottom:24,left:32};
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top - PAD.bottom;
+    const minY=0, maxY=100;
+
+    if (!data.length) {
+      svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.15)" font-family="system-ui">No data yet</text>`;
+      return;
+    }
+
+    const toX = i => PAD.left + (i / Math.max(data.length-1, 1)) * chartW;
+    const toY = v => PAD.top + chartH - ((v - minY) / (maxY - minY)) * chartH;
+
+    // Grid lines
+    let gridSvg = '';
+    [30, 60, 90].forEach(y => {
+      const gy = toY(y);
+      gridSvg += `<line x1="${PAD.left}" y1="${gy}" x2="${W-PAD.right}" y2="${gy}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+      gridSvg += `<text x="${PAD.left-6}" y="${gy+4}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.2)" font-family="'SF Mono','Fira Code',monospace">${y}</text>`;
+    });
+
+    // Points
+    const pts = data.map((h,i) => ({ x: toX(i), y: toY(h.total||0), score: h.total }));
+
+    // Area fill path
+    const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+    const areaD = lineD + ` L ${pts[pts.length-1].x} ${toY(0)} L ${pts[0].x} ${toY(0)} Z`;
+
+    let content = gridSvg;
+    content += `<defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(0,169,131,0.25)"/><stop offset="100%" stop-color="rgba(0,169,131,0.02)"/></linearGradient></defs>`;
+    content += `<path d="${areaD}" fill="url(#trendFill)"/>`;
+    content += `<path d="${lineD}" fill="none" stroke="rgba(0,169,131,0.7)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+    // Dots
+    pts.forEach((p, i) => {
+      const isLast = i === pts.length - 1;
+      if (isLast) {
+        content += `<circle cx="${p.x}" cy="${p.y}" r="7" fill="rgba(0,169,131,0.2)" stroke="none"/>`;
+        content += `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#00A983" stroke="#0d1822" stroke-width="2"/>`;
+        content += `<text x="${p.x}" y="${p.y-12}" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(0,169,131,0.9)" font-family="system-ui">${p.score}</text>`;
+      } else {
+        content += `<circle cx="${p.x}" cy="${p.y}" r="3" fill="rgba(0,169,131,0.5)" stroke="#0d1822" stroke-width="1.5"/>`;
+      }
+    });
+
+    // X-axis date labels (show first, middle, last)
+    const showIdx = [0, Math.floor((data.length-1)/2), data.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+    showIdx.forEach(i => {
+      const h = data[i];
+      const ds = h.callDate
+        ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'})
+        : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric'});
+      content += `<text x="${toX(i)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.2)" font-family="system-ui">${ds}</text>`;
+    });
+
+    svg.innerHTML = content;
   }
 
   function renderLifecyclePage() {
