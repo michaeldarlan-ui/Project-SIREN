@@ -479,6 +479,22 @@
   .forge-int-footer { padding-top: 8px; border-top: 1px solid var(--siren-border); }
   .forge-int-cta { width: 100%; padding: 6px; text-align: center; background: transparent; border: 1px dashed var(--siren-border-mid); border-radius: var(--siren-radius-sm); font-family: var(--siren-font-hud); font-size: 10px; color: var(--siren-text-muted); cursor: default; letter-spacing: .06em; }
 
+  /* ── FORGE Email Composer ── */
+  .fr-email-meta { border-bottom: 1px solid var(--siren-border-mid); margin-bottom: 0; }
+  .fr-email-meta-row { display: flex; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--siren-border); }
+  .fr-email-meta-row:last-child { border-bottom: none; }
+  .fr-email-label { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .14em; color: var(--siren-text-muted); min-width: 52px; text-transform: uppercase; padding-top: 2px; flex-shrink: 0; }
+  .fr-email-to { font-size: 12px; color: var(--siren-cyan-70, rgba(0,200,255,.7)); }
+  .fr-email-subject { flex: 1; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.9); outline: none; min-height: 22px; line-height: 1.4; }
+  .fr-email-subject:empty::before { content: attr(data-placeholder); color: var(--siren-text-faint); font-weight: 400; }
+  .fr-email-body-wrap { position: relative; min-height: 360px; padding: 20px 0 8px; }
+  .fr-email-body { font-size: 13px; color: rgba(255,255,255,.85); line-height: 1.75; white-space: pre-wrap; outline: none; min-height: 320px; }
+  .fr-email-body:empty::before { content: attr(data-placeholder); color: var(--siren-text-faint); pointer-events: none; }
+  .fr-email-spinner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: rgba(4,15,20,.6); backdrop-filter: blur(2px); border-radius: 4px; }
+  .fr-email-spinner span { font-family: var(--siren-font-hud); font-size: 10px; letter-spacing: .12em; color: var(--siren-cyan-50); }
+  .fr-spinner-ring { width: 28px; height: 28px; border: 2px solid var(--siren-border-mid); border-top-color: var(--siren-cyan); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* ── ATLAS ── */
   #page-lifecycle { padding: 0 !important; }
   #page-lifecycle .shell { padding: 0; max-width: 100%; }
@@ -1382,7 +1398,7 @@
               <div class="forge-wip-sub">Graded call data from your history will populate the report automatically.</div>
             </div>
 
-            <div class="forge-report-section">
+            <div class="forge-report-section" id="fr-overview-section">
               <div class="forge-report-section-label">Call Overview</div>
               <div class="forge-field-row">
                 <div>
@@ -1406,7 +1422,7 @@
               </div>
             </div>
 
-            <div class="forge-report-section">
+            <div class="forge-report-section" id="fr-takeaways-section">
               <div class="forge-report-section-label">Key Takeaways</div>
               <div class="forge-field-label">TOP STRENGTH</div>
               <div class="forge-field placeholder" id="fr-strength">—</div>
@@ -1428,6 +1444,27 @@
               <div class="forge-report-section-label">Generated Report</div>
               <div class="forge-field" id="fr-generated" style="min-height:140px;white-space:pre-wrap;line-height:1.65;" contenteditable="true"></div>
               <div id="fr-template-files" style="display:none;margin-top:10px;"></div>
+            </div>
+
+            <!-- Email composer — shown only when Follow-Up Email template is active -->
+            <div id="fr-email-section" style="display:none;">
+              <div class="fr-email-meta">
+                <div class="fr-email-meta-row">
+                  <span class="fr-email-label">TO</span>
+                  <div class="fr-email-to" id="fr-email-to">—</div>
+                </div>
+                <div class="fr-email-meta-row">
+                  <span class="fr-email-label">SUBJECT</span>
+                  <div class="fr-email-subject" id="fr-email-subject" contenteditable="true" spellcheck="true" data-placeholder="Generate to populate…"></div>
+                </div>
+              </div>
+              <div class="fr-email-body-wrap">
+                <div class="fr-email-body" id="fr-email-body" contenteditable="true" spellcheck="true" data-placeholder="Click Generate → to draft your follow-up email…"></div>
+                <div class="fr-email-spinner" id="fr-email-spinner" style="display:none;">
+                  <div class="fr-spinner-ring"></div>
+                  <span>Drafting email…</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -4294,6 +4331,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     }
 
     document.getElementById('fr-generated-section').style.display = 'none';
+    document.getElementById('fr-email-section').style.display = 'none';
+    document.getElementById('fr-email-subject').textContent = '';
+    document.getElementById('fr-email-body').textContent = '';
     document.getElementById('forgeCopyBtn').disabled = false;
     document.getElementById('forgeGenBtn').disabled = false;
     forgeUpdateTemplateTitles();
@@ -4331,6 +4371,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     document.getElementById('fr-dims-section').style.display = 'none';
     document.getElementById('fr-spiced-section').style.display = 'none';
     document.getElementById('fr-generated-section').style.display = 'none';
+    document.getElementById('fr-email-section').style.display = 'none';
+    document.getElementById('fr-email-subject').textContent = '';
+    document.getElementById('fr-email-body').textContent = '';
   }
 
   function forgeSetField(id, text, isPlaceholder) {
@@ -4340,19 +4383,55 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     el.classList.toggle('placeholder', isPlaceholder);
   }
 
+  function forgeGetMode() {
+    if (_forgeCustomTemplate) return 'custom';
+    const card = document.querySelector('.forge-template-card.selected[data-builtin]');
+    return card ? card.dataset.builtin : 'call-brief';
+  }
+
+  function forgeSetMode(mode) {
+    const isEmail = mode === 'follow-up';
+    // Scoring recap sections — hide in email mode
+    ['fr-overview-section','fr-takeaways-section','fr-dims-section','fr-spiced-section','fr-generated-section']
+      .forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+    document.getElementById('fr-email-section').style.display = isEmail ? '' : 'none';
+    if (!isEmail && _forgeCall) {
+      // Re-show the static scoring sections for non-email modes
+      document.getElementById('fr-overview-section').style.display = '';
+      document.getElementById('fr-takeaways-section').style.display = '';
+      if (_forgeCall.dimensions && Object.keys(_forgeCall.dimensions).length)
+        document.getElementById('fr-dims-section').style.display = '';
+      if (_forgeCall.spiced)
+        document.getElementById('fr-spiced-section').style.display = '';
+    }
+    if (isEmail && _forgeCall) {
+      // Populate TO field
+      const contact = _forgeCall.contact || _forgeCall.prospect || '';
+      document.getElementById('fr-email-to').textContent = contact || '—';
+    }
+    document.getElementById('forgeGenBtn').textContent = isEmail ? 'Draft Email →' : 'Generate →';
+  }
+
   function forgeUpdateTemplateTitles() {
     const active = document.querySelector('.forge-template-card.selected .forge-template-name');
     const name = active ? active.textContent : 'CALL BRIEF';
     document.getElementById('forgeReportTitle').textContent = `⬡  ${name} — ${_forgeCall ? escHtml(_forgeCall.prospect||'') : 'PREVIEW'}`;
+    forgeSetMode(forgeGetMode());
   }
 
   function forgeCopy() {
     if (!_forgeCall) return;
-    const h = _forgeCall;
-    const generated = document.getElementById('fr-generated');
-    const text = generated && generated.textContent.trim()
-      ? generated.textContent
-      : forgeComposeText(h);
+    let text;
+    if (forgeGetMode() === 'follow-up') {
+      const subj = document.getElementById('fr-email-subject').textContent.trim();
+      const body = document.getElementById('fr-email-body').textContent.trim();
+      text = (subj ? 'Subject: ' + subj + '\n\n' : '') + body;
+    } else {
+      const generated = document.getElementById('fr-generated');
+      text = generated && generated.textContent.trim()
+        ? generated.textContent
+        : forgeComposeText(_forgeCall);
+    }
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.getElementById('forgeCopyBtn');
       btn.textContent = 'Copied!';
@@ -4390,6 +4469,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function forgeGenerate() {
     if (!_forgeCall) return;
+    const mode = forgeGetMode();
+    if (mode === 'follow-up') {
+      forgeGenerateEmail(_forgeCall);
+      return;
+    }
     const h = _forgeCall;
     const text = _forgeCustomTemplate
       ? forgeApplyTemplate(h, _forgeCustomTemplate)
@@ -4414,6 +4498,131 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
     genEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     document.getElementById('forgeGenBtn').textContent = 'Regenerate';
+  }
+
+  async function forgeGenerateEmail(h) {
+    const subjectEl = document.getElementById('fr-email-subject');
+    const bodyEl    = document.getElementById('fr-email-body');
+    const spinner   = document.getElementById('fr-email-spinner');
+    const btn       = document.getElementById('forgeGenBtn');
+
+    // Clear and show spinner
+    subjectEl.textContent = '';
+    bodyEl.textContent = '';
+    spinner.style.display = '';
+    btn.disabled = true;
+
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'});
+
+    const dimLines = h.dimensions
+      ? Object.entries(h.dimensions).map(([n,d]) => `  • ${n}: ${d.score??0}/100${d.feedback?' — '+d.feedback:''}`).join('\n')
+      : '';
+    const spicedLines = h.spiced
+      ? Object.entries(h.spiced).map(([k,v]) => {
+          const l = k.charAt(0).toUpperCase()+k.slice(1).replace('_',' ');
+          return `  • ${l}: ${v.touched?(v.summary||'Covered'):'Not addressed'}`;
+        }).join('\n')
+      : '';
+    const nextSteps = Array.isArray(h.next_steps) ? h.next_steps.map(s=>'  • '+s).join('\n') : (h.next_steps||'');
+
+    const prompt = `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a professional, warm follow-up email to send to a prospect after a discovery/sales call.
+
+CALL DATA:
+- Prospect / Company: ${h.prospect || '—'}
+- Contact: ${h.contact || '—'}
+- Call Date: ${ds}
+- Deal Stage: ${h.stage || '—'}
+- Call Grade: ${h.letter_grade} (${h.total}/100) — ${h.grade_label || ''}
+- Top Strength observed: ${h.top_strength || '—'}
+- Top Priority / Gap: ${h.top_priority || '—'}
+${dimLines ? 'Dimension scores:\n'+dimLines : ''}
+${spicedLines ? 'SPICED coverage:\n'+spicedLines : ''}
+${nextSteps ? 'Agreed next steps:\n'+nextSteps : ''}
+${h.notes ? 'Call notes: '+h.notes : ''}
+
+INSTRUCTIONS:
+- Output ONLY the email. Start with "Subject: " on the first line, then a blank line, then the body.
+- Do not wrap in markdown code blocks or add any meta-commentary.
+- Tone: professional but personable, concise (under 200 words for the body).
+- Reference specific details from the call (pain points, next steps, stage context) — do not be generic.
+- Close with a clear call-to-action tied to the next agreed step.
+- Sign off as: ${h.rep || 'the OneAxiom team'}.`;
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 600,
+          stream: true,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      spinner.style.display = 'none';
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(()=>({error:{message:'Unknown error'}}));
+        bodyEl.textContent = 'Error: ' + (err?.error?.message || resp.statusText);
+        btn.disabled = false;
+        btn.textContent = 'Retry';
+        return;
+      }
+
+      let buffer = '';
+      let subjectDone = false;
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+          try {
+            const evt = JSON.parse(data);
+            const delta = evt?.delta?.text || evt?.content?.[0]?.text || '';
+            if (!delta) continue;
+            buffer += delta;
+
+            // Split subject from body on first blank line
+            if (!subjectDone) {
+              const blankIdx = buffer.indexOf('\n\n');
+              if (blankIdx !== -1) {
+                const subjectLine = buffer.slice(0, blankIdx).replace(/^Subject:\s*/i, '').trim();
+                subjectEl.textContent = subjectLine;
+                buffer = buffer.slice(blankIdx + 2);
+                subjectDone = true;
+                bodyEl.textContent = buffer;
+              }
+            } else {
+              bodyEl.textContent = buffer;
+            }
+          } catch {}
+        }
+      }
+
+      // Ensure subject is extracted even if no blank line yet
+      if (!subjectDone && buffer) {
+        const lines = buffer.split('\n');
+        subjectEl.textContent = lines[0].replace(/^Subject:\s*/i, '').trim();
+        bodyEl.textContent = lines.slice(2).join('\n').trim();
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Re-draft';
+    } catch (err) {
+      spinner.style.display = 'none';
+      bodyEl.textContent = 'Error: ' + err.message;
+      btn.disabled = false;
+      btn.textContent = 'Retry';
+    }
   }
 
   // Built-in template card click (clears custom template selection)
