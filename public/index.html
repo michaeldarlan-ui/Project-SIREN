@@ -348,40 +348,20 @@
   .lc-company-row select { max-width: 320px; }
   .lc-empty { font-size: 14px; color: var(--text-faint); padding: 3rem 0; text-align: center; line-height: 1.8; }
 
-  /* Timeline */
-  .tl-outer { overflow-x: auto; padding: 0.5rem 0 1.5rem; }
-  .tl-nodes {
-    display: flex; align-items: flex-start; position: relative;
-    padding: 0 40px; min-width: max-content;
+  /* ── Sentinel-style Timeline ── */
+  .tl-sentinel-wrap {
+    overflow-x: auto; padding: 1rem 0 1.5rem;
+    background: #f5f6f7; border-radius: 10px;
+    border: 1px solid var(--border-low);
   }
-  .tl-nodes::before {
-    content: ''; position: absolute;
-    top: 68px; left: 66px; right: 66px; height: 2px;
-    background: var(--border-mid); z-index: 0;
+  .tl-svg-container { display: block; min-width: max-content; }
+  /* Clickable node overlays */
+  .tl-node-overlay {
+    position: absolute; border-radius: 50%; cursor: pointer;
+    transition: transform 0.15s;
   }
-  .tl-node {
-    display: flex; flex-direction: column; align-items: center;
-    width: 130px; position: relative; z-index: 1; cursor: pointer;
-    padding: 0 5px;
-  }
-  .tl-node-stage {
-    font-size: 11px; font-weight: 600; color: var(--text-muted);
-    text-align: center; line-height: 1.35; min-height: 30px;
-    display: flex; align-items: flex-end; justify-content: center;
-    margin-bottom: 8px;
-  }
-  .tl-node-dot {
-    width: 60px; height: 60px; border-radius: 50%;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #fff; font-weight: 700; border: 3px solid rgba(255,255,255,0.25);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
-    transition: transform 0.15s, box-shadow 0.15s; flex-shrink: 0;
-    line-height: 1.1;
-  }
-  .tl-node:hover .tl-node-dot { transform: scale(1.12); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
-  .tl-node-letter { font-size: 15px; }
-  .tl-node-score  { font-size: 10px; opacity: 0.85; }
-  .tl-node-date   { font-size: 11px; color: var(--text-faint); margin-top: 9px; text-align: center; }
+  .tl-node-overlay:hover { transform: scale(1.08); }
+  .tl-sentinel-nodes { position: relative; display: inline-block; }
 
   /* Hover tooltip */
   #tlTooltip {
@@ -2336,27 +2316,102 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     }[stage] || stage;
   }
 
+  function gradeRingColor(grade) {
+    // returns border ring color matching Sentinel severity style
+    const g = (grade || 'C').toUpperCase();
+    if (g === 'A+' || g === 'A') return '#00A983'; // green
+    if (g === 'B') return '#004750';               // teal
+    if (g === 'C') return '#FF751F';               // orange
+    return '#c0392b';                              // red for D/F
+  }
+
   function buildTimeline(entries) {
-    const nodes = entries.map(h => {
-      const bg = getBannerColor(h.letter_grade);
+    // Layout constants
+    const NODE_R   = 36;   // circle radius
+    const SPACING  = 160;  // horizontal gap center-to-center
+    const CY       = 130;  // vertical center of nodes
+    const PAD_L    = 60;
+    const PAD_R    = 60;
+    const SVG_H    = 260;
+    const n        = entries.length;
+    const SVG_W    = PAD_L + (n - 1) * SPACING + PAD_R + NODE_R * 2;
+
+    // x center for each node
+    const cx = i => PAD_L + NODE_R + i * SPACING;
+
+    // Build SVG arcs between consecutive nodes
+    let arcPaths = '';
+    for (let i = 0; i < n - 1; i++) {
+      const x1 = cx(i), x2 = cx(i + 1);
+      const mx = (x1 + x2) / 2;
+      // alternate arcs above/below for visual variety
+      const arcDir = i % 2 === 0 ? -1 : 1;
+      const arcH   = 55 * arcDir;
+      const cpY    = CY + arcH;
+      const path   = `M ${x1} ${CY} Q ${mx} ${cpY} ${x2} ${CY}`;
+      arcPaths += `<path d="${path}" fill="none" stroke="#c8c8c8" stroke-width="1.5" stroke-dasharray="none"/>`;
+      // midpoint diamond/cross marker
+      const mpX = mx, mpY = CY + arcH * 0.5;
+      arcPaths += `<circle cx="${mpX}" cy="${mpY}" r="4" fill="#fff" stroke="#aaa" stroke-width="1.5"/>`;
+      arcPaths += `<line x1="${mpX-2}" y1="${mpY}" x2="${mpX+2}" y2="${mpY}" stroke="#999" stroke-width="1"/>`;
+      arcPaths += `<line x1="${mpX}" y1="${mpY-2}" x2="${mpX}" y2="${mpY+2}" stroke="#999" stroke-width="1"/>`;
+    }
+
+    // Build node groups
+    let nodeSvg = '';
+    let overlayDivs = '';
+    entries.forEach((h, i) => {
+      const x      = cx(i);
+      const ring   = gradeRingColor(h.letter_grade);
       const dateStr = h.callDate
         ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: '2-digit' })
         : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: '2-digit' });
-      return `<div class="tl-node"
-          onmouseenter="showTLTooltip(event,${h.id})"
-          onmousemove="moveTLTooltip(event)"
-          onmouseleave="hideTLTooltip()"
-          onclick="openLcModal(${h.id})">
-        <div class="tl-node-stage">${escHtml(stageAbbrev(h.stage || ''))}</div>
-        <div class="tl-node-dot" style="background:${bg};">
-          <span class="tl-node-letter">${escHtml(h.letter_grade)}</span>
-          <span class="tl-node-score">${h.total}</span>
-        </div>
-        <div class="tl-node-date">${escHtml(dateStr)}</div>
-      </div>`;
-    }).join('');
+      const label  = escHtml(stageAbbrev(h.stage || ''));
+      const score  = h.total;
+      const grade  = escHtml(h.letter_grade);
+
+      // outer glow ring (double ring like Sentinel alert nodes)
+      nodeSvg += `
+        <circle cx="${x}" cy="${CY}" r="${NODE_R + 9}" fill="none" stroke="${ring}" stroke-width="1.5" opacity="0.35"/>
+        <circle cx="${x}" cy="${CY}" r="${NODE_R + 4}" fill="none" stroke="${ring}" stroke-width="2" opacity="0.65"/>
+        <!-- inner filled circle -->
+        <circle cx="${x}" cy="${CY}" r="${NODE_R}" fill="#2c2c2e" stroke="${ring}" stroke-width="2.5"/>
+        <!-- grade letter -->
+        <text x="${x}" y="${CY - 5}" text-anchor="middle" dominant-baseline="middle"
+          font-size="17" font-weight="700" fill="#ffffff" font-family="system-ui,sans-serif">${grade}</text>
+        <text x="${x}" y="${CY + 14}" text-anchor="middle" dominant-baseline="middle"
+          font-size="9" fill="rgba(255,255,255,0.7)" font-family="'SF Mono','Fira Code',monospace">${score}</text>
+        <!-- stage label above -->
+        <text x="${x}" y="${CY - NODE_R - 24}" text-anchor="middle"
+          font-size="10" font-weight="600" fill="#444" font-family="system-ui,sans-serif">${label}</text>
+        <!-- date label below -->
+        <text x="${x}" y="${CY + NODE_R + 18}" text-anchor="middle"
+          font-size="10" fill="#888" font-family="system-ui,sans-serif">${escHtml(dateStr)}</text>`;
+
+      // invisible overlay div for hover/click (SVG events are harder cross-browser)
+      const overlaySize = (NODE_R + 10) * 2;
+      const overlayLeft = x - NODE_R - 10;
+      const overlayTop  = CY - NODE_R - 10;
+      overlayDivs += `<div class="tl-node-overlay"
+        style="left:${overlayLeft}px;top:${overlayTop}px;width:${overlaySize}px;height:${overlaySize}px;"
+        onmouseenter="showTLTooltip(event,${h.id})"
+        onmousemove="moveTLTooltip(event)"
+        onmouseleave="hideTLTooltip()"
+        onclick="openLcModal(${h.id})"></div>`;
+    });
+
+    const svg = `<svg width="${SVG_W}" height="${SVG_H}" xmlns="http://www.w3.org/2000/svg" class="tl-svg-container">
+      ${arcPaths}
+      ${nodeSvg}
+    </svg>`;
+
     return `<div class="card" style="padding:1.25rem 1rem;">
-      <div class="tl-outer"><div class="tl-nodes">${nodes}</div></div>
+      <div class="tl-sentinel-wrap">
+        <div class="tl-sentinel-nodes" style="width:${SVG_W}px;height:${SVG_H}px;">
+          ${svg}
+          ${overlayDivs}
+        </div>
+      </div>
     </div>`;
   }
 
