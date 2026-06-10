@@ -3710,17 +3710,21 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   function lcSelectNode(id) {
     _lcSelId = id;
     const nd = _lcNodes.find(n=>n.id===id);
+    drawLcGraph();
     if (nd) {
       const c = document.getElementById('lcGraphCanvas');
+      const sb = document.getElementById('lcSidebar');
       if (c) {
-        const W = c.offsetWidth, H = c.offsetHeight;
+        // Account for sidebar opening: if sidebar isn't open yet, canvas will shrink by 310px
+        const sidebarOpening = sb && !sb.classList.contains('open');
+        const W = c.offsetWidth - (sidebarOpening ? 310 : 0);
+        const H = c.offsetHeight;
         _lcT.x = W / 2 - nd.x * _lcT.s;
         _lcT.y = H / 2 - nd.y * _lcT.s;
         applyLcTransform();
       }
+      lcShowSidebar(nd);
     }
-    drawLcGraph();
-    if (nd) lcShowSidebar(nd);
   }
 
   function lcShowSidebar(nd) {
