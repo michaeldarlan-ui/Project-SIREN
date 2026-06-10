@@ -1786,21 +1786,26 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     for (const phase of STREAM_PHASES) {
       if (text.includes(phase.marker)) pct = phase.pct;
     }
-    // Update each step based on pct
     for (let i = 0; i < 4; i++) {
       const el   = document.getElementById('lstep-' + i);
       const icon = document.getElementById('lstep-icon-' + i);
       const bar  = document.getElementById('lstep-bar-' + i);
       if (!el) continue;
-      const done = pct >= STEP_THRESHOLDS[i];
+      const done   = pct >= STEP_THRESHOLDS[i];
       const active = !done && pct >= (i === 0 ? 0 : STEP_THRESHOLDS[i - 1]);
+      // 'visible' must always be present for opacity transitions to work
+      el.classList.add('visible');
       el.classList.toggle('done',   done);
-      el.classList.toggle('active', active && !done);
+      el.classList.toggle('active', active);
       if (icon) icon.textContent = done ? '✓' : '○';
-      if (bar && active && !done) {
-        const prev = i === 0 ? 0 : STEP_THRESHOLDS[i - 1];
-        const span = STEP_THRESHOLDS[i] - prev;
-        bar.style.width = Math.min(100, ((pct - prev) / span) * 100) + '%';
+      if (bar) {
+        if (done) {
+          bar.style.width = '100%';
+        } else if (active) {
+          const prev = i === 0 ? 0 : STEP_THRESHOLDS[i - 1];
+          const span = STEP_THRESHOLDS[i] - prev;
+          bar.style.width = Math.min(99, ((pct - prev) / span) * 100) + '%';
+        }
       }
     }
   }
@@ -1813,31 +1818,40 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       const parts = [prospect, stage].filter(Boolean);
       const ctx = (parts.length ? parts.join(' // ') : 'ENGAGEMENT').toUpperCase();
       document.getElementById('loadContext').textContent = ctx;
-      // reset steps
+      // Reset all steps to hidden baseline — clear any inline styles from prior run
       for (let i = 0; i < 4; i++) {
-        const s = document.getElementById('lstep-' + i);
+        const s  = document.getElementById('lstep-' + i);
         const ic = document.getElementById('lstep-icon-' + i);
         const b  = document.getElementById('lstep-bar-' + i);
-        if (s)  { s.classList.remove('done','active'); s.classList.add('visible'); }
+        if (s)  {
+          s.style.opacity = '';
+          s.style.transform = '';
+          s.classList.remove('visible', 'active', 'done');
+        }
         if (ic) ic.textContent = '○';
         if (b)  b.style.width = '0%';
-        // stagger in
-        if (s) {
-          s.style.opacity = '0'; s.style.transform = 'translateX(-8px)';
-          setTimeout(() => { s.classList.add('visible'); }, i * 200);
-        }
+      }
+      // Stagger steps into view — adding only 'visible' so CSS transition fires cleanly
+      // Step 0 also gets 'active' immediately so something is lit up before first stream data
+      for (let i = 0; i < 4; i++) {
+        const s = document.getElementById('lstep-' + i);
+        if (!s) continue;
+        setTimeout(() => {
+          s.classList.add('visible');
+          if (i === 0) s.classList.add('active');
+        }, i * 300);
       }
       startRadar();
     } else {
       stopRadar();
-      // mark all done then hide
+      // Flash all steps to done then hide
       for (let i = 0; i < 4; i++) {
         const s  = document.getElementById('lstep-' + i);
         const ic = document.getElementById('lstep-icon-' + i);
-        if (s)  { s.classList.remove('active'); s.classList.add('done','visible'); }
+        if (s)  { s.classList.remove('active'); s.classList.add('visible', 'done'); }
         if (ic) ic.textContent = '✓';
       }
-      setTimeout(() => { el.style.display = 'none'; }, 400);
+      setTimeout(() => { el.style.display = 'none'; }, 450);
     }
   }
 
