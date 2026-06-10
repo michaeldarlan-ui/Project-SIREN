@@ -800,6 +800,11 @@
   .tmpl-add-form textarea { font-family: var(--siren-font-hud); font-size: 12px; resize: vertical; }
   .tmpl-new-btn { font-size: 12px; font-weight: 600; padding: 7px 16px; background: transparent; border: 1px dashed var(--siren-border-mid); border-radius: var(--siren-radius-sm); color: var(--siren-text-muted); cursor: pointer; width: 100%; margin-top: 4px; }
   .tmpl-new-btn:hover { border-color: var(--siren-border-active); color: var(--siren-text-body); }
+  .tmpl-attach-btn { display: inline-block; font-size: 12px; font-weight: 600; padding: 6px 12px; background: var(--siren-bg-card); border: 1px dashed var(--siren-border-mid); border-radius: 4px; color: var(--siren-text-muted); cursor: pointer; }
+  .tmpl-attach-btn:hover { border-color: var(--siren-border-active); color: var(--siren-text-body); }
+  .tmpl-file-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 8px; background: var(--siren-cyan-08); border: 1px solid var(--siren-border); border-radius: 4px; color: var(--siren-text-body); margin: 0 4px 4px 0; }
+  .tmpl-file-chip button { background: none; border: none; color: var(--siren-text-faint); cursor: pointer; font-size: 11px; padding: 0; line-height: 1; }
+  .tmpl-file-chip button:hover { color: var(--siren-danger-red); }
 
   .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
   @media (max-width: 600px) { .summary-grid { grid-template-columns: 1fr; } }
@@ -1009,8 +1014,9 @@
   .scope-grid { display: grid; grid-template-columns: 240px 1fr 1fr; gap: 8px 12px; align-items: center; }
   .scope-col-head { font-size: .7rem; font-weight: 700; color: var(--siren-text-muted); text-transform: uppercase; letter-spacing: .08em; padding-bottom: 4px; border-bottom: 1px solid var(--siren-border); margin-bottom: 4px; }
   .scope-label { font-size: .85rem; color: var(--siren-text-muted); line-height: 1.3; padding: 6px 0; }
-  .scope-input { background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border); border-radius: 6px; color: var(--siren-text-main); padding: 6px 10px; font-size: .85rem; width: 100%; box-sizing: border-box; }
-  .scope-input:focus { outline: none; border-color: var(--siren-cyan); }
+  .scope-input { background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border); border-radius: 6px; color: var(--siren-text-body); padding: 6px 10px; font-size: .85rem; width: 100%; box-sizing: border-box; font-family: inherit; }
+  .scope-input:focus { outline: none; border-color: var(--siren-border-active); }
+  .scope-input::placeholder { color: var(--siren-text-faint); }
   .scope-notes { opacity: .75; font-size: .8rem; }
   .scope-notes:focus { opacity: 1; }
   @media (max-width: 700px) {
@@ -1521,18 +1527,24 @@
       <div class="tmpl-add-form" id="tmplAddForm">
         <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;">
           <input id="tmplName" placeholder="Template name (e.g. Discovery Follow-Up)" />
-          <select id="tmplStage">
-            <option value="">— Stage —</option>
-            <option>Cold Outreach</option>
-            <option>Discovery</option>
-            <option>Demo</option>
-            <option>Proposal / Close</option>
-            <option>Touchpoint</option>
-            <option>General</option>
-          </select>
+          <div style="position:relative;">
+            <select id="tmplReportType" style="width:100%;padding-right:32px;" onchange="onReportTypeChange()"></select>
+          </div>
         </div>
-        <textarea id="tmplBody" rows="6" placeholder="Template body — use {{prospect}}, {{rep}}, {{next_steps}}, {{date}} etc."></textarea>
-        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <div id="tmplCustomTypeRow" style="display:none;margin-bottom:8px;display:none;">
+          <input id="tmplCustomType" placeholder="Enter custom report type name…" />
+        </div>
+        <textarea id="tmplBody" rows="5" placeholder="Template body — use {{prospect}}, {{rep}}, {{next_steps}}, {{date}} etc. (optional if attaching a file)"></textarea>
+        <!-- File attachments -->
+        <div style="margin-top:8px;">
+          <div style="font-size:11px;font-weight:600;color:var(--siren-text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Attachments</div>
+          <div id="tmplFileList" style="margin-bottom:6px;"></div>
+          <label class="tmpl-attach-btn">
+            <input type="file" id="tmplFileInput" multiple accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv" style="display:none;" onchange="onTmplFileAdd(event)" />
+            + Attach file (PDF, PPT, Word, Excel…)
+          </label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px;">
           <button class="primary-btn" onclick="addTemplate()">Save Template</button>
         </div>
       </div>
@@ -1614,12 +1626,21 @@
       <h2>SCOPE</h2>
       <p>Prospect environment scoping — tied to an account.</p>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;">
-      <select id="scopeAccountSelect" onchange="onScopeAccountChange()" style="background:var(--siren-bg-card);color:var(--siren-text-main);border:1px solid var(--siren-border);border-radius:6px;padding:8px 12px;font-size:.9rem;min-width:220px;"></select>
-      <button onclick="exportScope()" style="background:var(--siren-cyan);color:#000;border:none;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:.85rem;">Export</button>
-      <span id="scopeSaveStatus" style="font-size:.8rem;color:var(--siren-text-muted);"></span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <select id="scopeAccountSelect" onchange="onScopeAccountChange()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;min-width:220px;font-family:inherit;outline:none;"></select>
+      <button onclick="scopeAddAccountPrompt()" style="background:transparent;color:var(--siren-text-muted);border:1px dashed var(--siren-border-mid);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">+ New Account</button>
+      <button onclick="exportScope()" style="background:var(--siren-cyan-12);color:var(--siren-cyan-90);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:12px;margin-left:auto;">Export</button>
+      <span id="scopeSaveStatus" style="font-size:11px;color:var(--siren-signal-green);"></span>
     </div>
-    <div id="scopeEmpty" style="color:var(--siren-text-muted);padding:2rem 0;">Select an account to view or fill out scoping.</div>
+    <!-- New account inline form -->
+    <div id="scopeNewAccountRow" style="display:none;margin-bottom:1rem;display:none;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="scopeNewAccountInput" placeholder="Company name…" style="flex:1;background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')scopeCreateAccount();if(event.key==='Escape')scopeHideNewAccount();" />
+        <button onclick="scopeCreateAccount()" style="background:var(--siren-cyan-12);color:var(--siren-cyan-90);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+        <button onclick="scopeHideNewAccount()" style="background:transparent;color:var(--siren-text-faint);border:none;font-size:13px;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    <div id="scopeEmpty" style="color:var(--siren-text-muted);padding:2rem 0;font-size:13px;">Select an account above — or create one with + New Account.</div>
     <div id="scopeForm" style="display:none;"></div>
   </div>
 </div>
@@ -1928,6 +1949,31 @@
   }
   function saveTemplates(t) { try { localStorage.setItem('oa_templates', JSON.stringify(t)); } catch {} }
 
+  const DEFAULT_REPORT_TYPES = ['Follow-Up Email', 'Executive Summary', 'Next Steps Memo', 'Proposal Cover', 'Scorecard Narrative', 'QBR Report'];
+
+  function loadReportTypes() {
+    try { const r = localStorage.getItem('oa_report_types'); if (r) return JSON.parse(r); } catch {}
+    return [...DEFAULT_REPORT_TYPES];
+  }
+  function saveReportTypes(types) { try { localStorage.setItem('oa_report_types', JSON.stringify(types)); } catch {} }
+
+  function populateReportTypeSelect() {
+    const sel = document.getElementById('tmplReportType');
+    if (!sel) return;
+    const types = loadReportTypes();
+    sel.innerHTML = '<option value="">— Report Type —</option>' +
+      types.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('') +
+      '<option value="__custom__">+ Add custom type…</option>';
+  }
+
+  function onReportTypeChange() {
+    const sel = document.getElementById('tmplReportType');
+    const row = document.getElementById('tmplCustomTypeRow');
+    if (!sel || !row) return;
+    row.style.display = sel.value === '__custom__' ? 'block' : 'none';
+    if (sel.value === '__custom__') document.getElementById('tmplCustomType').focus();
+  }
+
   let _tmplExpanded = new Set();
 
   function renderTemplates() {
@@ -1940,7 +1986,7 @@
       return `<div class="tmpl-item">
         <div class="tmpl-item-head" onclick="toggleTmplExpand(${i})">
           <span class="tmpl-item-name">${escHtml(t.name)}</span>
-          ${t.stage ? `<span class="tmpl-item-stage">${escHtml(t.stage)}</span>` : ''}
+          ${t.reportType ? `<span class="tmpl-item-stage">${escHtml(t.reportType)}</span>` : ''}
           <div class="tmpl-item-actions" onclick="event.stopPropagation()">
             <button class="tmpl-copy-btn" onclick="copyTemplate(${i})">Copy</button>
             <button class="member-remove" onclick="removeTemplate(${i})">Remove</button>
@@ -1948,7 +1994,10 @@
           <span style="font-size:11px;color:var(--siren-text-faint);margin-left:4px;">${open ? '▲' : '▼'}</span>
         </div>
         ${open ? `<div class="tmpl-item-body">
-          <textarea rows="6" onchange="updateTemplate(${i}, this.value)">${escHtml(t.body)}</textarea>
+          ${t.body ? `<textarea rows="5" onchange="updateTemplate(${i}, this.value)">${escHtml(t.body)}</textarea>` : ''}
+          ${(t.files||[]).length ? `<div style="margin-top:${t.body?'8px':'0'};">
+            ${t.files.map((f,fi) => `<span class="tmpl-file-chip"><a href="${f.data}" download="${escHtml(f.name)}" style="color:inherit;text-decoration:none;">📎 ${escHtml(f.name)}</a><button onclick="removeTmplFile(${i},${fi})">✕</button></span>`).join('')}
+          </div>` : ''}
         </div>` : ''}
       </div>`;
     }).join('');
@@ -1959,18 +2008,56 @@
     renderTemplates();
   }
 
+  let _tmplPendingFiles = []; // { name, type, data (base64) }
+
+  function onTmplFileAdd(event) {
+    const files = Array.from(event.target.files);
+    const readNext = (idx) => {
+      if (idx >= files.length) { renderTmplPendingFiles(); return; }
+      const file = files[idx];
+      const reader = new FileReader();
+      reader.onload = e => {
+        _tmplPendingFiles.push({ name: file.name, type: file.type, data: e.target.result });
+        readNext(idx + 1);
+      };
+      reader.readAsDataURL(file);
+    };
+    readNext(0);
+    event.target.value = '';
+  }
+
+  function renderTmplPendingFiles() {
+    const el = document.getElementById('tmplFileList');
+    if (!el) return;
+    el.innerHTML = _tmplPendingFiles.map((f, i) =>
+      `<span class="tmpl-file-chip">📎 ${escHtml(f.name)}<button onclick="_tmplPendingFiles.splice(${i},1);renderTmplPendingFiles()">✕</button></span>`
+    ).join('');
+  }
+
   function addTemplate() {
     const name = document.getElementById('tmplName').value.trim();
-    const stage = document.getElementById('tmplStage').value;
+    const sel = document.getElementById('tmplReportType');
     const body = document.getElementById('tmplBody').value.trim();
     if (!name) { document.getElementById('tmplName').focus(); return; }
-    if (!body) { document.getElementById('tmplBody').focus(); return; }
+    if (!body && !_tmplPendingFiles.length) { document.getElementById('tmplBody').focus(); return; }
+    let reportType = sel ? sel.value : '';
+    if (reportType === '__custom__') {
+      const custom = document.getElementById('tmplCustomType').value.trim();
+      if (!custom) { document.getElementById('tmplCustomType').focus(); return; }
+      reportType = custom;
+      const types = loadReportTypes();
+      if (!types.includes(custom)) { types.push(custom); saveReportTypes(types); }
+    }
     const tmpls = loadTemplates();
-    tmpls.push({ name, stage, body });
+    tmpls.push({ name, reportType, body, files: [..._tmplPendingFiles] });
     saveTemplates(tmpls);
     document.getElementById('tmplName').value = '';
-    document.getElementById('tmplStage').value = '';
+    document.getElementById('tmplCustomType').value = '';
+    document.getElementById('tmplCustomTypeRow').style.display = 'none';
     document.getElementById('tmplBody').value = '';
+    _tmplPendingFiles = [];
+    renderTmplPendingFiles();
+    populateReportTypeSelect();
     toggleTmplForm(false);
     renderTemplates();
   }
@@ -1981,6 +2068,11 @@
     _tmplExpanded.delete(i);
     saveTemplates(tmpls);
     renderTemplates();
+  }
+
+  function removeTmplFile(tmplIdx, fileIdx) {
+    const tmpls = loadTemplates();
+    if (tmpls[tmplIdx]?.files) { tmpls[tmplIdx].files.splice(fileIdx, 1); saveTemplates(tmpls); renderTemplates(); }
   }
 
   function updateTemplate(i, val) {
@@ -2005,7 +2097,7 @@
     const open = forceOpen !== undefined ? forceOpen : form.style.display === 'none' || !form.style.display;
     form.style.display = open ? 'block' : 'none';
     btn.style.display = open ? 'none' : 'block';
-    if (open) document.getElementById('tmplName').focus();
+    if (open) { populateReportTypeSelect(); document.getElementById('tmplName').focus(); }
   }
   // Default call date to today
   document.getElementById('callDate').value = new Date().toISOString().slice(0, 10);
@@ -4197,6 +4289,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   renderMemberList();
   renderLibrary();
   renderTemplates();
+  populateReportTypeSelect();
   renderDocList();
   renderHistory();
   initUsageBar();
@@ -4314,13 +4407,52 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     form.innerHTML=html;
   }
 
+  function getScopeCompanies(){
+    // merge call history companies + any scope-only companies
+    const fromCalls = getLcCompanies();
+    let scopeOnly = [];
+    try { scopeOnly = JSON.parse(localStorage.getItem('oa_scope_companies')||'[]'); } catch {}
+    const all = [...new Set([...fromCalls, ...scopeOnly])].sort((a,b)=>a.localeCompare(b));
+    return all;
+  }
+
   function renderScopePage(){
     const sel=document.getElementById('scopeAccountSelect');
     if(!sel) return;
     const prev=sel.value;
-    const companies=getLcCompanies();
+    const companies=getScopeCompanies();
     sel.innerHTML='<option value="">— select account —</option>'+companies.map(c=>`<option value="${c}"${c===prev?' selected':''}>${c}</option>`).join('');
-    if(prev && companies.includes(prev)){ onScopeAccountChange(); }
+    if(prev && companies.includes(prev)){ sel.value=prev; onScopeAccountChange(); }
+  }
+
+  function scopeAddAccountPrompt(){
+    const row=document.getElementById('scopeNewAccountRow');
+    if(!row) return;
+    row.style.display='flex';
+    document.getElementById('scopeNewAccountInput').focus();
+  }
+
+  function scopeHideNewAccount(){
+    const row=document.getElementById('scopeNewAccountRow');
+    if(row) row.style.display='none';
+    const inp=document.getElementById('scopeNewAccountInput');
+    if(inp) inp.value='';
+  }
+
+  function scopeCreateAccount(){
+    const inp=document.getElementById('scopeNewAccountInput');
+    const name=(inp?.value||'').trim();
+    if(!name) return;
+    let existing=[];
+    try{ existing=JSON.parse(localStorage.getItem('oa_scope_companies')||'[]'); }catch{}
+    if(!existing.map(c=>c.toLowerCase()).includes(name.toLowerCase())){
+      existing.push(name);
+      localStorage.setItem('oa_scope_companies', JSON.stringify(existing));
+    }
+    scopeHideNewAccount();
+    renderScopePage();
+    const sel=document.getElementById('scopeAccountSelect');
+    if(sel){ sel.value=name; onScopeAccountChange(); }
   }
 
   function exportScope(){
