@@ -479,7 +479,7 @@
   .forge-int-footer { padding-top: 8px; border-top: 1px solid var(--siren-border); }
   .forge-int-cta { width: 100%; padding: 6px; text-align: center; background: transparent; border: 1px dashed var(--siren-border-mid); border-radius: var(--siren-radius-sm); font-family: var(--siren-font-hud); font-size: 10px; color: var(--siren-text-muted); cursor: default; letter-spacing: .06em; }
 
-  /* ── Account Intelligence Map ── */
+  /* ── ATLAS ── */
   #page-lifecycle { padding: 0 !important; }
   #page-lifecycle .shell { padding: 0; max-width: 100%; }
   .lc-graph-page {
@@ -1490,7 +1490,7 @@
         onwheel="lcWheel(event)">
         <!-- Top bar -->
         <div class="lc-graph-topbar">
-          <span class="lc-graph-topbar-title">Account Intelligence Map</span>
+          <span class="lc-graph-topbar-title">ATLAS</span>
           <select id="lcCompanySelect" onchange="onLcCompanyChange()">
             <option value="">— Select an account —</option>
           </select>
@@ -3045,20 +3045,18 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     drawPulseTrend(trendData);
 
     // ── Dimension Averages ──
-    const dimTotals = {}, dimMaxes = {}, dimCounts = {};
+    const dimTotals = {}, dimCounts = {};
     history.forEach(h => {
-      (h.dimensions||[]).forEach(d => {
-        if (!d.name) return;
-        const key = d.name;
-        dimTotals[key] = (dimTotals[key]||0) + d.score;
-        dimMaxes[key]  = d.max || 20;
-        dimCounts[key] = (dimCounts[key]||0) + 1;
+      if (!h.dimensions || typeof h.dimensions !== 'object') return;
+      Object.entries(h.dimensions).forEach(([name, d]) => {
+        dimTotals[name] = (dimTotals[name]||0) + (d.score||0);
+        dimCounts[name] = (dimCounts[name]||0) + 1;
       });
     });
     const dims = Object.keys(dimTotals).map(k => ({
-      name: k, avg: dimTotals[k]/dimCounts[k], max: dimMaxes[k],
-      pct: (dimTotals[k]/dimCounts[k]) / dimMaxes[k]
-    })).sort((a,b) => b.pct - a.pct);
+      name: k, avg: Math.round(dimTotals[k]/dimCounts[k]),
+      pct: (dimTotals[k]/dimCounts[k]) / 100
+    })).sort((a,b) => b.avg - a.avg);
 
     const dimEl = document.getElementById('pulseDimBars');
     if (dims.length) {
@@ -3069,7 +3067,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         return `<div class="pulse-dim-row">
           <span class="pulse-dim-name" title="${escHtml(d.name)}">${escHtml(shortName)}</span>
           <div class="pulse-dim-track"><div class="pulse-dim-fill" style="width:${pct}%;background:${color};"></div></div>
-          <span class="pulse-dim-score">${Math.round(d.avg)}/${d.max}</span>
+          <span class="pulse-dim-score">${d.avg}/100</span>
         </div>`;
       }).join('');
     } else {
