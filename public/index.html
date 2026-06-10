@@ -183,13 +183,97 @@
   }
   .reset-btn:hover { background: var(--bg-surface); }
 
-  /* ── Loading / error ── */
-  .loading { display: none; align-items: center; gap: 12px; padding: 1.5rem; color: var(--text-muted); font-size: 14px; }
-  .dots { display: flex; gap: 4px; }
-  .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--oa-green); animation: bounce 1.2s ease-in-out infinite; }
-  .dots span:nth-child(2) { animation-delay: 0.2s; }
-  .dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,80%,100% { transform: scale(0.55); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+  /* ── Loading screen ── */
+  #loading {
+    display: none; flex-direction: column; align-items: center;
+    padding: 2.5rem 2rem 2rem;
+    background: linear-gradient(160deg, #00303a 0%, #001e25 100%);
+    border-radius: var(--radius); border: 1px solid rgba(0,169,131,0.35);
+    box-shadow: 0 0 40px rgba(0,169,131,0.08), inset 0 1px 0 rgba(255,255,255,0.05);
+    margin-bottom: 1rem; position: relative; overflow: hidden;
+  }
+  #loading::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(0,169,131,0.04) 28px, rgba(0,169,131,0.04) 29px);
+    pointer-events: none;
+  }
+
+  /* Radar */
+  .load-radar {
+    position: relative; width: 110px; height: 110px; margin-bottom: 1.75rem; flex-shrink: 0;
+  }
+  .load-radar-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid rgba(0,169,131,0.25);
+    animation: radar-ping 2.4s ease-out infinite;
+  }
+  .load-radar-ring:nth-child(2) { animation-delay: 1.2s; }
+  @keyframes radar-ping {
+    0%   { transform: scale(0.3); opacity: 0.8; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+  .load-radar-disc {
+    position: absolute; inset: 12px; border-radius: 50%;
+    border: 1px solid rgba(0,169,131,0.4);
+    background: radial-gradient(circle, rgba(0,169,131,0.08) 0%, transparent 70%);
+    overflow: hidden;
+  }
+  .load-radar-sweep {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(0,169,131,0.55) 55deg, transparent 60deg);
+    animation: radar-spin 2s linear infinite;
+  }
+  @keyframes radar-spin { to { transform: rotate(360deg); } }
+  .load-radar-crosshair {
+    position: absolute; inset: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .load-radar-crosshair::before, .load-radar-crosshair::after {
+    content: ''; position: absolute; background: rgba(0,169,131,0.2);
+  }
+  .load-radar-crosshair::before { width: 1px; height: 100%; }
+  .load-radar-crosshair::after  { width: 100%; height: 1px; }
+  .load-radar-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--oa-green); z-index: 1;
+    box-shadow: 0 0 8px var(--oa-green), 0 0 20px rgba(0,169,131,0.5);
+    animation: dot-pulse 2s ease-in-out infinite;
+  }
+  @keyframes dot-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* Text elements */
+  .load-title {
+    font-size: 17px; font-weight: 700; color: #fff; letter-spacing: -0.2px; margin-bottom: 4px;
+  }
+  .load-context {
+    font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 1.5rem; letter-spacing: 0.02em;
+  }
+  .load-phase-wrap {
+    width: 100%; max-width: 340px; text-align: center; margin-bottom: 14px; min-height: 20px;
+  }
+  .load-phase {
+    font-size: 12px; font-family: 'SF Mono','Fira Code','Cascadia Code',monospace;
+    color: var(--oa-green); letter-spacing: 0.04em;
+    animation: phase-fade 0.4s ease;
+  }
+  @keyframes phase-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Progress bar */
+  .load-progress-track {
+    width: 100%; max-width: 340px; height: 3px;
+    background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-bottom: 10px;
+  }
+  .load-progress-fill {
+    height: 100%; width: 0%; border-radius: 2px;
+    background: linear-gradient(90deg, #00A983, #00d4a8);
+    transition: width 0.6s ease;
+    box-shadow: 0 0 8px rgba(0,169,131,0.6);
+  }
+  .load-step-label {
+    font-size: 10.5px; color: rgba(255,255,255,0.3); letter-spacing: 0.08em;
+    font-family: 'SF Mono','Fira Code',monospace; text-transform: uppercase;
+  }
 
   .error-box { display: none; padding: 12px 16px; background: #fff0f0; border: 1px solid #fcc; border-radius: var(--radius-sm); color: #c00; font-size: 13px; margin-top: 10px; line-height: 1.5; }
   @media (prefers-color-scheme: dark) { .error-box { background: #2a1010; border-color: #5a2020; color: #ff8080; } }
@@ -492,7 +576,27 @@
       <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here."></textarea>
 
       <button class="submit-btn" id="submitBtn" onclick="gradeCall()">Grade this call</button>
-      <div class="loading" id="loading"><div class="dots"><span></span><span></span><span></span></div>Analyzing your call…</div>
+      <div id="loading" style="display:none;">
+        <div class="load-radar">
+          <div class="load-radar-ring"></div>
+          <div class="load-radar-ring"></div>
+          <div class="load-radar-disc">
+            <div class="load-radar-sweep"></div>
+            <div class="load-radar-crosshair">
+              <div class="load-radar-dot"></div>
+            </div>
+          </div>
+        </div>
+        <div class="load-title">Analyzing Call</div>
+        <div class="load-context" id="loadContext">Sales SIEM · AI Coach</div>
+        <div class="load-phase-wrap">
+          <div class="load-phase" id="loadPhase">Initializing analysis engine…</div>
+        </div>
+        <div class="load-progress-track">
+          <div class="load-progress-fill" id="loadProgressFill"></div>
+        </div>
+        <div class="load-step-label" id="loadStepLabel">Step 1 of 10</div>
+      </div>
       <div class="error-box" id="errorBox"></div>
     </div>
 
@@ -1037,7 +1141,7 @@
     if (!apiKey) { showError('No API key found. Add one in .env or enter it above.'); return; }
     if (!notes) { showError('Please paste your call notes or transcript.'); return; }
 
-    setLoading(true);
+    setLoading(true, prospect, selectedStage);
     clearError();
     document.getElementById('results').style.display = 'none';
 
@@ -1284,9 +1388,62 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function setLoading(on) {
-    document.getElementById('loading').style.display = on ? 'flex' : 'none';
+  const LOAD_PHASES = [
+    'Initializing analysis engine…',
+    'Parsing transcript structure…',
+    'Identifying speaker contributions…',
+    'Evaluating discovery & needs alignment…',
+    'Scoring value framing & demo delivery…',
+    'Analyzing objection handling…',
+    'Checking qualification signals…',
+    'Assessing call control & next steps…',
+    'Mapping SPICED framework components…',
+    'Scoring individual rep performance…',
+    'Generating coaching insights…',
+    'Compiling final report…',
+  ];
+  let _loadInterval = null;
+  let _loadStep = 0;
+
+  function setLoading(on, prospect, stage) {
+    const el = document.getElementById('loading');
     document.getElementById('submitBtn').disabled = on;
+
+    if (on) {
+      _loadStep = 0;
+      el.style.display = 'flex';
+
+      // Context line
+      const parts = [prospect, stage].filter(Boolean);
+      document.getElementById('loadContext').textContent = parts.length ? parts.join(' · ') : 'Sales SIEM · AI Coach';
+
+      // Kick off phase cycling
+      const phaseEl  = document.getElementById('loadPhase');
+      const stepEl   = document.getElementById('loadStepLabel');
+      const fillEl   = document.getElementById('loadProgressFill');
+      const total    = LOAD_PHASES.length;
+
+      function advance() {
+        if (_loadStep >= total) _loadStep = 0;
+        phaseEl.style.animation = 'none';
+        void phaseEl.offsetWidth; // reflow to restart animation
+        phaseEl.style.animation = '';
+        phaseEl.textContent = LOAD_PHASES[_loadStep];
+        stepEl.textContent   = `Step ${_loadStep + 1} of ${total}`;
+        fillEl.style.width   = Math.round(((_loadStep + 1) / total) * 88) + '%';
+        _loadStep++;
+      }
+
+      advance();
+      _loadInterval = setInterval(advance, 2200);
+    } else {
+      clearInterval(_loadInterval);
+      _loadInterval = null;
+      // Flash to 100% briefly before hiding
+      const fillEl = document.getElementById('loadProgressFill');
+      if (fillEl) fillEl.style.width = '100%';
+      setTimeout(() => { el.style.display = 'none'; }, 300);
+    }
   }
 
   function showError(msg) {
