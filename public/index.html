@@ -1009,6 +1009,21 @@
   .footer { text-align: center; font-size: 11px; color: var(--siren-text-faint); padding: 1.5rem 0 1rem; }
 
   /* SCOPE page */
+  .scope-create-prompt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 4rem 2rem; text-align: center; border: 1px dashed var(--siren-border-mid); border-radius: 12px; background: var(--siren-bg-card); }
+  .scope-create-icon { font-size: 36px; opacity: .3; }
+  .scope-create-title { font-family: var(--siren-font-hud); font-size: 15px; font-weight: 700; color: var(--siren-text-body); letter-spacing: .06em; }
+  .scope-create-sub { font-size: 13px; color: var(--siren-text-muted); max-width: 400px; line-height: 1.55; }
+  .scope-create-btn { margin-top: 8px; padding: 10px 28px; background: var(--siren-cyan); color: #000; border: none; border-radius: 6px; font-family: var(--siren-font-hud); font-size: 12px; font-weight: 700; letter-spacing: .08em; cursor: pointer; }
+  .scope-create-btn:hover { opacity: .85; }
+  .scope-rev-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .scope-rev-left { display: flex; align-items: center; gap: 10px; }
+  .scope-rev-right { display: flex; align-items: center; gap: 10px; }
+  .scope-rev-label { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--siren-text-muted); }
+  .scope-rev-select { background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); border-radius: 6px; color: var(--siren-text-body); font-family: inherit; font-size: 12px; padding: 5px 10px; outline: none; }
+  .scope-rev-select:focus { border-color: var(--siren-border-active); }
+  .scope-rev-btn { padding: 6px 16px; background: var(--siren-cyan-12); border: 1px solid var(--siren-border-mid); border-radius: 6px; color: var(--siren-cyan-90); font-family: var(--siren-font-hud); font-size: 10px; font-weight: 700; letter-spacing: .06em; cursor: pointer; }
+  .scope-rev-btn:hover { background: var(--siren-cyan-20); }
+  .scope-rev-banner { padding: 8px 14px; background: rgba(232,160,32,.1); border: 1px solid rgba(232,160,32,.3); border-radius: 6px; font-size: 12px; color: #e8a020; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .scope-section { background: var(--siren-bg-card); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; border: 1px solid var(--siren-border); }
   .scope-section-header { font-size: .75rem; font-weight: 800; letter-spacing: .12em; color: var(--siren-cyan-70, #00c8ffb3); text-transform: uppercase; margin-bottom: 1rem; }
   .scope-grid { display: grid; grid-template-columns: 240px 1fr 1fr; gap: 8px 12px; align-items: center; }
@@ -1633,7 +1648,6 @@
       <select id="scopeAccountSelect" onchange="onScopeAccountChange()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;min-width:220px;font-family:inherit;outline:none;"></select>
       <button onclick="scopeAddAccountPrompt()" style="background:transparent;color:var(--siren-text-muted);border:1px dashed var(--siren-border-mid);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">+ New Account</button>
       <button onclick="exportScope()" style="background:var(--siren-cyan-12);color:var(--siren-cyan-90);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:12px;margin-left:auto;">Export</button>
-      <span id="scopeSaveStatus" style="font-size:11px;color:var(--siren-signal-green);"></span>
     </div>
     <!-- New account inline form -->
     <div id="scopeNewAccountRow" style="display:none;margin-bottom:1rem;display:none;">
@@ -1643,8 +1657,35 @@
         <button onclick="scopeHideNewAccount()" style="background:transparent;color:var(--siren-text-faint);border:none;font-size:13px;cursor:pointer;">✕</button>
       </div>
     </div>
+    <!-- No account selected -->
     <div id="scopeEmpty" style="color:var(--siren-text-muted);padding:2rem 0;font-size:13px;">Select an account above — or create one with + New Account.</div>
-    <div id="scopeForm" style="display:none;"></div>
+    <!-- Account selected, no scope yet -->
+    <div id="scopeNoScope" style="display:none;">
+      <div class="scope-create-prompt">
+        <div class="scope-create-icon">⬡</div>
+        <div class="scope-create-title">No scope exists for this account</div>
+        <div class="scope-create-sub">Create a new scoping questionnaire to begin capturing the prospect's environment details.</div>
+        <button class="scope-create-btn" onclick="scopeStartNew()">Create New Scope</button>
+      </div>
+    </div>
+    <!-- Scope form (has data) -->
+    <div id="scopeFormWrap" style="display:none;">
+      <!-- Revision bar -->
+      <div class="scope-rev-bar">
+        <div class="scope-rev-left">
+          <span class="scope-rev-label">REVISION</span>
+          <select id="scopeRevSelect" class="scope-rev-select" onchange="scopeLoadRevision(this.value)">
+            <option value="draft">Draft (unsaved)</option>
+          </select>
+        </div>
+        <div class="scope-rev-right">
+          <span id="scopeSaveStatus" style="font-size:11px;color:var(--siren-signal-green);"></span>
+          <button class="scope-rev-btn" onclick="scopeSaveRevision()">Save Revision</button>
+        </div>
+      </div>
+      <div id="scopeRevBanner" style="display:none;" class="scope-rev-banner"></div>
+      <div id="scopeForm"></div>
+    </div>
   </div>
 </div>
 
@@ -4450,30 +4491,110 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function slugField(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
 
-  function loadScope(company){
-    try{ return JSON.parse(localStorage.getItem('oa_scope')||'{}')[company]||{}; }catch(e){ return {}; }
+  // ── Scope storage (revision-aware) ──────────────────────────
+  // oa_scope_v2: { [company]: { draft: {fieldKey:{value,notes}}, revisions: [{id,ts,label,data}] } }
+  function loadScopeAll(company){
+    try{
+      const all=JSON.parse(localStorage.getItem('oa_scope_v2')||'{}');
+      return all[company]||{draft:{},revisions:[]};
+    }catch(e){ return {draft:{},revisions:[]}; }
   }
+  function saveScopeAll(company, obj){
+    let all={};
+    try{ all=JSON.parse(localStorage.getItem('oa_scope_v2')||'{}'); }catch(e){}
+    all[company]=obj;
+    localStorage.setItem('oa_scope_v2', JSON.stringify(all));
+  }
+  function scopeHasData(company){
+    const s=loadScopeAll(company);
+    if(s.revisions && s.revisions.length>0) return true;
+    return Object.values(s.draft||{}).some(f=>f.value||f.notes);
+  }
+
+  let _scopeViewingRevision = null; // null = draft, number = revision index
 
   function saveScope(company, fieldKey, type, val){
-    let all={};
-    try{ all=JSON.parse(localStorage.getItem('oa_scope')||'{}'); }catch(e){}
-    if(!all[company]) all[company]={};
-    if(!all[company][fieldKey]) all[company][fieldKey]={value:'',notes:''};
-    all[company][fieldKey][type]=val;
-    localStorage.setItem('oa_scope', JSON.stringify(all));
-    const s=document.getElementById('scopeSaveStatus');
-    if(s){ s.textContent='Saved'; setTimeout(()=>{ s.textContent=''; },1500); }
+    const s=loadScopeAll(company);
+    if(!s.draft[fieldKey]) s.draft[fieldKey]={value:'',notes:''};
+    s.draft[fieldKey][type]=val;
+    saveScopeAll(company, s);
+    const el=document.getElementById('scopeSaveStatus');
+    if(el){ el.textContent='Saved'; setTimeout(()=>{ el.textContent=''; },1200); }
   }
 
-  function onScopeAccountChange(){
+  function scopeSaveRevision(){
     const sel=document.getElementById('scopeAccountSelect');
-    const company=sel.value;
-    const empty=document.getElementById('scopeEmpty');
-    const form=document.getElementById('scopeForm');
-    if(!company){ empty.style.display=''; form.style.display='none'; return; }
-    empty.style.display='none';
-    form.style.display='';
-    const data=loadScope(company);
+    const company=sel&&sel.value;
+    if(!company) return;
+    const s=loadScopeAll(company);
+    const n=s.revisions.length+1;
+    const ts=new Date();
+    const label=`Rev ${n} — ${ts.toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})} ${ts.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`;
+    s.revisions.push({ id: ts.getTime(), ts: ts.toISOString(), label, data: JSON.parse(JSON.stringify(s.draft)) });
+    saveScopeAll(company, s);
+    _scopeViewingRevision = null;
+    renderScopeRevBar(company);
+    const el=document.getElementById('scopeSaveStatus');
+    if(el){ el.textContent='Revision saved'; setTimeout(()=>{ el.textContent=''; },2000); }
+  }
+
+  function scopeLoadRevision(val){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel&&sel.value;
+    if(!company) return;
+    _scopeViewingRevision = val==='draft' ? null : parseInt(val);
+    renderScopeFormBody(company);
+    const banner=document.getElementById('scopeRevBanner');
+    if(banner){
+      if(_scopeViewingRevision!==null){
+        const s=loadScopeAll(company);
+        const rev=s.revisions[_scopeViewingRevision];
+        banner.style.display='flex';
+        banner.innerHTML=`<span>Viewing ${escHtml(rev?.label||'revision')} — read-only.</span>
+          <button onclick="scopeRestoreRevision(${_scopeViewingRevision})" style="background:none;border:1px solid rgba(232,160,32,.5);border-radius:4px;color:#e8a020;font-size:11px;padding:3px 10px;cursor:pointer;">Restore to Draft</button>`;
+      } else {
+        banner.style.display='none';
+      }
+    }
+  }
+
+  function scopeRestoreRevision(idx){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel&&sel.value;
+    if(!company) return;
+    const s=loadScopeAll(company);
+    const rev=s.revisions[idx];
+    if(!rev) return;
+    s.draft=JSON.parse(JSON.stringify(rev.data));
+    saveScopeAll(company,s);
+    _scopeViewingRevision=null;
+    document.getElementById('scopeRevSelect').value='draft';
+    document.getElementById('scopeRevBanner').style.display='none';
+    renderScopeFormBody(company);
+    const el=document.getElementById('scopeSaveStatus');
+    if(el){ el.textContent='Restored to draft'; setTimeout(()=>{ el.textContent=''; },2000); }
+  }
+
+  function renderScopeRevBar(company){
+    const s=loadScopeAll(company);
+    const revSel=document.getElementById('scopeRevSelect');
+    if(!revSel) return;
+    const opts=[`<option value="draft">Draft (current)</option>`];
+    s.revisions.slice().reverse().forEach((r,i)=>{
+      const realIdx=s.revisions.length-1-i;
+      opts.push(`<option value="${realIdx}">${escHtml(r.label)}</option>`);
+    });
+    revSel.innerHTML=opts.join('');
+    revSel.value=_scopeViewingRevision===null?'draft':String(_scopeViewingRevision);
+  }
+
+  function renderScopeFormBody(company){
+    const s=loadScopeAll(company);
+    const data=_scopeViewingRevision!==null
+      ? (s.revisions[_scopeViewingRevision]?.data||{})
+      : s.draft;
+    const readonly=_scopeViewingRevision!==null;
+    const cEsc=company.replace(/"/g,'&quot;');
     let html='';
     for(const sec of SCOPE_SECTIONS){
       html+=`<div class="scope-section"><div class="scope-section-header">${sec.title}</div>`;
@@ -4483,22 +4604,59 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const saved=data[key]||{value:'',notes:''};
         const vEsc=saved.value.replace(/"/g,'&quot;');
         const nEsc=saved.notes.replace(/"/g,'&quot;');
-        html+=`<div class="scope-label">${field}</div>`;
-        html+=`<input class="scope-input" type="text" value="${vEsc}" data-company="${company.replace(/"/g,'&quot;')}" data-key="${key}" data-type="value" oninput="saveScope(this.dataset.company,this.dataset.key,'value',this.value)" placeholder="—">`;
-        html+=`<input class="scope-input scope-notes" type="text" value="${nEsc}" data-company="${company.replace(/"/g,'&quot;')}" data-key="${key}" data-type="notes" oninput="saveScope(this.dataset.company,this.dataset.key,'notes',this.value)" placeholder="notes…">`;
+        html+=`<div class="scope-label">${escHtml(field)}</div>`;
+        if(readonly){
+          html+=`<div class="scope-input" style="cursor:default;opacity:.7;">${escHtml(saved.value)||'<span style="color:var(--siren-text-faint)">—</span>'}</div>`;
+          html+=`<div class="scope-input scope-notes" style="cursor:default;opacity:.7;">${escHtml(saved.notes)||''}</div>`;
+        } else {
+          html+=`<input class="scope-input" type="text" value="${vEsc}" data-company="${cEsc}" data-key="${key}" data-type="value" oninput="saveScope(this.dataset.company,this.dataset.key,'value',this.value)" placeholder="—">`;
+          html+=`<input class="scope-input" type="text" value="${nEsc}" data-company="${cEsc}" data-key="${key}" data-type="notes" oninput="saveScope(this.dataset.company,this.dataset.key,'notes',this.value)" placeholder="notes…">`;
+        }
       }
       html+=`</div></div>`;
     }
-    form.innerHTML=html;
+    document.getElementById('scopeForm').innerHTML=html;
+  }
+
+  function scopeStartNew(){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel&&sel.value;
+    if(!company) return;
+    // initialise empty record
+    const s=loadScopeAll(company);
+    saveScopeAll(company,s);
+    _scopeViewingRevision=null;
+    document.getElementById('scopeNoScope').style.display='none';
+    document.getElementById('scopeFormWrap').style.display='';
+    renderScopeRevBar(company);
+    renderScopeFormBody(company);
+  }
+
+  function onScopeAccountChange(){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel&&sel.value;
+    const empty=document.getElementById('scopeEmpty');
+    const noScope=document.getElementById('scopeNoScope');
+    const formWrap=document.getElementById('scopeFormWrap');
+    _scopeViewingRevision=null;
+    if(!company){
+      empty.style.display=''; noScope.style.display='none'; formWrap.style.display='none'; return;
+    }
+    empty.style.display='none';
+    if(!scopeHasData(company)){
+      noScope.style.display=''; formWrap.style.display='none'; return;
+    }
+    noScope.style.display='none'; formWrap.style.display='';
+    renderScopeRevBar(company);
+    renderScopeFormBody(company);
+    document.getElementById('scopeRevBanner').style.display='none';
   }
 
   function getScopeCompanies(){
-    // merge call history companies + any scope-only companies
     const fromCalls = getLcCompanies();
     let scopeOnly = [];
     try { scopeOnly = JSON.parse(localStorage.getItem('oa_scope_companies')||'[]'); } catch {}
-    const all = [...new Set([...fromCalls, ...scopeOnly])].sort((a,b)=>a.localeCompare(b));
-    return all;
+    return [...new Set([...fromCalls, ...scopeOnly])].sort((a,b)=>a.localeCompare(b));
   }
 
   function renderScopePage(){
@@ -4531,8 +4689,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     let existing=[];
     try{ existing=JSON.parse(localStorage.getItem('oa_scope_companies')||'[]'); }catch{}
     if(!existing.map(c=>c.toLowerCase()).includes(name.toLowerCase())){
-      existing.push(name);
-      localStorage.setItem('oa_scope_companies', JSON.stringify(existing));
+      existing.push(name); localStorage.setItem('oa_scope_companies',JSON.stringify(existing));
     }
     scopeHideNewAccount();
     renderScopePage();
@@ -4544,8 +4701,14 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const sel=document.getElementById('scopeAccountSelect');
     const company=sel&&sel.value;
     if(!company){ alert('Select an account first.'); return; }
-    const data=loadScope(company);
-    let lines=[`SCOPE — ${company}`,`Exported: ${new Date().toLocaleString()}`,''];
+    const s=loadScopeAll(company);
+    const data=_scopeViewingRevision!==null
+      ? (s.revisions[_scopeViewingRevision]?.data||{})
+      : s.draft;
+    const revLabel=_scopeViewingRevision!==null
+      ? (s.revisions[_scopeViewingRevision]?.label||'Revision')
+      : `Draft — ${new Date().toLocaleString()}`;
+    let lines=[`SCOPE — ${company}`,revLabel,''];
     for(const sec of SCOPE_SECTIONS){
       lines.push(`=== ${sec.title} ===`);
       for(const field of sec.fields){
@@ -4555,7 +4718,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       }
       lines.push('');
     }
-    navigator.clipboard.writeText(lines.join('\n')).then(()=>{ const s=document.getElementById('scopeSaveStatus'); if(s){ s.textContent='Copied to clipboard'; setTimeout(()=>{ s.textContent=''; },2000); } }).catch(()=>{ alert('Copy failed'); });
+    navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+      const el=document.getElementById('scopeSaveStatus');
+      if(el){ el.textContent='Copied to clipboard'; setTimeout(()=>{ el.textContent=''; },2000); }
+    }).catch(()=>{ alert('Copy failed'); });
   }
 </script>
 </body>
