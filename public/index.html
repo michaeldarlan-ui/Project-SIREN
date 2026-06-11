@@ -3854,20 +3854,25 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const container = document.getElementById('pulseRepTrendRows');
     if (!container) return;
 
-    const periodDays = parseInt(document.getElementById('lbPeriodSel')?.value || '90');
-    const cutoff = periodDays > 0 ? Date.now() - periodDays * 86400000 : 0;
+    const trendVal = parseInt(document.getElementById('trendPeriodSel')?.value ?? '10');
+    const isCallCount = trendVal <= 20;
+    const cutoff = (!isCallCount && trendVal > 0) ? Date.now() - trendVal * 86400000 : 0;
 
     const repMap = {};
     history.forEach(h => {
       if (!h.rep || !h.total) return;
       const ms = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
-      if (cutoff > 0 && ms < cutoff) return;
+      if (!isCallCount && cutoff > 0 && ms < cutoff) return;
       if (!repMap[h.rep]) repMap[h.rep] = [];
       repMap[h.rep].push({ ms, score: h.total, stage: h.stage || '' });
     });
 
     const reps = Object.entries(repMap)
-      .map(([name, calls]) => ({ name, calls: calls.sort((a,b) => a.ms - b.ms) }))
+      .map(([name, calls]) => {
+        let sorted = calls.sort((a,b) => a.ms - b.ms);
+        if (isCallCount) sorted = sorted.slice(-trendVal); // last N per rep
+        return { name, calls: sorted };
+      })
       .filter(r => r.calls.length > 0)
       .sort((a,b) => a.name.localeCompare(b.name));
 
@@ -5964,16 +5969,15 @@ function downloadResponses(){
     localStorage.setItem('oa_pulse_tasks', JSON.stringify(mergedTasks));
   }
 
-  // Migrate: remove old single-call demo records (demo-1…demo-4) so new multi-call seed runs
-  {
-    const OLD_IDS = new Set(['demo-1','demo-2','demo-3','demo-4']);
-    const hasOld  = loadHistory().some(h => OLD_IDS.has(h.id));
-    if (hasOld || localStorage.getItem('oa_demo_seeded')) {
-      saveHistoryData(loadHistory().filter(h => !OLD_IDS.has(h.id) && !h.id?.startsWith('demo-mfg-') && !h.id?.startsWith('demo-nhs-') && !h.id?.startsWith('demo-cmc-') && !h.id?.startsWith('demo-vl-') && !h.id?.startsWith('demo-pcu-')));
-      localStorage.removeItem('oa_demo_seeded');
-    }
+  // Version-gated demo seed — bump DEMO_VERSION whenever demo data changes
+  const DEMO_VERSION = 'v3-real-names';
+  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION) {
+    // Strip all old demo records regardless of format
+    saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
+    localStorage.removeItem('oa_demo_seeded');
+    seedDemoData();
+    localStorage.setItem('oa_demo_version', DEMO_VERSION);
   }
-  seedDemoData();
 </script>
 </body>
 </html>
