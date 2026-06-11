@@ -131,5 +131,13 @@ async function _dbSaveThirdParty(name, fields) {
 }
 
 function _getKnownThirdParty(name) {
-  return _thirdPartiesCache[(name || '').toLowerCase()] || null;
+  const key = (name || '').toLowerCase().trim();
+  if (!key) return null;
+  if (_thirdPartiesCache[key]) return _thirdPartiesCache[key];
+  // Fuzzy: handle partial names ("Leslie" matching "Leslie Hicks")
+  for (const stored of Object.values(_thirdPartiesCache)) {
+    const sk = stored.name.toLowerCase().trim();
+    if (sk && (key.includes(sk) || sk.includes(key))) return stored;
+  }
+  return null;
 }

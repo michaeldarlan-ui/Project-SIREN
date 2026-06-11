@@ -590,6 +590,11 @@
       const knownSales = teamNames.length
         ? 'Known sales team members: ' + teamNames.join(', ')
         : 'No sales team members configured.';
+      const storedTPs = Object.values(_thirdPartiesCache);
+      const knownThirdParties = storedTPs.length
+        ? 'Known third-party participants (NOT sales team, NOT customer — always classify these as "unknown"): ' +
+          storedTPs.map(p => `${p.name}${p.organization ? ' (' + p.organization + ')' : ''}`).join(', ')
+        : '';
       const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -599,7 +604,7 @@
           stream: false,
           system: 'You identify call participants. Return ONLY valid JSON, no markdown.',
           messages: [{ role: 'user', content:
-            `${knownSales}\nCustomer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- "sales_team": name matches a known team member\n- "customer": clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc.\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript:\n${notes.slice(0, 5000)}`
+            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- "sales_team": name matches a known team member\n- "customer": clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc. Known third-party participants above must always be classified as "unknown".\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript:\n${notes.slice(0, 5000)}`
           }]
         })
       });
