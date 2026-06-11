@@ -766,8 +766,8 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
     const toggleHtml = showToggle ? `
       <div class="rep-toggle">
-        <button class="rep-toggle-btn active" id="toggle-overall" onclick="switchScoreView('overall')">Overall Call</button>
-        ${repScores.map((rs, i) => `<button class="rep-toggle-btn" id="toggle-rep-${i}" onclick="switchScoreView('rep-${i}')">${escHtml(rs.name)}</button>`).join('')}
+        <button class="rep-toggle-btn active" id="toggle-overall" onclick="switchScoreView('overall',event)">Overall Call</button>
+        ${repScores.map((rs, i) => `<button class="rep-toggle-btn" id="toggle-rep-${i}" onclick="switchScoreView('rep-${i}',event)">${escHtml(rs.name)}</button>`).join('')}
       </div>` : '';
 
     const overallView = buildScoreView(r, overallMeta, 'overall');
@@ -789,13 +789,15 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml);
   }
 
-  function switchScoreView(viewId) {
-    document.querySelectorAll('.score-view').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.rep-toggle-btn').forEach(el => el.classList.remove('active'));
-    const view = document.getElementById('score-view-' + viewId);
-    const btn = document.getElementById('toggle-' + viewId);
+  function switchScoreView(viewId, e) {
+    // Scope to the nearest card container so duplicate IDs across history cards don't conflict
+    const root = (e && e.target.closest('.hist-card-body, #results')) || document;
+    root.querySelectorAll('.score-view').forEach(el => el.classList.remove('active'));
+    root.querySelectorAll('.rep-toggle-btn').forEach(el => el.classList.remove('active'));
+    const view = root.querySelector('#score-view-' + viewId);
+    const btn  = root.querySelector('#toggle-' + viewId);
     if (view) view.classList.add('active');
-    if (btn) btn.classList.add('active');
+    if (btn)  btn.classList.add('active');
   }
 
   function autoSaveRecommendations(books) {
@@ -1315,7 +1317,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
     // Wrap score-view blocks in a collapsible section; keep everything else visible
-    const strippedReset = (h.resultsHtml || '').replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
+    const strippedReset = (h.resultsHtml || '')
+      .replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '')
+      .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"");
     const scoreMatch = strippedReset.match(/([\s\S]*?)(<div class="(?:rep-toggle|score-view)[\s\S]*?)((?:<div class="section-head[^>]*>(?:Call highlights|Recommended|SPICED)[\s\S]*)?)$/);
     let bodyHtml;
     if (scoreMatch) {
