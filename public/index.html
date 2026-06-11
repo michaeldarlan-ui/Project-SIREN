@@ -5299,7 +5299,6 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
   renderHistory();
   initUsageBar();
   forgeInit();
-  renderPulse();
 
   // ── Chip input helpers ─────────────────────────────────────────
   function scopeChipsFromWrap(wrap) {
@@ -5978,6 +5977,8 @@ function downloadResponses(){
     seedDemoData();
     localStorage.setItem('oa_demo_version', DEMO_VERSION);
   }
+  // Always render PULSE after seed so data is present on first load
+  renderPulse();
 </script>
 </body>
 </html>
