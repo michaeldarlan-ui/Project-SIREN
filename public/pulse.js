@@ -574,7 +574,7 @@
 
       if (pts.length === 1) {
         const t0 = `${pts[0].score} · ${fmt(pts[0].ms)}`;
-        sparkContent += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="6" fill="${color}" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${t0}')" onmouseout="_repTipHide()"/>`;
+        sparkContent += `<circle data-r="4" cx="${pts[0].x}" cy="${pts[0].y}" r="4" fill="${color}" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${t0}')" onmouseout="_repTipHide()"/>`;
       } else {
         const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
         // Area fill
@@ -587,10 +587,10 @@
           const tipDate = fmt(p.ms);
           const tipText = `${p.score} · ${tipDate}`;
           if (isLast) {
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="${color}" opacity="0.2" stroke="none"/>`;
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${color}" stroke="#061824" stroke-width="2" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
+            sparkContent += `<circle data-r="7" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="${color}" opacity="0.2" stroke="none"/>`;
+            sparkContent += `<circle data-r="4" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${color}" stroke="#061824" stroke-width="2" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
           } else {
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${color}" opacity="0.6" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
+            sparkContent += `<circle data-r="3" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${color}" opacity="0.6" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
           }
         });
       }
@@ -606,7 +606,7 @@
           <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(rep.name)}</div>
           <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:3px;">${rep.calls.length} call${rep.calls.length!==1?'s':''}</div>
         </div>
-        <svg style="flex:1;min-width:0;height:${ROW_H}px;display:block;" viewBox="0 0 ${W} ${ROW_H}" preserveAspectRatio="none">${sparkContent}</svg>
+        <svg class="rep-sparkline" style="flex:1;min-width:0;height:${ROW_H}px;display:block;" viewBox="0 0 ${W} ${ROW_H}" preserveAspectRatio="none">${sparkContent}</svg>
         <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;">
           <div style="font-size:22px;font-weight:800;color:${scoreColor(avg)};line-height:1;">${avg}</div>
           <div style="font-size:10px;font-weight:700;color:${trendColor};margin-top:4px;">${trendLabel}</div>
@@ -625,5 +625,28 @@
     </div>`;
 
     container.innerHTML = axisHtml + rows.join('');
+    setTimeout(_fixRepSparkNodes, 50);
+  }
+
+  function _fixRepSparkNodes() {
+    document.querySelectorAll('svg.rep-sparkline').forEach(svg => {
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return;
+      const vbW = 500; // matches W constant
+      const scaleX = rect.width / vbW;
+      // scaleY = 1 since height:ROW_H px == viewBox height ROW_H — no vertical distortion
+      svg.querySelectorAll('circle[data-r]').forEach(c => {
+        const rPx = parseFloat(c.getAttribute('data-r'));
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+        el.setAttribute('cx', c.getAttribute('cx'));
+        el.setAttribute('cy', c.getAttribute('cy'));
+        el.setAttribute('rx', (rPx / scaleX).toFixed(2));
+        el.setAttribute('ry', rPx);
+        ['fill','stroke','stroke-width','opacity','style','onmouseover','onmouseout'].forEach(a => {
+          if (c.hasAttribute(a)) el.setAttribute(a, c.getAttribute(a));
+        });
+        c.parentNode.replaceChild(el, c);
+      });
+    });
   }
 
