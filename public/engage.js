@@ -603,32 +603,50 @@
           }]
         })
       });
-      if (!resp.ok) return [];
+      if (!resp.ok) return { newUnknowns: [], known: [] };
       const data = await resp.json();
       const text = (data.content?.[0]?.text || '').replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
       const parsed = JSON.parse(text);
-      return (parsed.participants || []).filter(p => p.type === 'unknown');
+      const unknowns = (parsed.participants || []).filter(p => p.type === 'unknown');
+
+      const newUnknowns = [], known = [];
+      unknowns.forEach(u => {
+        const stored = _getKnownThirdParty(u.name);
+        if (stored) known.push(stored);
+        else newUnknowns.push(u);
+      });
+      return { newUnknowns, known };
     } catch (e) {
       console.warn('[third-party check] failed:', e.message);
-      return [];
+      return { newUnknowns: [], known: [] };
     }
   }
 
   let _thirdPartyResolve = null;
 
-  function showThirdPartyPrompt(unknowns) {
+  function showThirdPartyPrompt(newUnknowns, known) {
     return new Promise(resolve => {
       _thirdPartyResolve = resolve;
       const list = document.getElementById('tpParticipantList');
-      list.innerHTML = unknowns.map(u => `
+      const knownHtml = (known && known.length) ? `
+        <div class="tp-known-notice">
+          <span class="tp-known-icon">&#10003;</span>
+          Auto-recognized: ${known.map(k => `<strong>${escHtml(k.name)}</strong> (${escHtml(k.role || '')}${k.organization ? ', ' + escHtml(k.organization) : ''})`).join(', ')}
+        </div>` : '';
+      list.innerHTML = knownHtml + newUnknowns.map(u => `
         <div class="tp-person">
           <div class="tp-person-meta">
             <span class="tp-person-name">${escHtml(u.name)}</span>
             <span class="tp-person-clue">${escHtml(u.clue || '')}</span>
           </div>
-          <input class="tp-person-input" id="tp-role-${escHtml(u.name)}"
-            placeholder="e.g. Channel partner SE, Security consultant, Vendor rep…"
-            autocomplete="off">
+          <div class="tp-person-inputs">
+            <input class="tp-person-input" id="tp-role-${escHtml(u.name)}"
+              placeholder="Role — e.g. Channel partner SE, Security consultant…"
+              autocomplete="off">
+            <input class="tp-person-org" id="tp-org-${escHtml(u.name)}"
+              placeholder="Organization (optional)"
+              autocomplete="off">
+          </div>
         </div>`).join('');
       document.getElementById('thirdPartyPanel').style.display = 'block';
       document.getElementById('inputCard').style.display = 'none';
@@ -639,19 +657,25 @@
 
   function confirmThirdParty() {
     const panel = document.getElementById('thirdPartyPanel');
-    const inputs = panel.querySelectorAll('.tp-person-input');
-    const roles = {};
+    const roleInputs = panel.querySelectorAll('.tp-person-input');
+    const entries = {};
     let allFilled = true;
-    inputs.forEach(inp => {
+    roleInputs.forEach(inp => {
       const name = inp.id.replace('tp-role-', '');
-      const val = inp.value.trim();
-      if (!val) { inp.classList.add('tp-input-error'); allFilled = false; }
-      else { inp.classList.remove('tp-input-error'); roles[name] = val; }
+      const role = inp.value.trim();
+      const orgInp = panel.querySelector('#tp-org-' + name);
+      const org = orgInp ? orgInp.value.trim() : '';
+      if (!role) { inp.classList.add('tp-input-error'); allFilled = false; }
+      else { inp.classList.remove('tp-input-error'); entries[name] = { role, organization: org }; }
     });
     if (!allFilled) return;
+
+    // Persist new third parties to DB
+    Object.entries(entries).forEach(([name, fields]) => _dbSaveThirdParty(name, fields));
+
     panel.style.display = 'none';
     document.getElementById('inputCard').style.display = 'block';
-    if (_thirdPartyResolve) { _thirdPartyResolve(roles); _thirdPartyResolve = null; }
+    if (_thirdPartyResolve) { _thirdPartyResolve(entries); _thirdPartyResolve = null; }
   }
 
   function cancelThirdParty() {
@@ -673,13 +697,25 @@
     document.getElementById('results').style.display = 'none';
 
     // ── Third-party participant check ─────────────────────────
-    const unknowns = await detectUnknownParticipants(notes, prospect, contactTitle, rep);
+    const { newUnknowns, known } = await detectUnknownParticipants(notes, prospect, contactTitle, rep);
+    let userEntries = {};
+    if (newUnknowns.length) {
+      userEntries = await showThirdPartyPrompt(newUnknowns, known);
+      if (!userEntries) return; // user cancelled
+    }
+
+    // Build complete third-party list (known + newly identified)
+    const allThirdParties = [
+      ...known.map(k => ({ name: k.name, role: k.role || '', organization: k.organization || '' })),
+      ...Object.entries(userEntries).map(([name, f]) => ({ name, role: f.role, organization: f.organization || '' })),
+    ];
+
     let thirdPartyContext = '';
-    if (unknowns.length) {
-      const roles = await showThirdPartyPrompt(unknowns);
-      if (!roles) return; // user cancelled
-      thirdPartyContext = '\n\nAdditional participant context provided by the user:\n' +
-        Object.entries(roles).map(([name, role]) => `- ${name}: ${role}`).join('\n');
+    if (allThirdParties.length) {
+      const lines = allThirdParties.map(p =>
+        `- ${p.name}: ${p.role}${p.organization ? ' (' + p.organization + ')' : ''}`
+      ).join('\n');
+      thirdPartyContext = `\n\nThird-party participants on this call (NOT OneAxiom sales reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score OneAxiom sales reps\n- Do NOT penalize the OneAxiom rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics`;
     }
 
     setLoading(true, prospect, selectedStage);
@@ -807,7 +843,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
       if (inputTokens || outputTokens) updateUsageUI(inputTokens, outputTokens);
       let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate, notes);
+      renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate, notes, allThirdParties);
     } catch (err) {
       const msg = err.message || String(err);
       if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('networkerror')) {
@@ -851,7 +887,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     </div>`;
   }
 
-  function renderResults(r, prospect, contactTitle, rep, callDate, notes) {
+  function renderResults(r, prospect, contactTitle, rep, callDate, notes, thirdParties) {
     const formattedDate = callDate ? new Date(callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     const overallMeta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage, formattedDate].filter(Boolean).join(' · ');
 
@@ -931,10 +967,24 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         </div>
       </div>` : '';
 
+    const tpList = thirdParties && thirdParties.length ? thirdParties : [];
+    const thirdPartyBanner = tpList.length ? `
+      <div class="no-context-banner tp-report-banner">
+        <span class="no-context-icon">&#128101;</span>
+        <div>
+          <div style="font-weight:600;margin-bottom:4px;">Third-party participant(s) on this call</div>
+          <ul style="margin:0;padding-left:16px;">${tpList.map(p =>
+            `<li><strong>${escHtml(p.name)}</strong> — ${escHtml(p.role)}${p.organization ? ', ' + escHtml(p.organization) : ''}</li>`
+          ).join('')}</ul>
+          <div style="margin-top:6px;font-size:11.5px;opacity:.75;">Scoring excludes this participant. Rep not penalised for tasks they covered.</div>
+        </div>
+      </div>` : '';
+
     const pdfTitle = [prospect, selectedStage, callDate].filter(Boolean).join(' — ');
     const resultsHtml = `
       ${noContextBanner}
       ${missingRecBanner}
+      ${thirdPartyBanner}
       ${toggleHtml}
       ${overallView}
       ${repViews}

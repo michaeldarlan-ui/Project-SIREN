@@ -103,3 +103,33 @@ async function _dbSaveProspect(name, fields) {
 function _getProspectIndustry(name) {
   return (_prospectsCache[name] || {}).industry || '';
 }
+
+// ── Third-parties DB cache ──────────────────────────────────────
+// Keyed by lowercase name: { name, role, organization, notes }
+
+let _thirdPartiesCache = {};
+
+async function _loadThirdPartiesFromDB() {
+  try {
+    const res = await fetch('/api/third-parties');
+    if (!res.ok) throw new Error('status ' + res.status);
+    const rows = await res.json();
+    _thirdPartiesCache = {};
+    rows.forEach(r => { _thirdPartiesCache[r.name.toLowerCase()] = r; });
+  } catch (e) { console.warn('[db] Failed to load third-parties:', e.message); }
+}
+
+async function _dbSaveThirdParty(name, fields) {
+  _thirdPartiesCache[name.toLowerCase()] = { ...(_thirdPartiesCache[name.toLowerCase()] || {}), name, ...fields };
+  try {
+    await fetch('/api/third-parties/' + encodeURIComponent(name), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    });
+  } catch (e) { console.error('[db] save third-party failed:', e.message); }
+}
+
+function _getKnownThirdParty(name) {
+  return _thirdPartiesCache[(name || '').toLowerCase()] || null;
+}

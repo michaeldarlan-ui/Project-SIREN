@@ -257,6 +257,23 @@
   }
   .tp-person-input:focus { border-color: var(--siren-cyan-50); }
   .tp-input-error { border-color: var(--siren-danger-red) !important; }
+  .tp-known-notice {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 10px 12px; margin-bottom: 10px;
+    background: rgba(0,200,100,.07); border: 1px solid rgba(0,200,100,.2);
+    border-radius: var(--siren-radius-sm);
+    font-size: 12px; color: var(--siren-signal-green); line-height: 1.5;
+  }
+  .tp-known-icon { flex-shrink: 0; font-weight: 700; }
+  .tp-person-inputs { display: flex; gap: 8px; flex: 1; }
+  .tp-person-org {
+    flex: 0 0 180px; background: var(--siren-bg-card-raised);
+    border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm);
+    padding: 8px 10px; font-size: 13px; color: var(--siren-text-primary); outline: none;
+  }
+  .tp-person-org:focus { border-color: var(--siren-cyan-50); }
+  .tp-report-banner { background: rgba(0,150,200,.07) !important; border-color: rgba(0,150,200,.25) !important; color: rgba(0,180,230,.9) !important; }
+
   .tp-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
   .tp-btn-cancel {
     padding: 9px 16px; font-size: 13px; cursor: pointer;

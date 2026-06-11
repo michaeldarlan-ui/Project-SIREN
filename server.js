@@ -59,6 +59,12 @@ db.exec(`
     name     TEXT PRIMARY KEY,
     industry TEXT
   );
+  CREATE TABLE IF NOT EXISTS third_parties (
+    name         TEXT PRIMARY KEY,
+    role         TEXT,
+    organization TEXT,
+    notes        TEXT
+  );
 `);
 
 // One-time migrations
@@ -277,6 +283,39 @@ const server = http.createServer(async (req, res) => {
     } catch (e) {
       res.writeHead(400); res.end(e.message);
     }
+    return;
+  }
+
+  // GET /api/third-parties
+  if (req.method === 'GET' && req.url === '/api/third-parties') {
+    const rows = db.prepare('SELECT * FROM third_parties ORDER BY name ASC').all();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows));
+    return;
+  }
+
+  // PUT /api/third-parties/:name
+  if (req.method === 'PUT' && req.url.startsWith('/api/third-parties/')) {
+    try {
+      const name = decodeURIComponent(req.url.slice('/api/third-parties/'.length));
+      const fields = await readBody(req);
+      db.prepare(`INSERT INTO third_parties (name, role, organization, notes)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(name) DO UPDATE SET
+          role = excluded.role,
+          organization = excluded.organization,
+          notes = excluded.notes`)
+        .run(name, fields.role || null, fields.organization || null, fields.notes || null);
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  // DELETE /api/third-parties/:name
+  if (req.method === 'DELETE' && req.url.startsWith('/api/third-parties/')) {
+    const name = decodeURIComponent(req.url.slice('/api/third-parties/'.length));
+    db.prepare('DELETE FROM third_parties WHERE name = ?').run(name);
+    res.writeHead(200); res.end();
     return;
   }
 
