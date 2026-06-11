@@ -1380,14 +1380,15 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
         const groupId  = 'grp-' + company.replace(/\W+/g, '_');
         return `<div style="margin-bottom:1.5rem;">
-          <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">
-            <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;cursor:pointer;padding:6px 4px;border-radius:5px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''" onclick="toggleGroupCards('${groupId}')">
+            <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap;">
               <span style="font-size:16px;font-weight:700;color:var(--siren-cyan-90);">${escHtml(company)}</span>
               <span style="font-size:12px;color:var(--siren-text-faint);margin-left:10px;">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
               ${stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--siren-bg-card-raised);color:var(--siren-text-muted);">${escHtml(s)}</span>`).join('')}
               ${repNames.length ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(repNames.join(', '))}</span>` : ''}
+              <span class="hist-card-chevron open" id="grp-chev-${groupId}" style="margin-left:6px;">&#9660;</span>
             </div>
           </div>
           <div id="${groupId}">${entries.map(h => buildHistCard(h, false)).join('')}</div>
@@ -1446,13 +1447,25 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function collapseAllHistCards() {
     document.querySelectorAll('.hist-card-body').forEach(body => { body.style.display = 'none'; });
-    document.querySelectorAll('.hist-card-chevron').forEach(chev => { chev.classList.remove('open'); });
+    document.querySelectorAll('.hist-card-chevron:not([id^="grp-chev-"])').forEach(chev => { chev.classList.remove('open'); });
+  }
+
+  function collapseAllGroups() {
+    document.querySelectorAll('[id^="grp-"]').forEach(el => {
+      if (el.id.startsWith('grp-chev-')) return;
+      el.style.display = 'none';
+      const chev = document.getElementById('grp-chev-' + el.id);
+      if (chev) chev.classList.remove('open');
+    });
   }
 
   function toggleGroupCards(groupId) {
     const el = document.getElementById(groupId);
     if (!el) return;
-    el.style.display = el.style.display === 'none' ? '' : 'none';
+    const collapsed = el.style.display === 'none';
+    el.style.display = collapsed ? '' : 'none';
+    const chev = document.getElementById('grp-chev-' + groupId);
+    if (chev) chev.classList.toggle('open', collapsed);
   }
 
   function deleteHistEntry(id, e) {
