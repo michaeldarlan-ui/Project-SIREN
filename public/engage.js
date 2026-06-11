@@ -1427,16 +1427,18 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const repNames = [...new Set(entries.map(h => h.rep).filter(Boolean))];
         const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
         const groupId  = 'grp-' + company.replace(/\W+/g, '_');
+        const cSafeQ = company.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         return `<div style="margin-bottom:1.5rem;">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;cursor:pointer;padding:6px 4px;border-radius:5px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''" onclick="toggleGroupCards('${groupId}')">
-            <div style="display:flex;align-items:baseline;gap:0;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:6px 4px;border-radius:5px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">
               <span style="font-size:16px;font-weight:700;color:var(--siren-cyan-90);">${escHtml(company)}</span>
-              <span style="font-size:12px;color:var(--siren-text-faint);margin-left:10px;">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
+              <span style="font-size:12px;color:var(--siren-text-faint);">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
               ${stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--siren-bg-card-raised);color:var(--siren-text-muted);">${escHtml(s)}</span>`).join('')}
               ${repNames.length ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(repNames.join(', '))}</span>` : ''}
-              <span class="hist-card-chevron open" id="grp-chev-${groupId}" style="margin-left:6px;">&#9660;</span>
+              <button onclick="startRenameAccount(this,'${cSafeQ}')" title="Rename account" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:13px;padding:2px 4px;line-height:1;border-radius:3px;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.7)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✎</button>
+              <span class="hist-card-chevron open" id="grp-chev-${groupId}" style="margin-left:2px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">&#9660;</span>
             </div>
           </div>
           <div id="${groupId}">${entries.map(h => buildHistCard(h, false)).join('')}</div>
@@ -1514,6 +1516,65 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     el.style.display = collapsed ? '' : 'none';
     const chev = document.getElementById('grp-chev-' + groupId);
     if (chev) chev.classList.toggle('open', collapsed);
+  }
+
+  function startRenameAccount(btn, oldName) {
+    btn.stopPropagation?.();
+    const nameSpan = btn.closest('[style*="margin-bottom:1.5rem"]')?.querySelector('span[style*="font-size:16px"]');
+    if (!nameSpan) return;
+    const inp = document.createElement('input');
+    inp.value = oldName;
+    inp.style.cssText = 'font-size:16px;font-weight:700;color:var(--siren-cyan-90);background:rgba(255,255,255,.06);border:1px solid rgba(0,200,255,.4);border-radius:4px;padding:1px 6px;outline:none;width:220px;';
+    nameSpan.replaceWith(inp);
+    inp.focus();
+    inp.select();
+    const commit = () => {
+      const newName = inp.value.trim();
+      if (newName && newName !== oldName) renameAccount(oldName, newName);
+      else renderHistory();
+    };
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+      if (e.key === 'Escape') { inp.value = oldName; inp.blur(); }
+    });
+  }
+
+  function renameAccount(oldName, newName) {
+    // 1. History records
+    const hist = loadHistory(true).map(h =>
+      (h.prospect || '').trim() === oldName ? { ...h, prospect: newName } : h
+    );
+    saveHistoryData(hist);
+
+    // 2. VIGIL tasks
+    try {
+      const tasks = JSON.parse(localStorage.getItem('oa_pulse_tasks') || '{}');
+      if (tasks[oldName] !== undefined) {
+        tasks[newName] = tasks[oldName];
+        delete tasks[oldName];
+        localStorage.setItem('oa_pulse_tasks', JSON.stringify(tasks));
+      }
+    } catch {}
+
+    // 3. SCOPE data
+    try {
+      const scope = JSON.parse(localStorage.getItem('oa_scope_v2') || '{}');
+      if (scope[oldName] !== undefined) {
+        scope[newName] = scope[oldName];
+        delete scope[oldName];
+        localStorage.setItem('oa_scope_v2', JSON.stringify(scope));
+      }
+    } catch {}
+
+    // 4. SCOPE companies list
+    try {
+      const companies = JSON.parse(localStorage.getItem('oa_scope_companies') || '[]');
+      const idx = companies.indexOf(oldName);
+      if (idx !== -1) { companies[idx] = newName; localStorage.setItem('oa_scope_companies', JSON.stringify(companies)); }
+    } catch {}
+
+    renderHistory();
   }
 
   function deleteHistEntry(id, e) {
