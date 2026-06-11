@@ -1307,7 +1307,7 @@
         <!-- Signals from grading data -->
         <div class="forge-panel">
           <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Call Signals</span>
+            <span class="forge-panel-title" id="forgeSignalsTitle">Highlights</span>
           </div>
           <div class="forge-panel-body" id="forgeSignalsBody">
             <div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>
@@ -4386,21 +4386,35 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function forgeRenderSignals(h) {
     const el = document.getElementById('forgeSignalsBody');
+    const titleEl = document.getElementById('forgeSignalsTitle');
     if (!el) return;
-    let html = '';
-    if (h.top_strength) html += `<div class="forge-next-item">
-      <div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div>
-      <div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Strength</span></div>
-    </div>`;
-    if (h.top_priority) html += `<div class="forge-next-item">
-      <div class="forge-next-num" style="color:#e8a020;">▼</div>
-      <div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Priority gap</span></div>
-    </div>`;
-    if (h.grade_label) html += `<div class="forge-next-item">
-      <div class="forge-next-num" style="color:var(--siren-cyan-50);">⬡</div>
-      <div><div class="forge-next-text">${escHtml(h.grade_label)}</div><span class="forge-next-tag">Grade label</span></div>
-    </div>`;
+    const mode = forgeGetMode();
+    let html = '', title = 'Highlights';
+
+    if (mode === 'follow-up') {
+      title = 'Email Highlights';
+      if (h.top_priority) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:#e8a020;">▼</div><div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Pain to address</span></div></div>`;
+      if (h.top_strength) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div><div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Value to reinforce</span></div></div>`;
+      if (Array.isArray(h.next_steps) && h.next_steps.length) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">→</div><div><div class="forge-next-text">${escHtml(h.next_steps[0])}</div><span class="forge-next-tag">CTA</span></div></div>`;
+    } else if (mode === 'call-brief') {
+      title = 'Brief Highlights';
+      if (h.grade_label) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">⬡</div><div><div class="forge-next-text">${escHtml(h.grade_label)}</div><span class="forge-next-tag">Overall assessment</span></div></div>`;
+      if (h.top_strength) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div><div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Strength</span></div></div>`;
+      if (h.top_priority) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:#e8a020;">▼</div><div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Coaching focus</span></div></div>`;
+    } else if (mode === 'exec-summary') {
+      title = 'Exec Highlights';
+      if (h.stage) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">◈</div><div><div class="forge-next-text">${escHtml(h.stage)}</div><span class="forge-next-tag">Deal stage</span></div></div>`;
+      if (h.top_strength) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div><div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Key strength</span></div></div>`;
+      if (h.top_priority) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:#e8a020;">▼</div><div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Risk / gap</span></div></div>`;
+    } else {
+      title = 'Call Signals';
+      if (h.top_strength) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div><div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Strength</span></div></div>`;
+      if (h.top_priority) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:#e8a020;">▼</div><div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Priority gap</span></div></div>`;
+      if (h.grade_label) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">⬡</div><div><div class="forge-next-text">${escHtml(h.grade_label)}</div><span class="forge-next-tag">Grade label</span></div></div>`;
+    }
+
     if (!html) html = '<div style="font-size:11px;color:var(--siren-text-muted);padding:4px 0;">No signals extracted from this call.</div>';
+    if (titleEl) titleEl.textContent = title;
     el.innerHTML = html;
   }
 
@@ -4435,13 +4449,18 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function forgeSetMode(mode) {
+    const isAI = mode === 'follow-up' || mode === 'call-brief' || mode === 'exec-summary';
     const isEmail = mode === 'follow-up';
-    // Scoring recap sections — hide in email mode
+    // Always hide static scoring sections and generated section
     ['fr-overview-section','fr-takeaways-section','fr-dims-section','fr-spiced-section','fr-generated-section']
       .forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-    document.getElementById('fr-email-section').style.display = isEmail ? '' : 'none';
-    if (!isEmail && _forgeCall) {
-      // Re-show the static scoring sections for non-email modes
+    // Show AI output panel for AI modes, hide otherwise
+    document.getElementById('fr-email-section').style.display = isAI ? '' : 'none';
+    // Email meta rows (To / Subject) only shown for email mode
+    document.querySelectorAll('.fr-email-meta-row').forEach(row => {
+      row.style.display = isEmail ? '' : 'none';
+    });
+    if (!isAI && _forgeCall) {
       document.getElementById('fr-overview-section').style.display = '';
       document.getElementById('fr-takeaways-section').style.display = '';
       if (_forgeCall.dimensions && Object.keys(_forgeCall.dimensions).length)
@@ -4450,11 +4469,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         document.getElementById('fr-spiced-section').style.display = '';
     }
     if (isEmail && _forgeCall) {
-      // Populate TO field
       const contact = _forgeCall.contact || _forgeCall.prospect || '';
       document.getElementById('fr-email-to').textContent = contact || '—';
     }
-    document.getElementById('forgeGenBtn').textContent = isEmail ? 'Draft Email →' : 'Generate →';
+    const labels = { 'follow-up': 'Draft Email →', 'call-brief': 'Generate Brief →', 'exec-summary': 'Generate Summary →' };
+    document.getElementById('forgeGenBtn').textContent = labels[mode] || 'Generate →';
   }
 
   function forgeUpdateTemplateTitles() {
@@ -4462,15 +4481,19 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const name = active ? active.textContent : 'CALL BRIEF';
     document.getElementById('forgeReportTitle').textContent = `⬡  ${name} — ${_forgeCall ? escHtml(_forgeCall.prospect||'') : 'PREVIEW'}`;
     forgeSetMode(forgeGetMode());
+    if (_forgeCall) forgeRenderSignals(_forgeCall);
   }
 
   function forgeCopy() {
     if (!_forgeCall) return;
     let text;
-    if (forgeGetMode() === 'follow-up') {
+    const mode = forgeGetMode();
+    if (mode === 'follow-up') {
       const subj = document.getElementById('fr-email-subject').textContent.trim();
       const body = document.getElementById('fr-email-body').textContent.trim();
       text = (subj ? 'Subject: ' + subj + '\n\n' : '') + body;
+    } else if (mode === 'call-brief' || mode === 'exec-summary') {
+      text = document.getElementById('fr-email-body').textContent.trim();
     } else {
       const generated = document.getElementById('fr-generated');
       text = generated && generated.textContent.trim()
@@ -4515,10 +4538,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   function forgeGenerate() {
     if (!_forgeCall) return;
     const mode = forgeGetMode();
-    if (mode === 'follow-up') {
-      forgeGenerateEmail(_forgeCall);
-      return;
-    }
+    if (mode === 'follow-up')   { forgeGenerateEmail(_forgeCall); return; }
+    if (mode === 'call-brief')  { forgeGenerateAI(_forgeCall, 'call-brief'); return; }
+    if (mode === 'exec-summary'){ forgeGenerateAI(_forgeCall, 'exec-summary'); return; }
     const h = _forgeCall;
     const text = _forgeCustomTemplate
       ? forgeApplyTemplate(h, _forgeCustomTemplate)
@@ -4666,6 +4688,106 @@ INSTRUCTIONS:
 
       btn.disabled = false;
       btn.textContent = 'Re-draft';
+    } catch (err) {
+      spinner.style.display = 'none';
+      bodyEl.textContent = 'Error: ' + (err.message || String(err));
+      btn.disabled = false;
+      btn.textContent = 'Retry';
+    }
+  }
+
+  async function forgeGenerateAI(h, mode) {
+    const bodyEl  = document.getElementById('fr-email-body');
+    const spinner = document.getElementById('fr-email-spinner');
+    const btn     = document.getElementById('forgeGenBtn');
+
+    bodyEl.textContent = '';
+    spinner.style.display = '';
+    btn.disabled = true;
+
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'});
+    const dimLines = h.dimensions
+      ? Object.entries(h.dimensions).map(([n,d]) => `  • ${n}: ${d.score??0}/100${d.feedback?' — '+d.feedback:''}`).join('\n') : '';
+    const spicedLines = h.spiced
+      ? Object.entries(h.spiced).map(([k,v]) => {
+          const l = k.charAt(0).toUpperCase()+k.slice(1).replace('_',' ');
+          return `  • ${l}: ${v.touched?(v.summary||'Covered'):'Not addressed'}`;
+        }).join('\n') : '';
+    const nextSteps = Array.isArray(h.next_steps) ? h.next_steps.map(s=>'  • '+s).join('\n') : (h.next_steps||'');
+
+    const callData = `Account: ${h.prospect||'—'}
+Date: ${ds}
+Stage: ${h.stage||'—'}
+Grade: ${h.letter_grade} (${h.total}/100) — ${h.grade_label||''}
+Rep: ${h.rep||'—'}
+Contact: ${h.contact||'—'}
+Top Strength: ${h.top_strength||'—'}
+Top Priority / Gap: ${h.top_priority||'—'}
+${dimLines ? 'Dimension Scores:\n'+dimLines : ''}
+${spicedLines ? 'SPICED Coverage:\n'+spicedLines : ''}
+${nextSteps ? 'Next Steps:\n'+nextSteps : ''}
+${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
+
+    const prompts = {
+      'call-brief': `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`,
+      'exec-summary': `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a board-ready executive deal summary based on the following call data. Format it with sections: Deal Overview, Business Context, Risk Indicators, SPICED Status, Recommended Next Actions. Use plain text with section headers in ALL CAPS followed by a colon. Keep it professional, concise, under 300 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`
+    };
+
+    const systemPrompts = {
+      'call-brief': 'You are an expert sales coach writing internal call briefs for a cybersecurity consultancy.',
+      'exec-summary': 'You are an expert deal strategist writing executive summaries for a cybersecurity consultancy.'
+    };
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 700,
+          stream: true,
+          system: systemPrompts[mode],
+          messages: [{ role: 'user', content: prompts[mode] }]
+        })
+      });
+
+      spinner.style.display = 'none';
+
+      if (!resp.ok) {
+        const raw = await resp.text().catch(()=>'');
+        let msg = 'API error ' + resp.status;
+        try { const err = JSON.parse(raw); msg = err?.error?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+
+      let sseBuffer = '', accumulated = '';
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(payload);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              accumulated += ev.delta.text;
+              bodyEl.textContent = accumulated;
+            }
+          } catch {}
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Regenerate';
     } catch (err) {
       spinner.style.display = 'none';
       bodyEl.textContent = 'Error: ' + (err.message || String(err));
