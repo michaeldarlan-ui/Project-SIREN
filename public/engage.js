@@ -418,6 +418,57 @@
     return `\n\nPrevious call history for this account/rep (use for context and to track progression across calls — note improvement or regression trends):\n${sections}`;
   }
 
+  function detectMissingRecordings(priorCalls, callDate, notes) {
+    const warnings = [];
+    const dated = priorCalls
+      .filter(h => h.callDate)
+      .sort((a, b) => a.callDate.localeCompare(b.callDate));
+
+    // ── Gap analysis across recorded calls ──────────────────
+    if (dated.length >= 2) {
+      const gaps = [];
+      for (let i = 1; i < dated.length; i++) {
+        const d = (new Date(dated[i].callDate + 'T12:00:00') - new Date(dated[i-1].callDate + 'T12:00:00')) / 86400000;
+        gaps.push(d);
+      }
+      const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+      const threshold = Math.max(avgGap * 2.5, avgGap + 10);
+
+      for (let i = 0; i < gaps.length; i++) {
+        if (gaps[i] > threshold && gaps[i] > 7) {
+          const from = dated[i].callDate;
+          const to   = dated[i + 1].callDate;
+          warnings.push(`${Math.round(gaps[i])}-day gap between ${from} and ${to} (avg cadence ~${Math.round(avgGap)} days) — a meeting in this window may not have been recorded.`);
+        }
+      }
+
+      // ── Gap from last recorded call to current call ──────
+      if (callDate && dated.length) {
+        const last = dated[dated.length - 1].callDate;
+        const gapToCurrent = (new Date(callDate + 'T12:00:00') - new Date(last + 'T12:00:00')) / 86400000;
+        if (gapToCurrent > threshold && gapToCurrent > 7) {
+          warnings.push(`${Math.round(gapToCurrent)}-day gap between last recorded call (${last}) and this call (avg cadence ~${Math.round(avgGap)} days) — one or more meetings in this window may not have been recorded.`);
+        }
+      }
+    }
+
+    // ── Transcript references to prior conversations ────────
+    if (notes) {
+      const priorRefRe = /\b(as (we|I|you) discussed|from (our |the )?last (call|meeting|conversation)|you mentioned (before|previously|last|earlier)|last (week|time) (we|you|I)|per our (last|previous|prior)|since (our|the) last (call|meeting)|following up (on|from) (our|last)|as (mentioned|discussed) (previously|before|earlier))\b/i;
+      if (priorRefRe.test(notes) && dated.length > 0) {
+        const last = dated[dated.length - 1].callDate;
+        const daysSince = callDate
+          ? (new Date(callDate + 'T12:00:00') - new Date(last + 'T12:00:00')) / 86400000
+          : null;
+        if (daysSince === null || daysSince > 10) {
+          warnings.push(`Transcript references prior conversations not fully accounted for in recorded history — context from an unrecorded meeting may be influencing this call.`);
+        }
+      }
+    }
+
+    return warnings;
+  }
+
   // ── Company combobox ───────────────────────────────────────
   let comboboxKbIndex = -1;
 
@@ -783,8 +834,19 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         <span>No prior call history found for <strong>${escHtml(prospect || 'this prospect')}</strong>. This report was graded without account context — missed questions or gaps may reflect unknown prior discovery rather than rep performance.</span>
       </div>` : '';
 
+    const missingRecWarnings = detectMissingRecordings(priorCalls, callDate, notes);
+    const missingRecBanner = missingRecWarnings.length ? `
+      <div class="no-context-banner missing-rec-banner">
+        <span class="no-context-icon">&#9888;</span>
+        <div>
+          <div style="font-weight:600;margin-bottom:4px;">Possible unrecorded meeting(s) detected</div>
+          <ul style="margin:0;padding-left:16px;">${missingRecWarnings.map(w => `<li>${escHtml(w)}</li>`).join('')}</ul>
+        </div>
+      </div>` : '';
+
     const resultsHtml = `
       ${noContextBanner}
+      ${missingRecBanner}
       ${toggleHtml}
       ${overallView}
       ${repViews}
