@@ -584,6 +584,82 @@
     }
   }
 
+  async function detectUnknownParticipants(notes, prospect, contactTitle, rep) {
+    try {
+      const teamNames = loadTeam().map(t => t.name).filter(Boolean);
+      const knownSales = teamNames.length
+        ? 'Known sales team members: ' + teamNames.join(', ')
+        : 'No sales team members configured.';
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 500,
+          stream: false,
+          system: 'You identify call participants. Return ONLY valid JSON, no markdown.',
+          messages: [{ role: 'user', content:
+            `${knownSales}\nCustomer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- "sales_team": name matches a known team member\n- "customer": clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc.\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript:\n${notes.slice(0, 5000)}`
+          }]
+        })
+      });
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      const text = (data.content?.[0]?.text || '').replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+      const parsed = JSON.parse(text);
+      return (parsed.participants || []).filter(p => p.type === 'unknown');
+    } catch (e) {
+      console.warn('[third-party check] failed:', e.message);
+      return [];
+    }
+  }
+
+  let _thirdPartyResolve = null;
+
+  function showThirdPartyPrompt(unknowns) {
+    return new Promise(resolve => {
+      _thirdPartyResolve = resolve;
+      const list = document.getElementById('tpParticipantList');
+      list.innerHTML = unknowns.map(u => `
+        <div class="tp-person">
+          <div class="tp-person-meta">
+            <span class="tp-person-name">${escHtml(u.name)}</span>
+            <span class="tp-person-clue">${escHtml(u.clue || '')}</span>
+          </div>
+          <input class="tp-person-input" id="tp-role-${escHtml(u.name)}"
+            placeholder="e.g. Channel partner SE, Security consultant, Vendor rep…"
+            autocomplete="off">
+        </div>`).join('');
+      document.getElementById('thirdPartyPanel').style.display = 'block';
+      document.getElementById('inputCard').style.display = 'none';
+      const first = list.querySelector('.tp-person-input');
+      if (first) first.focus();
+    });
+  }
+
+  function confirmThirdParty() {
+    const panel = document.getElementById('thirdPartyPanel');
+    const inputs = panel.querySelectorAll('.tp-person-input');
+    const roles = {};
+    let allFilled = true;
+    inputs.forEach(inp => {
+      const name = inp.id.replace('tp-role-', '');
+      const val = inp.value.trim();
+      if (!val) { inp.classList.add('tp-input-error'); allFilled = false; }
+      else { inp.classList.remove('tp-input-error'); roles[name] = val; }
+    });
+    if (!allFilled) return;
+    panel.style.display = 'none';
+    document.getElementById('inputCard').style.display = 'block';
+    if (_thirdPartyResolve) { _thirdPartyResolve(roles); _thirdPartyResolve = null; }
+  }
+
+  function cancelThirdParty() {
+    document.getElementById('thirdPartyPanel').style.display = 'none';
+    document.getElementById('inputCard').style.display = 'block';
+    if (_thirdPartyResolve) { _thirdPartyResolve(null); _thirdPartyResolve = null; }
+  }
+
   async function gradeCall() {
     const notes = document.getElementById('callNotes').value.trim();
     const prospect = document.getElementById('prospect').value.trim();
@@ -593,9 +669,20 @@
 
     if (!notes) { showError('Please paste your call notes or transcript.'); return; }
 
-    setLoading(true, prospect, selectedStage);
     clearError();
     document.getElementById('results').style.display = 'none';
+
+    // ── Third-party participant check ─────────────────────────
+    const unknowns = await detectUnknownParticipants(notes, prospect, contactTitle, rep);
+    let thirdPartyContext = '';
+    if (unknowns.length) {
+      const roles = await showThirdPartyPrompt(unknowns);
+      if (!roles) return; // user cancelled
+      thirdPartyContext = '\n\nAdditional participant context provided by the user:\n' +
+        Object.entries(roles).map(([name, role]) => `- ${name}: ${role}`).join('\n');
+    }
+
+    setLoading(true, prospect, selectedStage);
 
     const systemPrompt = `You are an expert sales coach specializing in MSSP and B2B security sales.
 
@@ -659,7 +746,7 @@ call_summary.missed: 2-4 specific opportunities, techniques, or questions that w
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.
 rep_scores: identify every named sales rep who speaks in the transcript. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no individual reps can be identified, return an empty array.
-spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.`;
+spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.${thirdPartyContext}`;
 
     const context = [
       rep ? 'Rep: ' + rep.name + ' (' + rep.role + ')' : '',

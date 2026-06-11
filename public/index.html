@@ -211,6 +211,22 @@
         </div>
       </div>
       <div class="error-box" id="errorBox"></div>
+
+      <!-- Third-party participant prompt -->
+      <div id="thirdPartyPanel" style="display:none;">
+        <div class="tp-header">
+          <span class="tp-icon">&#9888;</span>
+          <div>
+            <div class="tp-title">Unknown participant(s) detected</div>
+            <div class="tp-sub">Someone on this call isn't on the sales team or identifiable as the customer. Specify their role so the report can be graded with accurate context.</div>
+          </div>
+        </div>
+        <div id="tpParticipantList"></div>
+        <div class="tp-actions">
+          <button class="tp-btn-cancel" onclick="cancelThirdParty()">Cancel</button>
+          <button class="tp-btn-continue" onclick="confirmThirdParty()">Continue grading &#8594;</button>
+        </div>
+      </div>
     </div>
 
     <div id="results"></div>

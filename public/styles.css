@@ -236,6 +236,41 @@
   }
   .add-btn:hover { opacity: 0.85; }
 
+  /* ── Third-party participant prompt ── */
+  #thirdPartyPanel {
+    background: var(--siren-bg-card); border: 1px solid rgba(200,150,40,.35);
+    border-radius: var(--siren-radius-lg); padding: 20px; margin-top: 12px;
+  }
+  .tp-header { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
+  .tp-icon { font-size: 18px; color: rgba(220,175,80,.9); flex-shrink: 0; margin-top: 2px; }
+  .tp-title { font-size: 14px; font-weight: 700; color: var(--siren-text-primary); margin-bottom: 4px; }
+  .tp-sub { font-size: 12.5px; color: var(--siren-text-muted); line-height: 1.55; }
+  .tp-person { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--siren-border); }
+  .tp-person:last-child { border-bottom: none; }
+  .tp-person-meta { flex: 0 0 200px; }
+  .tp-person-name { display: block; font-size: 13px; font-weight: 600; color: var(--siren-text-primary); margin-bottom: 3px; }
+  .tp-person-clue { display: block; font-size: 11.5px; color: var(--siren-text-faint); line-height: 1.4; }
+  .tp-person-input {
+    flex: 1; background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid);
+    border-radius: var(--siren-radius-sm); padding: 8px 10px;
+    font-size: 13px; color: var(--siren-text-primary); outline: none;
+  }
+  .tp-person-input:focus { border-color: var(--siren-cyan-50); }
+  .tp-input-error { border-color: var(--siren-danger-red) !important; }
+  .tp-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .tp-btn-cancel {
+    padding: 9px 16px; font-size: 13px; cursor: pointer;
+    background: transparent; color: var(--siren-text-muted);
+    border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm);
+  }
+  .tp-btn-cancel:hover { background: var(--siren-bg-card-raised); }
+  .tp-btn-continue {
+    padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+    background: var(--siren-cyan-12); color: var(--siren-cyan-90);
+    border: 1px solid var(--siren-cyan-40); border-radius: var(--siren-radius-sm);
+  }
+  .tp-btn-continue:hover { background: var(--siren-cyan-20); }
+
   .no-context-banner {
     display: flex; align-items: flex-start; gap: 10px;
     padding: 11px 14px; margin-bottom: 14px;
