@@ -500,7 +500,7 @@
     const fmt = ms => new Date(ms).toLocaleDateString([],{month:'short',day:'numeric'});
 
     const COLORS = ['#00c8ff','#f59e0b','#a78bfa','#34d399','#f87171','#fb923c','#38bdf8','#e879f9'];
-    const ROW_H = 72, PAD = { top: 20, bottom: 10, left: 6, right: 6 };
+    const ROW_H = 104, PAD = { top: 30, bottom: 22, left: 6, right: 6 };
     const chartH = ROW_H - PAD.top - PAD.bottom;
 
     // Score colour
@@ -544,26 +544,31 @@
         sparkContent += `<path d="${lineD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
         pts.forEach((p, pi) => {
           const isLast = pi === pts.length - 1;
-          sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isLast?5:3}" fill="${color}" stroke="#061824" stroke-width="${isLast?2:1.5}" opacity="${isLast?1:0.65}"/>`;
-          if (isLast) sparkContent += `<text x="${p.x.toFixed(1)}" y="${(p.y - 11).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}" font-family="system-ui">${p.score}</text>`;
+          if (isLast) {
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="11" fill="${color}" opacity="0.12" stroke="none"/>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6" fill="${color}" stroke="#061824" stroke-width="2"/>`;
+            sparkContent += `<text x="${p.x.toFixed(1)}" y="${(p.y - 16).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${color}" font-family="system-ui">${p.score}</text>`;
+          } else {
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#061824" stroke-width="1.5" opacity="0.7"/>`;
+          }
         });
       }
 
       // Date labels on first and last point
       if (pts.length > 1) {
-        sparkContent += `<text x="${pts[0].x.toFixed(1)}" y="${(ROW_H-1).toFixed(1)}" text-anchor="start" font-size="8" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(pts[0].ms)}</text>`;
-        sparkContent += `<text x="${pts[pts.length-1].x.toFixed(1)}" y="${(ROW_H-1).toFixed(1)}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(pts[pts.length-1].ms)}</text>`;
+        sparkContent += `<text x="${pts[0].x.toFixed(1)}" y="${(ROW_H-5).toFixed(1)}" text-anchor="start" font-size="9" fill="rgba(255,255,255,0.3)" font-family="system-ui">${fmt(pts[0].ms)}</text>`;
+        sparkContent += `<text x="${pts[pts.length-1].x.toFixed(1)}" y="${(ROW_H-5).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.3)" font-family="system-ui">${fmt(pts[pts.length-1].ms)}</text>`;
       }
 
-      return `<div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(255,255,255,.05);padding:6px 0;">
+      return `<div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(255,255,255,.05);padding:10px 0;">
         <div style="width:130px;flex-shrink:0;padding-right:12px;">
-          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(rep.name)}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">${rep.calls.length} call${rep.calls.length!==1?'s':''}</div>
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(rep.name)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:3px;">${rep.calls.length} call${rep.calls.length!==1?'s':''}</div>
         </div>
         <svg style="flex:1;min-width:0;height:${ROW_H}px;display:block;" viewBox="0 0 ${W} ${ROW_H}" preserveAspectRatio="none">${sparkContent}</svg>
-        <div style="width:56px;flex-shrink:0;text-align:right;padding-left:12px;">
-          <div style="font-size:18px;font-weight:800;color:${scoreColor(latest)};line-height:1;">${latest}</div>
-          <div style="font-size:10px;font-weight:700;color:${trendColor};margin-top:3px;">${trendLabel}</div>
+        <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;">
+          <div style="font-size:22px;font-weight:800;color:${scoreColor(latest)};line-height:1;">${latest}</div>
+          <div style="font-size:10px;font-weight:700;color:${trendColor};margin-top:4px;">${trendLabel}</div>
         </div>
       </div>`;
     });
@@ -575,7 +580,7 @@
         <span style="font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">${fmt(minMs)}</span>
         ${minMs !== maxMs ? `<span style="font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">${fmt(maxMs)}</span>` : ''}
       </div>
-      <div style="width:56px;flex-shrink:0;text-align:right;padding-left:12px;font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">LAST</div>
+      <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">LAST</div>
     </div>`;
 
     container.innerHTML = axisHtml + rows.join('');
