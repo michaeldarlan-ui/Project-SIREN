@@ -5663,7 +5663,9 @@ function downloadResponses(){
 
   // ── Demo data seed ──────────────────────────────────────────────────────
   function seedDemoData() {
-    if (localStorage.getItem('oa_demo_seeded')) return;
+    // Re-run every load to merge; demo records are identified by id prefix 'demo-'
+    const alreadyHasDemos = loadHistory().some(h => h.id?.startsWith('demo-'));
+    if (alreadyHasDemos) return;
     const now = Date.now();
     const demoHistory = [
       {
@@ -5773,9 +5775,9 @@ function downloadResponses(){
       ]
     };
 
-    saveHistoryData(demoHistory);
+    const existing = loadHistory().filter(h => !h.id?.startsWith('demo-'));
+    saveHistoryData([...existing, ...demoHistory]);
     localStorage.setItem('oa_pulse_tasks', JSON.stringify(demoPulseTasks));
-    localStorage.setItem('oa_demo_seeded', '1');
   }
 
   seedDemoData();
