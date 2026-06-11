@@ -77,7 +77,7 @@ const server = http.createServer((req, res) => {
   // ── Static files ─────────────────────────────────────────────
   if (req.url === '/' || req.url === '/index.html') {
     const htmlPath = path.join(__dirname, 'public', 'index.html');
-    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
     res.end(fs.readFileSync(htmlPath));
     return;
   }
