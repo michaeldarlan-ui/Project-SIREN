@@ -633,21 +633,41 @@
           <span class="tp-known-icon">&#10003;</span>
           Auto-recognized: ${known.map(k => `<strong>${escHtml(k.name)}</strong> (${escHtml(k.role || '')}${k.organization ? ', ' + escHtml(k.organization) : ''})`).join(', ')}
         </div>` : '';
-      list.innerHTML = knownHtml + newUnknowns.map(u => `
-        <div class="tp-person">
+      const storedParties = Object.values(_thirdPartiesCache);
+      list.innerHTML = knownHtml + newUnknowns.map(u => {
+        const sid = CSS.escape(u.name);
+        const matchOpts = storedParties.length
+          ? `<option value="">— new participant —</option>` +
+            storedParties.map(p => `<option value="${escHtml(p.name)}">${escHtml(p.name)}${p.organization ? ' ('+escHtml(p.organization)+')' : ''}</option>`).join('')
+          : null;
+        const matchRow = matchOpts
+          ? `<div class="tp-match-row">
+               <label class="tp-match-label">Match to existing:</label>
+               <select class="tp-match-select" id="tp-match-${sid}" onchange="tpMatchChanged(${JSON.stringify(u.name)})">
+                 ${matchOpts}
+               </select>
+             </div>`
+          : '';
+        return `
+        <div class="tp-person" id="tp-person-wrap-${sid}">
           <div class="tp-person-meta">
             <span class="tp-person-name">${escHtml(u.name)}</span>
             <span class="tp-person-clue">${escHtml(u.clue || '')}</span>
           </div>
-          <div class="tp-person-inputs">
-            <input class="tp-person-input" id="tp-role-${escHtml(u.name)}"
-              placeholder="Role — e.g. Channel partner SE, Security consultant…"
-              autocomplete="off">
-            <input class="tp-person-org" id="tp-org-${escHtml(u.name)}"
-              placeholder="Organization (optional)"
-              autocomplete="off">
+          <div class="tp-person-right">
+            ${matchRow}
+            <div class="tp-person-inputs" id="tp-inputs-${sid}">
+              <input class="tp-person-input" id="tp-role-${sid}"
+                placeholder="Role — e.g. Channel partner SE, Security consultant…"
+                autocomplete="off">
+              <input class="tp-person-org" id="tp-org-${sid}"
+                placeholder="Organization (optional)"
+                autocomplete="off">
+            </div>
+            <div class="tp-match-preview" id="tp-preview-${sid}" style="display:none;"></div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
       document.getElementById('thirdPartyPanel').style.display = 'block';
       document.getElementById('inputCard').style.display = 'none';
       const first = list.querySelector('.tp-person-input');
@@ -657,21 +677,36 @@
 
   function confirmThirdParty() {
     const panel = document.getElementById('thirdPartyPanel');
-    const roleInputs = panel.querySelectorAll('.tp-person-input');
     const entries = {};
     let allFilled = true;
-    roleInputs.forEach(inp => {
-      const name = inp.id.replace('tp-role-', '');
-      const role = inp.value.trim();
-      const orgInp = panel.querySelector('#tp-org-' + name);
-      const org = orgInp ? orgInp.value.trim() : '';
-      if (!role) { inp.classList.add('tp-input-error'); allFilled = false; }
-      else { inp.classList.remove('tp-input-error'); entries[name] = { role, organization: org }; }
+
+    panel.querySelectorAll('.tp-person').forEach(personEl => {
+      const sid = personEl.id.replace('tp-person-wrap-', '');
+      const sel = personEl.querySelector('.tp-match-select');
+      const matched = sel ? _thirdPartiesCache[(sel.value || '').toLowerCase()] : null;
+
+      if (matched) {
+        // User correlated this participant to an existing record — use stored data
+        entries[matched.name] = { role: matched.role || '', organization: matched.organization || '', _matched: true };
+      } else {
+        const inp = personEl.querySelector('.tp-person-input');
+        const orgInp = personEl.querySelector('.tp-person-org');
+        if (!inp) return;
+        const role = inp.value.trim();
+        const org  = orgInp ? orgInp.value.trim() : '';
+        // Recover original name from the role input id
+        const name = inp.id.replace(/^tp-role-/, '');
+        if (!role) { inp.classList.add('tp-input-error'); allFilled = false; }
+        else { inp.classList.remove('tp-input-error'); entries[name] = { role, organization: org }; }
+      }
     });
+
     if (!allFilled) return;
 
-    // Persist new third parties to DB
-    Object.entries(entries).forEach(([name, fields]) => _dbSaveThirdParty(name, fields));
+    // Persist only new (non-matched) third parties to DB
+    Object.entries(entries).forEach(([name, fields]) => {
+      if (!fields._matched) _dbSaveThirdParty(name, fields);
+    });
 
     panel.style.display = 'none';
     document.getElementById('inputCard').style.display = 'block';
@@ -683,6 +718,29 @@
     document.getElementById('inputCard').style.display = 'block';
     if (_thirdPartyResolve) { _thirdPartyResolve(null); _thirdPartyResolve = null; }
   }
+
+  window.tpMatchChanged = function(rawName) {
+    const sid = CSS.escape(rawName);
+    const sel = document.getElementById('tp-match-' + sid);
+    const inputsEl = document.getElementById('tp-inputs-' + sid);
+    const previewEl = document.getElementById('tp-preview-' + sid);
+    if (!sel) return;
+    const matched = _thirdPartiesCache[(sel.value || '').toLowerCase()];
+    if (matched) {
+      if (inputsEl) inputsEl.style.display = 'none';
+      if (previewEl) {
+        previewEl.style.display = 'block';
+        previewEl.innerHTML = `<span class="tp-match-chip">
+          <span class="tp-match-chip-name">${escHtml(matched.name)}</span>
+          ${matched.role ? `<span class="tp-match-chip-meta">${escHtml(matched.role)}</span>` : ''}
+          ${matched.organization ? `<span class="tp-match-chip-meta">${escHtml(matched.organization)}</span>` : ''}
+        </span>`;
+      }
+    } else {
+      if (inputsEl) inputsEl.style.display = '';
+      if (previewEl) { previewEl.style.display = 'none'; previewEl.innerHTML = ''; }
+    }
+  };
 
   async function gradeCall() {
     const notes = document.getElementById('callNotes').value.trim();

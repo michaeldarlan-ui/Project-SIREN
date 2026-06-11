@@ -245,11 +245,28 @@
   .tp-icon { font-size: 18px; color: rgba(220,175,80,.9); flex-shrink: 0; margin-top: 2px; }
   .tp-title { font-size: 14px; font-weight: 700; color: var(--siren-text-primary); margin-bottom: 4px; }
   .tp-sub { font-size: 12.5px; color: var(--siren-text-muted); line-height: 1.55; }
-  .tp-person { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--siren-border); }
+  .tp-person { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--siren-border); }
   .tp-person:last-child { border-bottom: none; }
-  .tp-person-meta { flex: 0 0 200px; }
+  .tp-person-meta { flex: 0 0 200px; padding-top: 2px; }
+  .tp-person-right { flex: 1; display: flex; flex-direction: column; gap: 8px; }
   .tp-person-name { display: block; font-size: 13px; font-weight: 600; color: var(--siren-text-primary); margin-bottom: 3px; }
   .tp-person-clue { display: block; font-size: 11.5px; color: var(--siren-text-faint); line-height: 1.4; }
+  .tp-match-row { display: flex; align-items: center; gap: 8px; }
+  .tp-match-label { font-size: 11px; color: var(--siren-text-faint); white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
+  .tp-match-select {
+    flex: 1; background: var(--siren-bg-card-raised); border: 1px solid var(--siren-cyan-40);
+    border-radius: 6px; color: var(--siren-cyan-90); font-size: 12px; padding: 5px 8px; cursor: pointer;
+  }
+  .tp-match-select:focus { outline: none; border-color: var(--siren-cyan-70); }
+  .tp-match-preview { display: flex; align-items: center; gap: 6px; }
+  .tp-match-chip {
+    display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    background: var(--siren-cyan-08); border: 1px solid var(--siren-cyan-20);
+    border-radius: 20px; padding: 4px 12px;
+  }
+  .tp-match-chip-name { font-size: 12px; font-weight: 600; color: var(--siren-cyan-90); }
+  .tp-match-chip-meta { font-size: 11px; color: var(--siren-text-muted); }
+  .tp-match-chip-meta::before { content: '·'; margin-right: 4px; }
   .tp-person-input {
     flex: 1; background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid);
     border-radius: var(--siren-radius-sm); padding: 8px 10px;
