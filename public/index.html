@@ -1125,8 +1125,8 @@
     </div>
   </div>
   <nav class="nav-tabs">
-    <button class="nav-tab" onclick="navTo('pulse')">PULSE</button>
-    <button class="nav-tab active" onclick="navTo('grader')">ENGAGE</button>
+    <button class="nav-tab active" onclick="navTo('pulse')">PULSE</button>
+    <button class="nav-tab" onclick="navTo('grader')">ENGAGE</button>
     <button class="nav-tab" onclick="navTo('lifecycle')">ATLAS</button>
     <button class="nav-tab" onclick="navTo('scope')">SCOPE</button>
     <button class="nav-tab" onclick="navTo('forge')">FORGE</button>
@@ -1173,7 +1173,7 @@
 </div>
 
 <!-- ══ GRADER PAGE ══ -->
-<div class="page active" id="page-grader">
+<div class="page" id="page-grader">
   <div class="shell">
 
     <!-- Usage bar -->
@@ -1756,7 +1756,7 @@
 </div>
 
 <!-- ══ PULSE DASHBOARD PAGE ══ -->
-<div class="page" id="page-pulse">
+<div class="page active" id="page-pulse">
   <div class="pulse-shell">
     <div class="pulse-section-label">Intelligence Overview</div>
     <div class="pulse-kpi-row" id="pulseKpiRow">
@@ -1869,7 +1869,7 @@
 
 <script>
   let selectedStage = 'Demo / solution presentation';
-  let currentPage = 'grader';
+  let currentPage = 'pulse';
 
   // ── Navigation ─────────────────────────────────────────────
   function navTo(page) {
@@ -5178,6 +5178,7 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
   renderHistory();
   initUsageBar();
   forgeInit();
+  renderPulse();
 
   // ── Chip input helpers ─────────────────────────────────────────
   function scopeChipsFromWrap(wrap) {
