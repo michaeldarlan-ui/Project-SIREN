@@ -1044,6 +1044,14 @@
   .scope-input::placeholder { color: var(--siren-text-faint); }
   .scope-notes { opacity: .75; font-size: .8rem; }
   .scope-notes:focus { opacity: 1; }
+  /* Chip / tag input for multi-value scope fields */
+  .scope-chip-wrap { background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); border-radius: 6px; padding: 4px 6px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 34px; cursor: text; box-sizing: border-box; width: 100%; }
+  .scope-chip-wrap:focus-within { border-color: var(--siren-border-active); }
+  .scope-chip { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,200,255,.12); border: 1px solid rgba(0,200,255,.25); border-radius: 4px; padding: 2px 6px 2px 8px; font-size: .78rem; color: rgba(255,255,255,.9); white-space: nowrap; max-width: 100%; }
+  .scope-chip-x { background: none; border: none; color: rgba(0,200,255,.6); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 0 1px; flex-shrink: 0; }
+  .scope-chip-x:hover { color: #fff; }
+  .scope-chip-text { background: none; border: none; outline: none; color: rgba(255,255,255,.9); font-size: .85rem; font-family: inherit; min-width: 80px; flex: 1; padding: 2px 4px; }
+  .scope-chip-text::placeholder { color: var(--siren-text-faint); }
   @media (max-width: 700px) {
     .scope-grid { grid-template-columns: 1fr; }
     .scope-col-head { display: none; }
@@ -4817,6 +4825,67 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
   initUsageBar();
   forgeInit();
 
+  // ── Chip input helpers ─────────────────────────────────────────
+  function scopeChipsFromWrap(wrap) {
+    return Array.from(wrap.querySelectorAll('.scope-chip')).map(c => c.childNodes[0].textContent.trim()).filter(Boolean);
+  }
+  function scopeSaveChips(wrap, company, key) {
+    const chips = scopeChipsFromWrap(wrap);
+    saveScope(company, key, 'value', chips.join('\n'));
+    // Update placeholder visibility
+    const inp = wrap.querySelector('.scope-chip-text');
+    if (inp) inp.placeholder = chips.length ? '' : 'Type and press Enter…';
+  }
+  function scopeChipKeydown(e, inp, company, key) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = inp.value.trim();
+      if (!val) return;
+      const wrap = inp.closest('.scope-chip-wrap');
+      const chip = document.createElement('span');
+      chip.className = 'scope-chip';
+      chip.innerHTML = `${escHtml(val)}<button class="scope-chip-x" type="button" onclick="scopeRemoveChip(this,'${company.replace(/'/g,"\\'")}','${key}')">×</button>`;
+      wrap.insertBefore(chip, inp);
+      inp.value = '';
+      scopeSaveChips(wrap, company, key);
+    } else if (e.key === 'Backspace' && inp.value === '') {
+      const wrap = inp.closest('.scope-chip-wrap');
+      const chips = wrap.querySelectorAll('.scope-chip');
+      if (chips.length) { chips[chips.length-1].remove(); scopeSaveChips(wrap, company, key); }
+    }
+  }
+  function scopeChipCommit(inp, company, key) {
+    const val = inp.value.trim();
+    if (!val) return;
+    const wrap = inp.closest('.scope-chip-wrap');
+    const chip = document.createElement('span');
+    chip.className = 'scope-chip';
+    chip.innerHTML = `${escHtml(val)}<button class="scope-chip-x" type="button" onclick="scopeRemoveChip(this,'${company.replace(/'/g,"\\'")}','${key}')">×</button>`;
+    wrap.insertBefore(chip, inp);
+    inp.value = '';
+    scopeSaveChips(wrap, company, key);
+  }
+  function scopeRemoveChip(btn, company, key) {
+    const chip = btn.closest('.scope-chip');
+    const wrap = chip.closest('.scope-chip-wrap');
+    chip.remove();
+    scopeSaveChips(wrap, company, key);
+  }
+  // ── Revision delete ───────────────────────────────────────────
+  function scopeDeleteRevision(idx) {
+    const sel = document.getElementById('scopeAccountSelect');
+    const company = sel && sel.value;
+    if (!company) return;
+    if (!confirm('Delete this revision?')) return;
+    const s = loadScopeAll(company);
+    s.revisions.splice(idx, 1);
+    saveScopeAll(company, s);
+    _scopeViewingRevision = null;
+    renderScopeRevBar(company);
+    renderScopeFormBody(company);
+    document.getElementById('scopeRevBanner').style.display = 'none';
+  }
+
   function saveScope(company, fieldKey, type, val){
     const s=loadScopeAll(company);
     if(!s.draft[fieldKey]) s.draft[fieldKey]={value:'',notes:''};
@@ -4855,7 +4924,10 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
         const rev=s.revisions[_scopeViewingRevision];
         banner.style.display='flex';
         banner.innerHTML=`<span>Viewing ${escHtml(rev?.label||'revision')} — read-only.</span>
-          <button onclick="scopeRestoreRevision(${_scopeViewingRevision})" style="background:none;border:1px solid rgba(232,160,32,.5);border-radius:4px;color:#e8a020;font-size:11px;padding:3px 10px;cursor:pointer;">Restore to Draft</button>`;
+          <div style="display:flex;gap:6px;">
+            <button onclick="scopeRestoreRevision(${_scopeViewingRevision})" style="background:none;border:1px solid rgba(232,160,32,.5);border-radius:4px;color:#e8a020;font-size:11px;padding:3px 10px;cursor:pointer;">Restore to Draft</button>
+            <button onclick="scopeDeleteRevision(${_scopeViewingRevision})" style="background:none;border:1px solid rgba(220,60,60,.4);border-radius:4px;color:#e05050;font-size:11px;padding:3px 10px;cursor:pointer;">Delete</button>
+          </div>`;
       } else {
         banner.style.display='none';
       }
@@ -4916,11 +4988,21 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
         const nEsc=saved.notes.replace(/"/g,'&quot;');
         html+=`<div class="scope-label">${escHtml(field)}</div>`;
         if(readonly){
-          html+=`<div class="scope-input" style="cursor:default;opacity:.7;">${escHtml(saved.value)||'<span style="color:var(--siren-text-faint)">—</span>'}</div>`;
+          const chips=saved.value?saved.value.split('\n').filter(Boolean):[];
+          const chipHtml=chips.length ? chips.map(c=>`<span class="scope-chip" style="pointer-events:none;">${escHtml(c)}</span>`).join('')
+            : '<span style="color:var(--siren-text-faint);font-size:.8rem;">—</span>';
+          html+=`<div class="scope-chip-wrap" style="opacity:.7;cursor:default;">${chipHtml}</div>`;
           html+=`<div class="scope-input scope-notes" style="cursor:default;opacity:.7;">${escHtml(saved.notes)||''}</div>`;
         } else {
-          html+=`<input class="scope-input" type="text" value="${vEsc}" data-company="${cEsc}" data-key="${key}" data-type="value" oninput="saveScope(this.dataset.company,this.dataset.key,'value',this.value)" placeholder="—">`;
-          html+=`<input class="scope-input" type="text" value="${nEsc}" data-company="${cEsc}" data-key="${key}" data-type="notes" oninput="saveScope(this.dataset.company,this.dataset.key,'notes',this.value)" placeholder="notes…">`;
+          const chips=saved.value?saved.value.split('\n').filter(Boolean):[];
+          const chipHtml=chips.map((c,i)=>`<span class="scope-chip">${escHtml(c)}<button class="scope-chip-x" type="button" onclick="scopeRemoveChip(this,'${cEsc}','${key}')">×</button></span>`).join('');
+          html+=`<div class="scope-chip-wrap" data-company="${cEsc}" data-key="${key}" onclick="this.querySelector('.scope-chip-text').focus()">
+            ${chipHtml}
+            <input class="scope-chip-text" type="text" placeholder="${chips.length?'':'Type and press Enter…'}"
+              onkeydown="scopeChipKeydown(event,this,'${cEsc}','${key}')"
+              onblur="scopeChipCommit(this,'${cEsc}','${key}')">
+          </div>`;
+          html+=`<input class="scope-input scope-notes" type="text" value="${nEsc}" data-company="${cEsc}" data-key="${key}" data-type="notes" oninput="saveScope(this.dataset.company,this.dataset.key,'notes',this.value)" placeholder="notes…">`;
         }
       }
       html+=`</div></div>`;
