@@ -1444,6 +1444,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (chev) chev.classList.toggle('open', open);
   }
 
+  function collapseAllHistCards() {
+    document.querySelectorAll('.hist-card-body').forEach(body => { body.style.display = 'none'; });
+    document.querySelectorAll('.hist-card-chevron').forEach(chev => { chev.classList.remove('open'); });
+  }
+
   function toggleGroupCards(groupId) {
     const el = document.getElementById(groupId);
     if (!el) return;
