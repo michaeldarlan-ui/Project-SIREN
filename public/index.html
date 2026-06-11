@@ -3259,7 +3259,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
     // Wrap score-view blocks in a collapsible section; keep everything else visible
-    const strippedReset = h.resultsHtml.replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
+    const strippedReset = (h.resultsHtml || '').replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '');
     const scoreMatch = strippedReset.match(/([\s\S]*?)(<div class="(?:rep-toggle|score-view)[\s\S]*?)((?:<div class="section-head[^>]*>(?:Call highlights|Recommended|SPICED)[\s\S]*)?)$/);
     let bodyHtml;
     if (scoreMatch) {
