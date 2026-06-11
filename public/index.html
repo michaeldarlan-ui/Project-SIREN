@@ -2279,14 +2279,36 @@
   }
 
   function getBarColor(pct) {
-    if (pct >= 85) return '#00c8ff';
-    if (pct >= 65) return '#00c896';
-    if (pct >= 45) return '#e8a020';
+    if (pct >= 90) return '#00c8ff';
+    if (pct >= 80) return '#00c896';
+    if (pct >= 70) return '#e8a020';
+    if (pct >= 60) return '#e05050';
     return '#BBC1C7';
   }
 
+  function scoreToGrade(n) {
+    if (n >= 97) return 'A+';
+    if (n >= 93) return 'A';
+    if (n >= 90) return 'A-';
+    if (n >= 87) return 'B+';
+    if (n >= 83) return 'B';
+    if (n >= 80) return 'B-';
+    if (n >= 77) return 'C+';
+    if (n >= 73) return 'C';
+    if (n >= 70) return 'C-';
+    if (n >= 67) return 'D+';
+    if (n >= 63) return 'D';
+    if (n >= 60) return 'D-';
+    return 'F';
+  }
+
   function getBannerColor(grade) {
-    return { A: '#00c8ff', B: '#00c896', C: '#e8a020', D: '#e05050', F: '#c03030' }[grade] || '#061824';
+    const g = (grade || '').toUpperCase().replace(/\s/g, '');
+    if (g.startsWith('A')) return '#00c8ff';
+    if (g.startsWith('B')) return '#00c896';
+    if (g.startsWith('C')) return '#e8a020';
+    if (g.startsWith('D')) return '#e05050';
+    return '#c03030';
   }
 
   function buildRoleGuidance(rep) {
@@ -2462,6 +2484,9 @@
 ${buildLibraryPrompt()}${buildDocsPrompt()}${buildHistoryContext(prospect, rep)}
 
 You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
+
+Use this grading scale when assigning letter_grade based on total score (0–100):
+A+: 97–100 | A: 93–96 | A-: 90–92 | B+: 87–89 | B: 83–86 | B-: 80–82 | C+: 77–79 | C: 73–76 | C-: 70–72 | D+: 67–69 | D: 63–66 | D-: 60–62 | F: 0–59
 
 Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble:
 
@@ -4557,11 +4582,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function gradeRingColor(grade) {
-    const g=(grade||'C').toUpperCase();
-    if (g==='A+'||g==='A') return '#00c8ff';
-    if (g==='A-'||g==='B+'||g==='B') return '#00c896';
-    if (g==='B-'||g==='C+'||g==='C') return '#e8a020';
-    if (g==='C-'||g==='D') return '#e05050';
+    const g = (grade||'C').toUpperCase().replace(/\s/g,'');
+    if (g.startsWith('A')) return '#00c8ff';
+    if (g.startsWith('B')) return '#00c896';
+    if (g.startsWith('C')) return '#e8a020';
+    if (g.startsWith('D')) return '#e05050';
     return '#c03030';
   }
 
@@ -6423,6 +6448,7 @@ function downloadResponses(){
       ],
     };
 
+    demoHistory.forEach(h => { if (typeof h.total === 'number') h.letter_grade = scoreToGrade(h.total); });
     const existing = loadHistory().filter(h => !h.id?.startsWith('demo-'));
     saveHistoryData([...existing, ...demoHistory]);
 
@@ -6727,7 +6753,7 @@ function downloadResponses(){
   }
 
   // Version-gated demo seed — reseed when version changes OR demo data is absent
-  const DEMO_VERSION = 'v8-account-count-gate';
+  const DEMO_VERSION = 'v9-grade-scale';
   const _demoAccounts = new Set(loadHistory().filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
   if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
