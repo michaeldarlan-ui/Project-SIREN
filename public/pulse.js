@@ -587,10 +587,10 @@
           const tipDate = fmt(p.ms);
           const tipText = `${p.score} · ${tipDate}`;
           if (isLast) {
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="11" fill="${color}" opacity="0.12" stroke="none"/>`;
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6" fill="${color}" stroke="#061824" stroke-width="2" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="${color}" opacity="0.2" stroke="none"/>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${color}" stroke="#061824" stroke-width="2" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
           } else {
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#061824" stroke-width="1.5" opacity="0.7" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${color}" opacity="0.6" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
           }
         });
       }
