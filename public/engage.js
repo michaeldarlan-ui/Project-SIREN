@@ -348,9 +348,9 @@
   function getBarColor(pct) {
     if (pct >= 90) return '#00c8ff';
     if (pct >= 80) return '#00c896';
-    if (pct >= 70) return '#e8a020';
-    if (pct >= 60) return '#e05050';
-    return '#BBC1C7';
+    if (pct >= 70) return '#c47f1a';
+    if (pct >= 60) return '#a83535';
+    return '#888e96';
   }
 
   function scoreToGrade(n) {
@@ -371,11 +371,11 @@
 
   function getBannerColor(grade) {
     const g = (grade || '').toUpperCase().replace(/\s/g, '');
-    if (g.startsWith('A')) return '#00c8ff';
-    if (g.startsWith('B')) return '#00c896';
-    if (g.startsWith('C')) return '#e8a020';
-    if (g.startsWith('D')) return '#e05050';
-    return '#c03030';
+    if (g.startsWith('A')) return '#006a8a';
+    if (g.startsWith('B')) return '#0a6b52';
+    if (g.startsWith('C')) return '#7c5514';
+    if (g.startsWith('D')) return '#7a2828';
+    return '#5c1c1c';
   }
 
   function buildRoleGuidance(rep) {
@@ -1319,7 +1319,14 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     // Wrap score-view blocks in a collapsible section; keep everything else visible
     const strippedReset = (h.resultsHtml || '')
       .replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '')
-      .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"");
+      .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"")
+      .replace(/background:#00c8ff/g, 'background:#006a8a')
+      .replace(/background:#00c896/g, 'background:#0a6b52')
+      .replace(/background:#e8a020/g, 'background:#7c5514')
+      .replace(/background:#e05050/g, 'background:#7a2828')
+      .replace(/background:#c03030/g, 'background:#5c1c1c')
+      .replace(/color:#e8a020/g, 'color:#c47f1a')
+      .replace(/color:#e05050/g, 'color:#a83535');
     const scoreMatch = strippedReset.match(/([\s\S]*?)(<div class="(?:rep-toggle|score-view)[\s\S]*?)((?:<div class="section-head[^>]*>(?:Call highlights|Recommended|SPICED)[\s\S]*)?)$/);
     let bodyHtml;
     if (scoreMatch) {
