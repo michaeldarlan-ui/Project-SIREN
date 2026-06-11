@@ -5299,6 +5299,7 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
   renderHistory();
   initUsageBar();
   forgeInit();
+  renderScopePage();
 
   // ── Chip input helpers ─────────────────────────────────────────
   function scopeChipsFromWrap(wrap) {
@@ -6222,10 +6223,211 @@ function downloadResponses(){
     try { existingTasks = JSON.parse(localStorage.getItem('oa_pulse_tasks')||'{}'); } catch(e) {}
     const mergedTasks = Object.assign({}, demoPulseTasks, existingTasks);
     localStorage.setItem('oa_pulse_tasks', JSON.stringify(mergedTasks));
+
+    // ── Scope pre-population for demo accounts ─────────────────────────────
+    // field(s) helper — wraps text value for single or multi fields
+    const sv = v => ({ value: v, notes: '' });
+    const demoScope = {
+      'Meridian Financial Group': {
+        [slugField('Company Name')]:                            sv('Meridian Financial Group'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Financial Services / Fintech'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('SEC\nFINRA'),
+        [slugField('Primary products & services')]:            sv('Investment advisory\nRetirement account management\nWealth planning'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('148'),
+        [slugField('Number of in-house IT / security staff')]: sv('4'),
+        [slugField('Number of business locations / offices')]: sv('2'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('162'),
+        [slugField('Number of servers (physical + virtual)')]: sv('14'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure\nMicrosoft 365'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Microsoft Defender for Endpoint'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Email and admin accounts — remote access not enforced'),
+        [slugField('Email / collaboration platform (M365 / Google Workspace / etc.)')]: sv('Microsoft 365'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII\nFinancial records\nInvestment data'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~22,000 client accounts'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('SOC 2 Type II\nSEC Reg S-P\nState breach notification'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('SOC 2 Type II audit — targeting Q3 2026'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('Informal internal review ~2 years ago — no external assessment'),
+        [slugField('Number of personnel who will support this engagement')]: sv('3'),
+      },
+      'Northgate Healthcare Systems': {
+        [slugField('Company Name')]:                            sv('Northgate Healthcare Systems'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Healthcare / Multi-site Hospital Network'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Nonprofit Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('HHS-OCR\nCMS'),
+        [slugField('Primary products & services')]:            sv('Inpatient and outpatient acute care\nSpecialty clinics\nEmergency services'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('620'),
+        [slugField('Number of in-house IT / security staff')]: sv('8'),
+        [slugField('Number of business locations / offices')]: sv('5'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('840'),
+        [slugField('Number of servers (physical + virtual)')]: sv('42'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure\nMicrosoft 365'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('CrowdStrike Falcon (partial deployment — not all clinical workstations)'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Admin accounts and remote access only — clinical workstations not enforced'),
+        [slugField('Email / collaboration platform (M365 / Google Workspace / etc.)')]: sv('Microsoft 365'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PHI\nPII\nPayment data'),
+        [slugField('Do you store, process, or transmit payment card data (PCI scope)?')]: sv('Yes — patient billing processed internally'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~180,000 patient records'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('HIPAA Security Rule\nHIPAA Breach Notification Rule\nState health data breach laws'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial — self-assessed)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('HHS-OCR compliance review — Q3 2026 (hard deadline)'),
+        [slugField('Security incident in the past 24 months? Briefly describe.')]: sv('2023: breach notification filed with HHS-OCR — 1,200 records exposed via misconfigured email rule'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('HIPAA risk analysis performed internally in 2022 — not independently validated'),
+        [slugField('Number of personnel who will support this engagement')]: sv('5'),
+      },
+      'Cascade Manufacturing Co.': {
+        [slugField('Company Name')]:                            sv('Cascade Manufacturing Co.'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Precision Manufacturing / Defense Supply Chain'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('LLC'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('DoD / CMMC AB'),
+        [slugField('Primary products & services')]:            sv('Machined components\nAssemblies for DoD prime contractors\nQuality systems / ITAR-controlled parts'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('245'),
+        [slugField('Number of in-house IT / security staff')]: sv('3'),
+        [slugField('Number of business locations / offices')]: sv('1'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Primarily on-premises'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('87'),
+        [slugField('Number of servers (physical + virtual)')]: sv('9'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Microsoft SharePoint (CUI storage — not yet GCC compliant)'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Windows Defender — no EDR solution deployed'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 email only — no MFA on on-prem admin accounts'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('CUI (Controlled Unclassified Information)\nProduction specifications\nDoD contract data'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('CMMC Level 2\nDFARS 252.204-7012\nITAR (applicable to some part lines)'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('None — first formal assessment'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('CMMC Level 2 certification required by August 2026 for contract renewal'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('No external assessment ever conducted'),
+        [slugField('Number of personnel who will support this engagement')]: sv('2'),
+      },
+      'Vantara Logistics': {
+        [slugField('Company Name')]:                            sv('Vantara Logistics'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Logistics / Transportation Technology'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('310'),
+        [slugField('Number of in-house IT / security staff')]: sv('5'),
+        [slugField('Number of business locations / offices')]: sv('3'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('215'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('AWS\nMicrosoft 365'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Salesforce\nCustom TMS platform (hosted AWS)\nQuickBooks Online'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('SentinelOne — deployed by prior vendor, coverage gaps remain'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII (shipper and recipient data)\nFinancial records\nCustomer contracts'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('State breach notification laws\nCCPA-CPRA (California-based customers)\nCargo/shipper data protection requirements'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('Yes — engaged [prior vendor] approximately 18 months ago; engagement ended poorly. Vendor delivered incomplete report with no remediation guidance.'),
+        [slugField('Security incident in the past 24 months? Briefly describe.')]: sv('No confirmed breach — but prior vendor assessment was never completed, leaving gap visibility unknown'),
+        [slugField('Number of personnel who will support this engagement')]: sv('4'),
+      },
+      'Pinnacle Credit Union': {
+        [slugField('Company Name')]:                            sv('Pinnacle Credit Union'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Financial Services / Credit Union'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Federally chartered credit union'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('NCUA'),
+        [slugField('Primary products & services')]:            sv('Consumer deposit accounts\nMortgage and auto lending\nDigital banking platform'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('78'),
+        [slugField('Number of in-house IT / security staff')]: sv('2'),
+        [slugField('Number of business locations / offices')]: sv('4'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — core banking on-prem, digital services cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('92'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365\nFiserv cloud (core banking SaaS)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Fiserv (core banking)\nDocuSign\nOnBase (document management)'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Webroot — basic AV only'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 email only — online banking admin portal does not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII\nFinancial records\nPayment card data (member debit)'),
+        [slugField('Do you store, process, or transmit payment card data (PCI scope)?')]: sv('Yes — member debit card processing via FIS'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~14,200 member accounts'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('NCUA cybersecurity rules\nGLBA Safeguards Rule\nPCI-DSS'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial — self-assessed against examiner guidance)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('NCUA examination expected Q3 2026 — board cybersecurity report required'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('Last external assessment: 2022 — not independently validated since'),
+        [slugField('Number of personnel who will support this engagement')]: sv('3'),
+      },
+      'Strata Defense Solutions': {
+        [slugField('Company Name')]:                            sv('Strata Defense Solutions'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Defense / Government Contracting (DoD Prime)'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('DoD / CMMC AB\nState Department (ITAR)'),
+        [slugField('Primary products & services')]:            sv('Systems integration for DoD programs\nCybersecurity services\nISR platform development'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('1,200'),
+        [slugField('Number of in-house IT / security staff')]: sv('22'),
+        [slugField('Number of business locations / offices')]: sv('4'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — Azure Government Cloud and on-prem classified systems'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('1,340'),
+        [slugField('Number of servers (physical + virtual)')]: sv('118'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure Government Cloud\nMicrosoft 365 GCC High'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Microsoft Teams GCC High\nSharePoint GCC High\nSalesforce Government Cloud'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('CrowdStrike Falcon (full deployment)'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Yes — all users including remote access and admin'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('CUI (Controlled Unclassified Information)\nCTI / program data\nPII'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('CMMC Level 3\nDFARS 252.204-7012\nITAR\nNISP (National Industrial Security Program)'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST SP 800-171 (Rev 2)\nCMMC Level 2 certified — pursuing Level 3'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('CMMC Level 3 assessment required by December 2026 — contract renewal at risk'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('CMMC Level 2 C3PAO assessment completed 2024 — Level 3 is first formal attempt'),
+        [slugField('Number of personnel who will support this engagement')]: sv('8'),
+      },
+      'Keystone Energy Services': {
+        [slugField('Company Name')]:                            sv('Keystone Energy Services'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Energy / Electric Utilities (Critical Infrastructure)'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('LLC'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('FERC\nNERC\nState PUC'),
+        [slugField('Primary products & services')]:            sv('Electric power generation and distribution\nTransmission substation operations\nDemand response programs'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('890'),
+        [slugField('Number of in-house IT / security staff')]: sv('12'),
+        [slugField('Number of business locations / offices')]: sv('7 (corporate + 6 substations)'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Primarily on-premises — partial Azure migration underway'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('620'),
+        [slugField('Number of servers (physical + virtual)')]: sv('84'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure (partial)\nMicrosoft 365'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Microsoft Defender — IT network only. OT/ICS environment has limited endpoint visibility.'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 and corporate VPN — substation remote access does not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Critical infrastructure operational data\nEmployee PII\nGrid topology / BES Cyber System data'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('NERC CIP (CIP-002 through CIP-013)\nFERC Order 887\nState PUC cybersecurity reporting'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NERC CIP standards (partial — gap in CIP-013 supply chain)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('FERC compliance audit expected Q3 2026 — recent grid expansion triggered re-assessment requirement'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('NERC CIP self-audit 2023 — no third-party validation of OT/ICS environment'),
+        [slugField('Number of personnel who will support this engagement')]: sv('5'),
+      },
+      'Perimeter Law Group': {
+        [slugField('Company Name')]:                            sv('Perimeter Law Group'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Legal Services'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Professional Corporation (PC)'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('State Bar\nABA Model Rules'),
+        [slugField('Primary products & services')]:            sv('Corporate litigation\nIntellectual property\nMergers and acquisitions advisory'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('52 (22 attorneys, 30 staff)'),
+        [slugField('Number of in-house IT / security staff')]: sv('1 (part-time IT contractor)'),
+        [slugField('Number of business locations / offices')]: sv('1'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('58'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365\nNetDocuments (DMS)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('NetDocuments (client documents)\nClio (matter management)\nDocuSign'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('None — Windows Defender only'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 only — Clio and NetDocuments do not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Client PII\nPrivileged litigation documents\nConfidential financial records\nTrade secrets (IP cases)'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~3,800 active and former client records'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('State Bar cybersecurity rule (effective 2026)\nABA Model Rule 1.6 (confidentiality)\nState breach notification'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('None'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('State Bar compliance deadline — new cybersecurity rule takes effect Q4 2026'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('No formal assessment ever conducted'),
+        [slugField('Number of personnel who will support this engagement')]: sv('2'),
+      },
+    };
+
+    // Seed scope data — don't overwrite companies that already have real user data
+    let existingScope = {};
+    try { existingScope = JSON.parse(localStorage.getItem('oa_scope_v2')||'{}'); } catch(e) {}
+    // Start with existing data, then fill in demo entries for companies that have no data yet
+    const mergedScope = Object.assign({}, existingScope);
+    Object.entries(demoScope).forEach(([company, draft]) => {
+      if (!mergedScope[company]) {
+        mergedScope[company] = { draft, revisions: [] };
+      }
+    });
+    localStorage.setItem('oa_scope_v2', JSON.stringify(mergedScope));
   }
 
   // Version-gated demo seed — bump DEMO_VERSION whenever demo data changes
-  const DEMO_VERSION = 'v4-role-rules';
+  const DEMO_VERSION = 'v5-scope-seed';
   if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION) {
     // Strip all old demo records regardless of format
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
@@ -6233,8 +6435,8 @@ function downloadResponses(){
     seedDemoData();
     localStorage.setItem('oa_demo_version', DEMO_VERSION);
   }
-  // Always render PULSE after seed so data is present on first load
-  renderPulse();
+  // Activate PULSE and render — navTo ensures proper page state on first load
+  navTo('pulse');
 </script>
 </body>
 </html>
