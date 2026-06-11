@@ -248,14 +248,23 @@
   .missing-rec-banner { background: rgba(200, 100, 30, 0.08); border-color: rgba(210, 120, 40, 0.35); color: rgba(230, 160, 80, 0.95); }
   .missing-rec-banner li { margin-bottom: 3px; }
 
+  .results-actions { display: flex; gap: 8px; margin-top: 1rem; }
   .reset-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; padding: 11px; margin-top: 1rem;
+    flex: 1; padding: 11px;
     font-size: 13px; font-weight: 500;
     background: transparent; color: var(--siren-text-muted);
     border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm); cursor: pointer;
   }
   .reset-btn:hover { background: var(--siren-bg-card-raised); }
+  .pdf-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 11px 18px; flex-shrink: 0;
+    font-size: 13px; font-weight: 500;
+    background: transparent; color: var(--siren-cyan-70);
+    border: 1px solid var(--siren-cyan-20); border-radius: var(--siren-radius-sm); cursor: pointer;
+  }
+  .pdf-btn:hover { background: var(--siren-cyan-08); border-color: var(--siren-cyan-40); }
 
   /* ── SIREN loading screen (OneAxiom HUD) ── */
   #loading {

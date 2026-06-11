@@ -844,6 +844,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         </div>
       </div>` : '';
 
+    const pdfTitle = [prospect, selectedStage, callDate].filter(Boolean).join(' — ');
     const resultsHtml = `
       ${noContextBanner}
       ${missingRecBanner}
@@ -852,7 +853,10 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       ${repViews}
       ${summaryHtml}
       ${spicedHtml}
-      <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>`;
+      <div class="results-actions">
+        <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
+        <button class="pdf-btn" onclick="exportReportPDF(${JSON.stringify(pdfTitle)})">&#8595; Export PDF</button>
+      </div>`;
 
     document.getElementById('results').innerHTML = resultsHtml;
     document.getElementById('results').style.display = 'block';
@@ -1403,6 +1407,59 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (_histCache.length > 200) _histCache.splice(200);
     _dbSaveRecord(record);
     return record;
+  }
+
+  function exportReportPDF(title) {
+    const resultsEl = document.getElementById('results');
+    if (!resultsEl || resultsEl.style.display === 'none') return;
+
+    const clone = resultsEl.cloneNode(true);
+    clone.querySelectorAll('.results-actions').forEach(el => el.remove());
+    clone.querySelectorAll('.rep-toggle').forEach(el => el.remove());
+    clone.querySelectorAll('.score-view').forEach(el => { el.style.display = 'block'; });
+
+    const win = window.open('', '_blank', 'width=900,height=750');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8">
+      <title>${title || 'Call Report'}</title>
+      <link rel="stylesheet" href="/styles.css">
+      <style>
+        :root {
+          --siren-bg-page:#fff; --siren-bg-card:#f4f6f9; --siren-bg-card-raised:#eaecf0;
+          --siren-bg-overlay:#e0e4ea;
+          --siren-border:rgba(0,0,0,.10); --siren-border-mid:rgba(0,0,0,.22);
+          --siren-text-primary:#0d1f2d; --siren-text-body:#1a2d3d;
+          --siren-text-muted:#3a5060; --siren-text-faint:#6a8090;
+          --siren-cyan:#006fa6; --siren-cyan-90:rgba(0,111,166,.90);
+          --siren-cyan-70:rgba(0,111,166,.70); --siren-cyan-50:rgba(0,111,166,.50);
+          --siren-cyan-40:rgba(0,111,166,.40); --siren-cyan-20:rgba(0,111,166,.20);
+          --siren-cyan-12:rgba(0,111,166,.12); --siren-cyan-08:rgba(0,111,166,.08);
+          --siren-grade-a:#006fa6; --siren-grade-b:#007a5a;
+          --siren-grade-c:#b07000; --siren-grade-d:#b03030; --siren-grade-f:#8c2020;
+          --siren-signal-green:#007a5a; --siren-alert-amber:#b07000;
+          --siren-danger-red:#b03030; --siren-neutral:#6a8090;
+        }
+        body { background:#fff; margin:0; padding:28px 36px; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; }
+        .score-view { display:block !important; }
+        .rep-toggle { display:none !important; }
+        .dim-feedback, .spiced-summary { color:#3a5060 !important; }
+        .no-context-banner { background:rgba(0,111,166,.07) !important; border-color:rgba(0,111,166,.25) !important; color:#005580 !important; }
+        .missing-rec-banner { background:rgba(180,100,0,.07) !important; border-color:rgba(180,100,0,.3) !important; color:#7a4400 !important; }
+        h1.pdf-title { font-size:15px; font-weight:600; color:#0d1f2d; margin-bottom:20px; padding-bottom:10px; border-bottom:1px solid rgba(0,0,0,.12); }
+        @media print { body { padding:0; } @page { margin:16mm 14mm; } }
+      </style>
+    </head><body>
+      <h1 class="pdf-title">${title || 'Call Report'}</h1>
+      ${clone.innerHTML}
+      <script>
+        window.addEventListener('load', function() {
+          setTimeout(function() { window.print(); }, 400);
+        });
+        window.addEventListener('afterprint', function() { window.close(); });
+      <\/script>
+    </body></html>`);
+    win.document.close();
   }
 
   async function autoGenerateNextSteps(notes, prospect, callDate, recordId) {
