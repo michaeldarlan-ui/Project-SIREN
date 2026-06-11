@@ -53,7 +53,7 @@ const HISTORY_COLS = `
 `;
 
 db.exec(`
-  CREATE TABLE IF NOT EXISTS history      (${HISTORY_COLS});
+  CREATE TABLE IF NOT EXISTS history_prod (${HISTORY_COLS});
   CREATE TABLE IF NOT EXISTS history_demo (${HISTORY_COLS});
   CREATE TABLE IF NOT EXISTS prospects (
     name     TEXT PRIMARY KEY,
@@ -61,15 +61,24 @@ db.exec(`
   );
 `);
 
-// One-time migration: move any demo rows that landed in history into history_demo
+// One-time migrations
 db.transaction(() => {
-  const demoRows = db.prepare("SELECT * FROM history WHERE is_demo = 1").all();
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name);
+
+  // Rename old 'history' table → history_prod
+  if (tables.includes('history') && !tables.includes('history_prod')) {
+    db.prepare('ALTER TABLE history RENAME TO history_prod').run();
+    console.log('[db] Renamed history → history_prod');
+  }
+
+  // Move any demo rows that landed in history_prod into history_demo
+  const demoRows = db.prepare("SELECT * FROM history_prod WHERE is_demo = 1").all();
   if (demoRows.length) {
     const cols = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').join(', ');
     const placeholders = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').map(k => `@${k}`).join(', ');
     const ins = db.prepare(`INSERT OR IGNORE INTO history_demo (${cols}) VALUES (${placeholders})`);
     demoRows.forEach(r => { const { is_demo, ...rest } = r; ins.run(rest); });
-    db.prepare("DELETE FROM history WHERE is_demo = 1").run();
+    db.prepare("DELETE FROM history_prod WHERE is_demo = 1").run();
     console.log(`[db] Migrated ${demoRows.length} demo rows → history_demo`);
   }
 })();
@@ -81,7 +90,7 @@ const DB_VALS = `@id, @ts, @call_date, @prospect, @rep, @rep_role, @contact_titl
      @total, @letter_grade, @grade_label, @top_strength, @top_priority,
      @results_html, @participants, @dimensions, @next_steps, @overview`;
 
-const stmtUpsertReal = db.prepare(`INSERT OR REPLACE INTO history      (${DB_COLS}) VALUES (${DB_VALS})`);
+const stmtUpsertReal = db.prepare(`INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_VALS})`);
 const stmtUpsertDemo = db.prepare(`INSERT OR REPLACE INTO history_demo (${DB_COLS}) VALUES (${DB_VALS})`);
 
 function isDemo(r) { return !!(r.is_demo) || String(r.id || '').startsWith('demo-'); }
@@ -196,7 +205,7 @@ const server = http.createServer(async (req, res) => {
 
   // GET /api/history — real + demo records, newest first
   if (req.method === 'GET' && req.url.startsWith('/api/history')) {
-    const real = db.prepare('SELECT * FROM history      ORDER BY ts DESC').all().map(r => dbRowToRecord(r, false));
+    const real = db.prepare('SELECT * FROM history_prod ORDER BY ts DESC').all().map(r => dbRowToRecord(r, false));
     const demo = db.prepare('SELECT * FROM history_demo ORDER BY ts DESC').all().map(r => dbRowToRecord(r, true));
     const all  = [...real, ...demo].sort((a, b) => (b.ts > a.ts ? 1 : -1));
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -233,7 +242,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const { oldName, newName } = await readBody(req);
       const stmt = 'UPDATE %t SET prospect = ? WHERE prospect = ?';
-      db.prepare(stmt.replace('%t', 'history'     )).run(newName, oldName);
+      db.prepare(stmt.replace('%t', 'history_prod')).run(newName, oldName);
       db.prepare(stmt.replace('%t', 'history_demo')).run(newName, oldName);
       db.prepare('UPDATE prospects SET name = ? WHERE name = ?').run(newName, oldName);
       res.writeHead(200); res.end();
@@ -294,7 +303,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (sets.length) {
         const sql = `SET ${sets.join(', ')} WHERE id = ?`;
-        const changed = db.prepare(`UPDATE history      ${sql}`).run(...vals, id).changes
+        const changed = db.prepare(`UPDATE history_prod ${sql}`).run(...vals, id).changes
                       + db.prepare(`UPDATE history_demo ${sql}`).run(...vals, id).changes;
         if (!changed) console.warn(`[PUT] id not found in either table: ${id}`);
       }
@@ -314,7 +323,7 @@ const server = http.createServer(async (req, res) => {
 
   // DELETE /api/history/real — clear entire real table
   if (req.method === 'DELETE' && req.url === '/api/history/real') {
-    db.prepare('DELETE FROM history').run();
+    db.prepare('DELETE FROM history_prod').run();
     res.writeHead(200); res.end();
     return;
   }
@@ -322,7 +331,7 @@ const server = http.createServer(async (req, res) => {
   // DELETE /api/history/:id — delete from whichever table holds it
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
-    db.prepare('DELETE FROM history      WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history_prod     WHERE id = ?').run(id);
     db.prepare('DELETE FROM history_demo WHERE id = ?').run(id);
     res.writeHead(200); res.end();
     return;
