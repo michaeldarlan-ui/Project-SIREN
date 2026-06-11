@@ -508,7 +508,7 @@
 
     const rows = reps.map((rep, ri) => {
       const color = COLORS[ri % COLORS.length];
-      const latest = rep.calls[rep.calls.length - 1].score;
+      const avg = Math.round(rep.calls.reduce((s,c) => s + c.score, 0) / rep.calls.length);
       const mid = Math.ceil(rep.calls.length / 2);
       const firstAvg = rep.calls.slice(0, mid).reduce((a,c)=>a+c.score,0) / mid;
       const secondHalf = rep.calls.slice(mid);
@@ -544,12 +544,12 @@
         sparkContent += `<path d="${lineD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
         pts.forEach((p, pi) => {
           const isLast = pi === pts.length - 1;
+          const tipDate = fmt(p.ms);
           if (isLast) {
             sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="11" fill="${color}" opacity="0.12" stroke="none"/>`;
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6" fill="${color}" stroke="#061824" stroke-width="2"/>`;
-            sparkContent += `<text x="${p.x.toFixed(1)}" y="${(p.y - 16).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="${color}" font-family="system-ui">${p.score}</text>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6" fill="${color}" stroke="#061824" stroke-width="2"><title>${p.score} · ${tipDate}</title></circle>`;
           } else {
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#061824" stroke-width="1.5" opacity="0.7"/>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#061824" stroke-width="1.5" opacity="0.7"><title>${p.score} · ${tipDate}</title></circle>`;
           }
         });
       }
@@ -567,7 +567,7 @@
         </div>
         <svg style="flex:1;min-width:0;height:${ROW_H}px;display:block;" viewBox="0 0 ${W} ${ROW_H}" preserveAspectRatio="none">${sparkContent}</svg>
         <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;">
-          <div style="font-size:22px;font-weight:800;color:${scoreColor(latest)};line-height:1;">${latest}</div>
+          <div style="font-size:22px;font-weight:800;color:${scoreColor(avg)};line-height:1;">${avg}</div>
           <div style="font-size:10px;font-weight:700;color:${trendColor};margin-top:4px;">${trendLabel}</div>
         </div>
       </div>`;
@@ -580,7 +580,7 @@
         <span style="font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">${fmt(minMs)}</span>
         ${minMs !== maxMs ? `<span style="font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">${fmt(maxMs)}</span>` : ''}
       </div>
-      <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">LAST</div>
+      <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">AVG</div>
     </div>`;
 
     container.innerHTML = axisHtml + rows.join('');
