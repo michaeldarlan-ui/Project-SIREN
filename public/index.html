@@ -6695,9 +6695,9 @@ function downloadResponses(){
   }
 
   // Version-gated demo seed — reseed when version changes OR demo data is absent
-  const DEMO_VERSION = 'v7-fix-seed-guard';
-  const _hasDemoData = loadHistory().some(h => String(h.id).startsWith('demo-'));
-  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || !_hasDemoData) {
+  const DEMO_VERSION = 'v8-account-count-gate';
+  const _demoAccounts = new Set(loadHistory().filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
+  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
     localStorage.removeItem('oa_demo_seeded');
     seedDemoData();
