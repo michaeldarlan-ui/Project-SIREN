@@ -5292,6 +5292,23 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
     revSel.value=_scopeViewingRevision===null?'draft':String(_scopeViewingRevision);
   }
 
+  // Multi-value chip input only for fields where multiple simultaneous values are common.
+  // Everything else (especially "Number of…" fields) uses a plain single text input.
+  const SCOPE_MULTI_FIELDS = new Set([
+    slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)'),
+    slugField('Primary products & services'),
+    slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)'),
+    slugField('Key SaaS / third-party apps handling regulated data'),
+    slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)'),
+    slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)'),
+    slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?'),
+  ]);
+
+  function isSingleScopeField(field) {
+    if (/number of/i.test(field)) return true;
+    return !SCOPE_MULTI_FIELDS.has(slugField(field));
+  }
+
   function renderScopeFormBody(company){
     const s=loadScopeAll(company);
     const data=_scopeViewingRevision!==null
@@ -5316,11 +5333,18 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
         const nEsc=saved.notes.replace(/"/g,'&quot;');
         html+=`<div class="scope-label">${escHtml(field)}</div>`;
         if(readonly){
-          const chips=saved.value?saved.value.split('\n').filter(Boolean):[];
-          const chipHtml=chips.length ? chips.map(c=>`<span class="scope-chip" style="pointer-events:none;">${escHtml(c)}</span>`).join('')
-            : '<span style="color:var(--siren-text-faint);font-size:.8rem;">—</span>';
-          html+=`<div class="scope-chip-wrap" style="opacity:.7;cursor:default;">${chipHtml}</div>`;
+          if(isSingleScopeField(field)){
+            html+=`<div class="scope-input" style="cursor:default;opacity:.7;padding:7px 10px;">${escHtml(saved.value)||'<span style="color:var(--siren-text-faint);font-size:.8rem;">—</span>'}</div>`;
+          } else {
+            const chips=saved.value?saved.value.split('\n').filter(Boolean):[];
+            const chipHtml=chips.length ? chips.map(c=>`<span class="scope-chip" style="pointer-events:none;">${escHtml(c)}</span>`).join('')
+              : '<span style="color:var(--siren-text-faint);font-size:.8rem;">—</span>';
+            html+=`<div class="scope-chip-wrap" style="opacity:.7;cursor:default;">${chipHtml}</div>`;
+          }
           html+=`<div class="scope-input scope-notes" style="cursor:default;opacity:.7;">${escHtml(saved.notes)||''}</div>`;
+        } else if(isSingleScopeField(field)){
+          html+=`<input class="scope-input" type="text" value="${vEsc}" data-company="${cEsc}" data-key="${key}" data-type="value" oninput="saveScope(this.dataset.company,this.dataset.key,'value',this.value)" placeholder="—">`;
+          html+=`<input class="scope-input scope-notes" type="text" value="${nEsc}" data-company="${cEsc}" data-key="${key}" data-type="notes" oninput="saveScope(this.dataset.company,this.dataset.key,'notes',this.value)" placeholder="notes…">`;
         } else {
           const chips=saved.value?saved.value.split('\n').filter(Boolean):[];
           const chipHtml=chips.map((c,i)=>`<span class="scope-chip">${escHtml(c)}<button class="scope-chip-x" type="button" onclick="scopeRemoveChip(this,'${cEsc}','${key}')">×</button></span>`).join('');
