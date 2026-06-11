@@ -743,7 +743,7 @@
       const lines = allThirdParties.map(p =>
         `- ${p.name}: ${p.role}${p.organization ? ' (' + p.organization + ')' : ''}`
       ).join('\n');
-      thirdPartyContext = `\n\nThird-party participants on this call (NOT OneAxiom sales reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score OneAxiom sales reps\n- Do NOT penalize the OneAxiom rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics`;
+      thirdPartyContext = `\n\nThird-party participants on this call (NOT OneAxiom sales reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score OneAxiom sales reps\n- Do NOT penalize the OneAxiom rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics\n- Populate the partner_scores array (one entry per third-party participant) using this schema:\n\n"partner_scores": [\n  {\n    "name": "participant name",\n    "role": "their role as provided",\n    "organization": "their org if known",\n    "dimensions": [\n      { "name": "Technical relevance", "max": 25, "score": 0, "feedback": "2-3 sentences — did their technical contributions match the prospect needs?" },\n      { "name": "Rep alignment", "max": 25, "score": 0, "feedback": "2-3 sentences — did they reinforce or contradict the rep positioning?" },\n      { "name": "Preparation", "max": 25, "score": 0, "feedback": "2-3 sentences — were they briefed and ready for this specific account?" },\n      { "name": "Deal momentum", "max": 25, "score": 0, "feedback": "2-3 sentences — did their presence move the deal forward or introduce friction?" }\n    ],\n    "total": 0,\n    "letter_grade": "B",\n    "grade_label": "short evocative phrase",\n    "top_strength": "one specific sentence about what this partner did well",\n    "top_priority": "single most important improvement for this partner",\n    "call_impact": "positive|negative|neutral",\n    "call_impact_delta": 0,\n    "call_impact_summary": "2-3 sentences explaining how their presence affected overall call outcome — be specific about what helped or hurt"\n  }\n]\n\ncall_impact_delta: estimate the net point impact this partner had on the call effectiveness as a signed integer (e.g. +8 if they meaningfully helped, -5 if they confused the prospect or undercut the rep). This does NOT change the rep score — it is an independent assessment of partner contribution.`;
     }
 
     setLoading(true, prospect, selectedStage);
@@ -961,6 +961,38 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         }).join('')}
       </div>` : '';
 
+    // Partner scores
+    const partnerScores = (r.partner_scores || []).filter(ps => ps.name && ps.dimensions?.length);
+    const partnerHtml = partnerScores.length ? `
+      <div class="section-head">Partner contributions</div>
+      ${partnerScores.map(ps => {
+        const delta = ps.call_impact_delta || 0;
+        const deltaSign = delta > 0 ? '+' : '';
+        const deltaCls = delta > 0 ? 'partner-delta-pos' : delta < 0 ? 'partner-delta-neg' : 'partner-delta-neu';
+        const deltaTxt = delta !== 0 ? `${deltaSign}${delta} pts` : 'Neutral';
+        const bg = getBannerColor(ps.letter_grade);
+        return `<div class="partner-card">
+          <div class="partner-card-hdr">
+            <div class="partner-card-badge" style="background:${bg};">${escHtml(ps.letter_grade)} ${ps.total}</div>
+            <div class="partner-card-meta">
+              <span class="partner-card-name">${escHtml(ps.name)}</span>
+              <span class="partner-card-role">${escHtml([ps.role, ps.organization].filter(Boolean).join(' · '))}</span>
+            </div>
+            <div class="partner-delta ${deltaCls}">
+              <span class="partner-delta-arrow">${delta > 0 ? '▲' : delta < 0 ? '▼' : '●'}</span>
+              <span class="partner-delta-val">${deltaTxt}</span>
+              <span class="partner-delta-lbl">to call effectiveness</span>
+            </div>
+          </div>
+          <div class="partner-impact-summary">${escHtml(ps.call_impact_summary || '')}</div>
+          ${buildDimsHtml(ps.dimensions)}
+          <div class="partner-bottom">
+            <div class="partner-bottom-item"><span class="partner-bottom-label">Strength</span> ${escHtml(ps.top_strength || '')}</div>
+            <div class="partner-bottom-item"><span class="partner-bottom-label">Priority</span> ${escHtml(ps.top_priority || '')}</div>
+          </div>
+        </div>`;
+      }).join('')}` : '';
+
     // Toggle + score views
     const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
     // Only show toggle when 2+ reps are on the call — single rep = no meaningful distinction
@@ -1018,6 +1050,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       ${repViews}
       ${summaryHtml}
       ${spicedHtml}
+      ${partnerHtml}
       <div class="results-actions">
         <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
         <button class="pdf-btn" onclick="exportReportPDF(${JSON.stringify(pdfTitle)})">&#8595; Export PDF</button>
