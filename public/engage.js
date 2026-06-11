@@ -773,7 +773,18 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     const overallView = buildScoreView(r, overallMeta, 'overall');
     const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (selectedStage ? ' · ' + selectedStage : ''), `rep-${i}`)).join('') : '';
 
+    const isColdCall = selectedStage.toLowerCase().includes('cold');
+    const priorCalls = prospect
+      ? loadHistory().filter(h => (h.prospect || '').toLowerCase().trim() === prospect.toLowerCase().trim())
+      : [];
+    const noContextBanner = (!isColdCall && priorCalls.length === 0) ? `
+      <div class="no-context-banner">
+        <span class="no-context-icon">&#9432;</span>
+        <span>No prior call history found for <strong>${escHtml(prospect || 'this prospect')}</strong>. This report was graded without account context — missed questions or gaps may reflect unknown prior discovery rather than rep performance.</span>
+      </div>` : '';
+
     const resultsHtml = `
+      ${noContextBanner}
       ${toggleHtml}
       ${overallView}
       ${repViews}

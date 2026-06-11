@@ -236,6 +236,16 @@
   }
   .add-btn:hover { opacity: 0.85; }
 
+  .no-context-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px; margin-bottom: 14px;
+    background: rgba(200, 150, 40, 0.08);
+    border: 1px solid rgba(200, 150, 40, 0.3);
+    border-radius: var(--siren-radius-sm);
+    font-size: 12.5px; color: rgba(220, 175, 80, 0.9); line-height: 1.5;
+  }
+  .no-context-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+
   .reset-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     width: 100%; padding: 11px; margin-top: 1rem;
