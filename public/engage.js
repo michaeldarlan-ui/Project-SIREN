@@ -1601,6 +1601,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       top_strength: r.top_strength || '',
       top_priority: r.top_priority || '',
       resultsHtml,
+      partner_scores: (r.partner_scores && r.partner_scores.length) ? r.partner_scores : undefined,
       is_demo: false,
     };
     _histCache.unshift(record);
@@ -1629,7 +1630,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="utf-8">
       <title>${title || 'Call Report'}</title>
-      <link rel="stylesheet" href="/styles.css">
+      <link rel="stylesheet" href="${window.location.origin}/styles.css">
       <style>
         :root {
           --siren-bg-page:#fff; --siren-bg-card:#f4f6f9; --siren-bg-card-raised:#eaecf0;
