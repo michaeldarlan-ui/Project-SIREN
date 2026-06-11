@@ -3888,7 +3888,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const fmt = ms => new Date(ms).toLocaleDateString([],{month:'short',day:'numeric'});
 
     const COLORS = ['#00c8ff','#f59e0b','#a78bfa','#34d399','#f87171','#fb923c','#38bdf8','#e879f9'];
-    const ROW_H = 52, PAD = { top: 8, bottom: 8, left: 6, right: 6 };
+    const ROW_H = 72, PAD = { top: 20, bottom: 10, left: 6, right: 6 };
     const chartH = ROW_H - PAD.top - PAD.bottom;
 
     // Score colour
@@ -3931,7 +3931,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         pts.forEach((p, pi) => {
           const isLast = pi === pts.length - 1;
           sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isLast?5:3}" fill="${color}" stroke="#061824" stroke-width="${isLast?2:1.5}" opacity="${isLast?1:0.65}"/>`;
-          if (isLast) sparkContent += `<text x="${p.x.toFixed(1)}" y="${(p.y - 9).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}" font-family="system-ui">${p.score}</text>`;
+          if (isLast) sparkContent += `<text x="${p.x.toFixed(1)}" y="${(p.y - 11).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}" font-family="system-ui">${p.score}</text>`;
         });
       }
 
@@ -6696,16 +6696,15 @@ function downloadResponses(){
     localStorage.setItem('oa_scope_v2', JSON.stringify(mergedScope));
   }
 
-  // Version-gated demo seed — bump DEMO_VERSION whenever demo data changes
+  // Version-gated demo seed — reseed when version changes OR demo data is absent
   const DEMO_VERSION = 'v6-four-more-accounts';
-  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION) {
-    // Strip all old demo records regardless of format
+  const _hasDemoData = loadHistory().some(h => String(h.id).startsWith('demo-'));
+  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || !_hasDemoData) {
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
     localStorage.removeItem('oa_demo_seeded');
     seedDemoData();
     localStorage.setItem('oa_demo_version', DEMO_VERSION);
   }
-  // Activate PULSE and render — navTo ensures proper page state on first load
   navTo('pulse');
 </script>
 </body>
