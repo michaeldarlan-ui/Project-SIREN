@@ -773,6 +773,10 @@
   .member-role { font-size: 12px; color: var(--siren-text-muted); }
   .member-remove { font-size: 12px; color: var(--siren-text-faint); background: none; border: none; cursor: pointer; padding: 5px 10px; border-radius: var(--siren-radius-sm); }
   .member-remove:hover { background: rgba(224,80,80,0.1); color: var(--siren-danger-red); }
+  .member-edit-input { background: transparent; border: none; border-bottom: 1px solid var(--siren-border-mid); outline: none; color: inherit; font: inherit; width: 100%; padding: 1px 2px; }
+  .member-edit-input:focus { border-bottom-color: var(--siren-cyan-50); }
+  .member-name .member-edit-input { font-size: 14px; font-weight: 600; color: var(--siren-text-body); }
+  .member-role .member-edit-input { font-size: 12px; color: var(--siren-text-muted); }
   .team-empty { font-size: 13px; color: var(--siren-text-faint); padding: 8px 0 16px; }
   .add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: center; }
 
@@ -1947,12 +1951,20 @@
       ? team.map((m, i) => `
           <div class="member-row">
             <div class="member-info">
-              <span class="member-name">${escHtml(m.name)}</span>
-              <span class="member-role">${escHtml(m.role)}</span>
+              <span class="member-name"><input class="member-edit-input" value="${escHtml(m.name)}" placeholder="Name" onchange="updateMember(${i},'name',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span>
+              <span class="member-role"><input class="member-edit-input" value="${escHtml(m.role)}" placeholder="Role" onchange="updateMember(${i},'role',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></span>
             </div>
             <button class="member-remove" onclick="removeMember(${i})">Remove</button>
           </div>`).join('')
       : '<div class="team-empty">No team members yet. Add someone below.</div>';
+    refreshRepSelect();
+  }
+
+  function updateMember(idx, field, value) {
+    const team = loadTeam();
+    if (!team[idx]) return;
+    team[idx][field] = value.trim() || team[idx][field];
+    saveTeam(team);
     refreshRepSelect();
   }
 
