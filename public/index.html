@@ -1762,6 +1762,30 @@
       <div class="pulse-kpi-card"><div class="pulse-kpi-label">API Cost</div><div class="pulse-kpi-value" id="pkv-cost">—</div><div class="pulse-kpi-sub neutral" id="pks-cost"></div></div>
     </div>
 
+    <div class="pulse-section-label" style="margin-top:1.5rem;">VIGIL Summary</div>
+    <div class="pulse-kpi-row" id="vigilKpiRow">
+      <div class="pulse-kpi-card" style="cursor:pointer;" onclick="navTo('vigil')">
+        <div class="pulse-kpi-label">Action Required</div>
+        <div class="pulse-kpi-value" id="pkv-vigil-critical" style="color:#ef4444;">—</div>
+        <div class="pulse-kpi-sub" style="color:rgba(239,68,68,.6);" id="pks-vigil-critical"></div>
+      </div>
+      <div class="pulse-kpi-card" style="cursor:pointer;" onclick="navTo('vigil')">
+        <div class="pulse-kpi-label">Open Items</div>
+        <div class="pulse-kpi-value" id="pkv-vigil-open" style="color:#f59e0b;">—</div>
+        <div class="pulse-kpi-sub" style="color:rgba(245,158,11,.6);" id="pks-vigil-open"></div>
+      </div>
+      <div class="pulse-kpi-card" style="cursor:pointer;" onclick="navTo('vigil')">
+        <div class="pulse-kpi-label">All Clear</div>
+        <div class="pulse-kpi-value" id="pkv-vigil-clear" style="color:#22c55e;">—</div>
+        <div class="pulse-kpi-sub" style="color:rgba(34,197,94,.6);" id="pks-vigil-clear"></div>
+      </div>
+      <div class="pulse-kpi-card" style="cursor:pointer;" onclick="navTo('vigil')">
+        <div class="pulse-kpi-label">Total Open Tasks</div>
+        <div class="pulse-kpi-value" id="pkv-vigil-tasks">—</div>
+        <div class="pulse-kpi-sub neutral" id="pks-vigil-tasks"></div>
+      </div>
+    </div>
+
     <div class="pulse-grid-2">
       <div class="pulse-card">
         <div class="pulse-card-title">Score Trend — Last 8 Calls</div>
@@ -3489,6 +3513,36 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         <div class="pulse-weak-sub">Avg ${weakPct}% · Focus coaching effort here</div>`;
     } else {
       weakDimEl.style.display = 'none';
+    }
+
+    // ── VIGIL KPIs ──
+    {
+      const hist = loadHistory();
+      const companyMap = {};
+      hist.forEach(h => { const n=(h.prospect||'').trim(); if(n){ if(!companyMap[n]) companyMap[n]=[]; companyMap[n].push(h); } });
+      let critical=0, warning=0, clear=0, totalOpen=0;
+      Object.entries(companyMap).forEach(([company, calls]) => {
+        const sortedCalls = calls.sort((a,b)=>{ const da=a.callDate||a.ts.slice(0,10),db=b.callDate||b.ts.slice(0,10); return da>db?-1:da<db?1:0; });
+        let tasks = loadPulseTasks(company);
+        // seed without saving (read-only for KPI calc)
+        const existingTexts = new Set(tasks.map(t=>t.text.toLowerCase()));
+        sortedCalls.forEach(h => { if(Array.isArray(h.next_steps)) h.next_steps.forEach(ns=>{ const txt=ns.trim(); if(txt&&!existingTexts.has(txt.toLowerCase())){ tasks.push({text:txt,done:false}); existingTexts.add(txt.toLowerCase()); } }); });
+        const open = tasks.filter(t=>!t.done).length;
+        totalOpen += open;
+        const score = (sortedCalls[0]||{}).total || 0;
+        if (open>0 && score<60) critical++;
+        else if (open>0) warning++;
+        else clear++;
+      });
+      const total = critical+warning+clear;
+      document.getElementById('pkv-vigil-critical').textContent = critical;
+      document.getElementById('pks-vigil-critical').textContent = critical===1?'1 account needs attention':`${critical} accounts need attention`;
+      document.getElementById('pkv-vigil-open').textContent = warning;
+      document.getElementById('pks-vigil-open').textContent = `${warning} account${warning!==1?'s':''} with open items`;
+      document.getElementById('pkv-vigil-clear').textContent = clear;
+      document.getElementById('pks-vigil-clear').textContent = `${clear} of ${total} account${total!==1?'s':''} clear`;
+      document.getElementById('pkv-vigil-tasks').textContent = totalOpen;
+      document.getElementById('pks-vigil-tasks').textContent = `across ${total} account${total!==1?'s':''}`;
     }
 
     // ── API strip ──
