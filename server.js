@@ -48,8 +48,9 @@ const HISTORY_COLS = `
     results_html  TEXT,
     participants  TEXT,
     dimensions    TEXT,
-    next_steps    TEXT,
-    overview      TEXT
+    next_steps     TEXT,
+    overview       TEXT,
+    partner_scores TEXT
 `;
 
 db.exec(`
@@ -77,6 +78,16 @@ db.transaction(() => {
     console.log('[db] Renamed history → history_prod');
   }
 
+  // Add partner_scores column if missing (added after initial schema)
+  ['history_prod', 'history_demo'].forEach(tbl => {
+    if (!tables.includes(tbl)) return;
+    const cols = db.prepare(`PRAGMA table_info(${tbl})`).all().map(c => c.name);
+    if (!cols.includes('partner_scores')) {
+      db.prepare(`ALTER TABLE ${tbl} ADD COLUMN partner_scores TEXT`).run();
+      console.log(`[db] Added partner_scores column to ${tbl}`);
+    }
+  });
+
   // Move any demo rows that landed in history_prod into history_demo
   // (only if the old schema's is_demo column still exists on the table)
   const hasDemoCol = db.prepare("PRAGMA table_info(history_prod)").all().some(c => c.name === 'is_demo');
@@ -95,10 +106,10 @@ db.transaction(() => {
 
 const DB_COLS = `id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
      total, letter_grade, grade_label, top_strength, top_priority,
-     results_html, participants, dimensions, next_steps, overview`;
+     results_html, participants, dimensions, next_steps, overview, partner_scores`;
 const DB_VALS = `@id, @ts, @call_date, @prospect, @rep, @rep_role, @contact_title, @stage,
      @total, @letter_grade, @grade_label, @top_strength, @top_priority,
-     @results_html, @participants, @dimensions, @next_steps, @overview`;
+     @results_html, @participants, @dimensions, @next_steps, @overview, @partner_scores`;
 
 const stmtUpsertReal = db.prepare(`INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_VALS})`);
 const stmtUpsertDemo = db.prepare(`INSERT OR REPLACE INTO history_demo (${DB_COLS}) VALUES (${DB_VALS})`);
@@ -124,8 +135,9 @@ function dbRowToRecord(row, demoFlag) {
     is_demo:      !!demoFlag,
     participants: row.participants ? JSON.parse(row.participants) : undefined,
     dimensions:   row.dimensions   ? JSON.parse(row.dimensions)   : undefined,
-    next_steps:   row.next_steps   ? JSON.parse(row.next_steps)   : undefined,
-    overview:     row.overview      || undefined,
+    next_steps:     row.next_steps     ? JSON.parse(row.next_steps)     : undefined,
+    overview:       row.overview       || undefined,
+    partner_scores: row.partner_scores ? JSON.parse(row.partner_scores) : undefined,
   };
 }
 
@@ -147,8 +159,9 @@ function recordToDbRow(r) {
     results_html:  r.resultsHtml   || null,
     participants:  r.participants  ? JSON.stringify(r.participants) : null,
     dimensions:    r.dimensions    ? JSON.stringify(r.dimensions)   : null,
-    next_steps:    r.next_steps    ? JSON.stringify(r.next_steps)   : null,
-    overview:      r.overview      || null,
+    next_steps:     r.next_steps     ? JSON.stringify(r.next_steps)     : null,
+    overview:       r.overview       || null,
+    partner_scores: r.partner_scores ? JSON.stringify(r.partner_scores) : null,
   };
 }
 
