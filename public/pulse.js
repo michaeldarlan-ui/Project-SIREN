@@ -371,28 +371,49 @@
     if (chev) chev.classList.toggle('open', open);
   }
 
+  function _pulseOpenRows() {
+    return [...document.querySelectorAll('.pulse-feed-body.open')].map(b => b.previousElementSibling?.querySelector('.pulse-feed-company')?.textContent?.trim()).filter(Boolean);
+  }
+  function _pulseRestoreRows(openCompanies) {
+    document.querySelectorAll('.pulse-feed-row').forEach(row => {
+      const name = row.querySelector('.pulse-feed-company')?.textContent?.trim();
+      if (name && openCompanies.includes(name)) {
+        const body = row.querySelector('.pulse-feed-body');
+        const chev = row.querySelector('.pulse-feed-chevron');
+        if (body) body.classList.add('open');
+        if (chev) chev.classList.add('open');
+      }
+    });
+  }
+
   function pulseToggleStep(company, idx) {
+    const open = _pulseOpenRows();
     const tasks = loadPulseTasks(company);
     if (tasks[idx]) tasks[idx].done = !tasks[idx].done;
     savePulseTasks(company, tasks);
     pulseRenderFeed();
+    _pulseRestoreRows(open);
   }
 
   function pulseDeleteStep(company, idx) {
+    const open = _pulseOpenRows();
     const tasks = loadPulseTasks(company);
     tasks.splice(idx, 1);
     savePulseTasks(company, tasks);
     pulseRenderFeed();
+    _pulseRestoreRows(open);
   }
 
   function pulseAddStepFor(company, inp) {
     const txt = inp ? inp.value.trim() : '';
     if (!txt) return;
+    const open = _pulseOpenRows();
     const tasks = loadPulseTasks(company);
     tasks.push({ text: txt, done: false, source: '', ts: Date.now() });
     savePulseTasks(company, tasks);
     if (inp) inp.value = '';
     pulseRenderFeed();
+    _pulseRestoreRows(open);
   }
 
   function drawPulseTrend(data) {
