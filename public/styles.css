@@ -265,6 +265,7 @@
     border: 1px solid var(--siren-cyan-20); border-radius: var(--siren-radius-sm); cursor: pointer;
   }
   .pdf-btn:hover { background: var(--siren-cyan-08); border-color: var(--siren-cyan-40); }
+  .pdf-btn-sm { padding: 5px 10px; font-size: 11px; }
 
   /* ── SIREN loading screen (OneAxiom HUD) ── */
   #loading {

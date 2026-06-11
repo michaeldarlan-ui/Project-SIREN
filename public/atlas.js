@@ -634,9 +634,12 @@
 
   function getHistoryEntry(id) { return loadHistory().find(h=>h.id===id)||null; }
 
+  let _lcModalRecord = null;
+
   function openLcModal(id) {
     const h=getHistoryEntry(id);
     if (!h) return;
+    _lcModalRecord = h;
     const bg=getBannerColor(h.letter_grade);
     const ds=h.callDate
       ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{weekday:'long',month:'long',day:'numeric',year:'numeric'})
@@ -651,9 +654,18 @@
       .replace(/<div class="rep-toggle">[\s\S]*?<\/div>/,'')
       .replace(/<div class="score-view(?!.*active)[^"]*"[\s\S]*?(?=<div class="score-view active|$)/,'');
     document.getElementById('lcModalBody').innerHTML=body||'<p style="color:var(--siren-text-faint);font-size:13px;">No detailed report available.</p>';
+    const pdfBtn = document.getElementById('lcModalPdfBtn');
+    if (pdfBtn) pdfBtn.style.display = h.resultsHtml ? '' : 'none';
     document.getElementById('lcModal').classList.add('open');
     document.body.style.overflow='hidden';
   }
+
+  window.exportAtlasPDF = function() {
+    if (!_lcModalRecord) return;
+    const h = _lcModalRecord;
+    const title = [h.prospect, h.stage, h.callDate].filter(Boolean).join(' — ');
+    exportReportPDF(title, h.resultsHtml || '');
+  };
 
   function closeLcModal() {
     document.getElementById('lcModal').classList.remove('open');

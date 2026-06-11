@@ -1409,11 +1409,17 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     return record;
   }
 
-  function exportReportPDF(title) {
-    const resultsEl = document.getElementById('results');
-    if (!resultsEl || resultsEl.style.display === 'none') return;
+  function exportReportPDF(title, rawHtml) {
+    let html = rawHtml;
+    if (!html) {
+      const resultsEl = document.getElementById('results');
+      if (!resultsEl || resultsEl.style.display === 'none') return;
+      html = resultsEl.innerHTML;
+    }
 
-    const clone = resultsEl.cloneNode(true);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const clone = tmp;
     clone.querySelectorAll('.results-actions').forEach(el => el.remove());
     clone.querySelectorAll('.rep-toggle').forEach(el => el.remove());
     clone.querySelectorAll('.score-view').forEach(el => { el.style.display = 'block'; });
@@ -1460,6 +1466,13 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       <\/script>
     </body></html>`);
     win.document.close();
+  }
+
+  function exportHistoryPDF(id) {
+    const h = _histCache.find(r => String(r.id) === String(id));
+    if (!h) return;
+    const title = [h.prospect, h.stage, h.callDate].filter(Boolean).join(' — ');
+    exportReportPDF(title, h.resultsHtml || '');
   }
 
   async function autoGenerateNextSteps(notes, prospect, callDate, recordId) {
@@ -1585,7 +1598,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${qid})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
           </div>
-          <button class="hist-delete-btn" onclick="deleteHistEntry(${qid},event)">Delete this entry</button>
+          <div style="display:flex;gap:6px;">
+            <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${qid});event.stopPropagation()">&#8595; PDF</button>
+            <button class="hist-delete-btn" onclick="deleteHistEntry(${qid},event)">Delete this entry</button>
+          </div>
         </div>
       </div>
     </div>`;
