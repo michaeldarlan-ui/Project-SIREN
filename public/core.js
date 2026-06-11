@@ -28,7 +28,7 @@
 
   // ── Demo mode ──────────────────────────────────────────────
   function isDemoEnabled() {
-    return localStorage.getItem('oa_demo_enabled') !== 'false';
+    return localStorage.getItem('oa_demo_enabled') === 'true';
   }
   function setDemoEnabled(val) {
     localStorage.setItem('oa_demo_enabled', val ? 'true' : 'false');
