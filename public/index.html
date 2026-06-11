@@ -439,6 +439,10 @@
   .forge-report-preview { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); overflow: hidden; }
   .forge-report-toolbar { padding: 10px 16px; border-bottom: 1px solid var(--siren-border); display: flex; align-items: center; gap: 10px; background: var(--siren-bg-card-raised); }
   .forge-report-toolbar-title { font-family: var(--siren-font-hud); font-size: 10px; letter-spacing: .1em; color: var(--siren-text-secondary); flex: 1; }
+  .forge-audience-toggle { display: flex; border: 1px solid var(--siren-border-mid); border-radius: var(--siren-radius-sm); overflow: hidden; }
+  .forge-audience-btn { padding: 4px 10px; font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .08em; cursor: pointer; border: none; background: transparent; color: var(--siren-text-muted); transition: all .15s; }
+  .forge-audience-btn.active { background: var(--siren-cyan-08); color: var(--siren-cyan); }
+  .forge-audience-btn:hover:not(.active) { color: var(--siren-text-secondary); }
   .forge-report-btn { padding: 5px 12px; border-radius: var(--siren-radius-sm); font-family: var(--siren-font-hud); font-size: 10px; font-weight: 600; letter-spacing: .06em; cursor: pointer; border: 1px solid var(--siren-border-mid); background: transparent; color: var(--siren-text-secondary); transition: all .15s; }
   .forge-report-btn:hover { background: var(--siren-cyan-08); color: var(--siren-cyan-70); }
   .forge-report-btn.primary { background: var(--siren-cyan); color: var(--siren-bg-page); border-color: var(--siren-cyan); }
@@ -1429,6 +1433,10 @@
         <div class="forge-report-preview">
           <div class="forge-report-toolbar">
             <span class="forge-report-toolbar-title" id="forgeReportTitle">⬡ &nbsp;CALL BRIEF — PREVIEW</span>
+            <div class="forge-audience-toggle" id="forgeAudienceToggle" style="display:none;">
+              <button class="forge-audience-btn active" id="forgeAudInternal" onclick="forgeSetAudience('internal')">INTERNAL</button>
+              <button class="forge-audience-btn" id="forgeAudClient" onclick="forgeSetAudience('client')">CLIENT</button>
+            </div>
             <button class="forge-report-btn" id="forgeCopyBtn" onclick="forgeCopy()" disabled>Copy</button>
             <button class="forge-report-btn primary" id="forgeGenBtn" onclick="forgeGenerate()" disabled>Generate →</button>
           </div>
@@ -4602,6 +4610,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   let _forgeHistory = [];   // all calls for selected account
   let _forgeCustomTemplate = null; // selected user template object
   let _forgeCall    = null; // currently selected call entry
+  let _forgeBriefAudience = 'internal'; // 'internal' | 'client'
 
   // ── SCOPE state (declared early to avoid TDZ if init throws) ──
   let _scopeViewingRevision = null;
@@ -4957,12 +4966,23 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     }
     const labels = { 'follow-up': 'Draft Email →', 'call-brief': 'Generate Brief →', 'exec-summary': 'Generate Summary →' };
     document.getElementById('forgeGenBtn').textContent = labels[mode] || 'Generate →';
+    const toggle = document.getElementById('forgeAudienceToggle');
+    if (toggle) toggle.style.display = mode === 'call-brief' ? '' : 'none';
+  }
+
+  function forgeSetAudience(aud) {
+    _forgeBriefAudience = aud;
+    document.getElementById('forgeAudInternal').classList.toggle('active', aud === 'internal');
+    document.getElementById('forgeAudClient').classList.toggle('active', aud === 'client');
+    forgeUpdateTemplateTitles();
   }
 
   function forgeUpdateTemplateTitles() {
     const active = document.querySelector('.forge-template-card.selected .forge-template-name');
     const name = active ? active.textContent : 'CALL BRIEF';
-    document.getElementById('forgeReportTitle').textContent = `⬡  ${name} — ${_forgeCall ? escHtml(_forgeCall.prospect||'') : 'PREVIEW'}`;
+    const mode = forgeGetMode();
+    const audienceSuffix = mode === 'call-brief' ? ` · ${_forgeBriefAudience === 'client' ? 'CLIENT' : 'INTERNAL'}` : '';
+    document.getElementById('forgeReportTitle').textContent = `⬡  ${name}${audienceSuffix} — ${_forgeCall ? escHtml(_forgeCall.prospect||'') : 'PREVIEW'}`;
     forgeSetMode(forgeGetMode());
     if (_forgeCall) forgeRenderSignals(_forgeCall);
   }
@@ -5213,13 +5233,25 @@ ${spicedLines ? 'SPICED Coverage:\n'+spicedLines : ''}
 ${nextSteps ? 'Next Steps:\n'+nextSteps : ''}
 ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
 
+    const isClientBrief = mode === 'call-brief' && _forgeBriefAudience === 'client';
+    const clientCallData = `Account: ${h.prospect||'—'}
+Date: ${ds}
+Stage: ${h.stage||'—'}
+Contact: ${h.contact||'—'}
+${nextSteps ? 'Next Steps:\n'+nextSteps : ''}
+${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
+
     const prompts = {
-      'call-brief': `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`,
+      'call-brief': isClientBrief
+        ? `You are a professional sales consultant at OneAxiom (a cybersecurity consultancy). Write a polished post-call summary to send to the client contact. It should feel professional and collaborative — not salesy. Format with clear sections: DISCUSSION SUMMARY, KEY TAKEAWAYS, AGREED NEXT STEPS. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 250 words. Do not include internal scores, grades, coaching notes, or SPICED framework references.\n\nCALL DATA:\n${clientCallData}`
+        : `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`,
       'exec-summary': `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a board-ready executive deal summary based on the following call data. Format it with sections: Deal Overview, Business Context, Risk Indicators, SPICED Status, Recommended Next Actions. Use plain text with section headers in ALL CAPS followed by a colon. Keep it professional, concise, under 300 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`
     };
 
     const systemPrompts = {
-      'call-brief': 'You are an expert sales coach writing internal call briefs for a cybersecurity consultancy.',
+      'call-brief': isClientBrief
+        ? 'You are a professional consultant writing client-facing post-call summaries. Keep the tone warm, professional, and action-oriented. Never include internal scoring, grades, or coaching feedback.'
+        : 'You are an expert sales coach writing internal call briefs for a cybersecurity consultancy.',
       'exec-summary': 'You are an expert deal strategist writing executive summaries for a cybersecurity consultancy.'
     };
 
