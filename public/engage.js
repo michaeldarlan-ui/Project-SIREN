@@ -786,7 +786,44 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     document.getElementById('inputCard').style.display = 'none';
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml);
+    // Auto-detect rep from transcript if not manually set
+    const detectedRep = rep || autoDetectRep(r.rep_scores || []);
+    saveToHistory(r, prospect, contactTitle, detectedRep, callDate, resultsHtml);
+
+    // Update the rep selector UI to reflect the auto-detected rep
+    if (!rep && detectedRep) {
+      const repSel = document.getElementById('repSelect');
+      if (repSel) repSel.value = String(detectedRep._idx ?? '');
+    }
+  }
+
+  function autoDetectRep(repScores) {
+    if (!repScores.length) return null;
+    const normalize = s => (s || '').toLowerCase().replace(/[^a-z\s]/g, '').trim();
+    const team = loadTeam();
+
+    // Try to match against the team roster first
+    if (team.length) {
+      for (const rs of repScores) {
+        const rsName = normalize(rs.name);
+        const rsParts = rsName.split(/\s+/);
+        for (let i = 0; i < team.length; i++) {
+          const m = team[i];
+          const mName = normalize(m.name);
+          const mParts = mName.split(/\s+/);
+          if (mName === rsName ||
+              (rsParts[0] && mParts[0] === rsParts[0]) ||
+              (rsParts[rsParts.length-1] && mParts[mParts.length-1] === rsParts[rsParts.length-1])) {
+            return { ...m, _idx: i };
+          }
+        }
+      }
+    }
+
+    // No team roster or no match — still capture the name from the transcript
+    const first = repScores[0];
+    if (first?.name) return { name: first.name, role: '', _idx: null };
+    return null;
   }
 
   function switchScoreView(viewId, e) {
