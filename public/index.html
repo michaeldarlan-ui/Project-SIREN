@@ -1795,10 +1795,12 @@
         <div class="pulse-card-title">Score Trend — Last 8 Calls</div>
         <svg id="pulseTrendSvg" class="pulse-trend-svg" height="160" viewBox="0 0 540 160" preserveAspectRatio="none"></svg>
       </div>
-      <div class="pulse-card">
-        <div class="pulse-card-title">Rep Score Trends</div>
-        <svg id="pulseRepTrendSvg" class="pulse-trend-svg" height="160" viewBox="0 0 540 160" preserveAspectRatio="none"></svg>
-        <div id="pulseRepTrendLegend" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;"></div>
+      <div class="pulse-card" style="grid-column:1/-1;">
+        <div class="pulse-card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          Rep Score Trends
+          <span style="font-size:9px;color:rgba(255,255,255,.2);font-weight:400;letter-spacing:.05em;">synced to leaderboard period</span>
+        </div>
+        <div id="pulseRepTrendRows"></div>
       </div>
     </div>
 
@@ -3827,21 +3829,19 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function drawRepTrends(history) {
-    const svg = document.getElementById('pulseRepTrendSvg');
-    const legendEl = document.getElementById('pulseRepTrendLegend');
-    if (!svg || !legendEl) return;
+    const container = document.getElementById('pulseRepTrendRows');
+    if (!container) return;
 
     const periodDays = parseInt(document.getElementById('lbPeriodSel')?.value || '90');
     const cutoff = periodDays > 0 ? Date.now() - periodDays * 86400000 : 0;
 
-    // Build per-rep sorted call list within period
     const repMap = {};
     history.forEach(h => {
       if (!h.rep || !h.total) return;
       const ms = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
       if (cutoff > 0 && ms < cutoff) return;
       if (!repMap[h.rep]) repMap[h.rep] = [];
-      repMap[h.rep].push({ ms, score: h.total });
+      repMap[h.rep].push({ ms, score: h.total, stage: h.stage || '' });
     });
 
     const reps = Object.entries(repMap)
@@ -3849,70 +3849,95 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .filter(r => r.calls.length > 0)
       .sort((a,b) => a.name.localeCompare(b.name));
 
-    const W = 540, H = 160, PAD = { top: 14, right: 16, bottom: 24, left: 32 };
-    const chartW = W - PAD.left - PAD.right;
-    const chartH = H - PAD.top - PAD.bottom;
-
     if (!reps.length) {
-      svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.15)" font-family="system-ui">No calls in this period</text>`;
-      legendEl.innerHTML = '';
+      container.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.2);padding:1rem 0;text-align:center;">No calls in this period.</div>';
       return;
     }
 
-    // Shared time domain across all reps
+    // Shared time domain
     const allMs = reps.flatMap(r => r.calls.map(c => c.ms));
     const minMs = Math.min(...allMs), maxMs = Math.max(...allMs);
     const msRange = maxMs - minMs || 1;
+    const fmt = ms => new Date(ms).toLocaleDateString([],{month:'short',day:'numeric'});
 
-    const toX = ms => PAD.left + ((ms - minMs) / msRange) * chartW;
-    const toY = v  => PAD.top + chartH - ((v - 0) / 100) * chartH;
-
-    // Colour palette
     const COLORS = ['#00c8ff','#f59e0b','#a78bfa','#34d399','#f87171','#fb923c','#38bdf8','#e879f9'];
+    const ROW_H = 52, PAD = { top: 8, bottom: 8, left: 6, right: 6 };
+    const chartH = ROW_H - PAD.top - PAD.bottom;
 
-    let content = '';
-    // Grid lines
-    [30, 60, 90].forEach(y => {
-      const gy = toY(y);
-      content += `<line x1="${PAD.left}" y1="${gy}" x2="${W-PAD.right}" y2="${gy}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
-      content += `<text x="${PAD.left-6}" y="${gy+4}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.2)" font-family="'SF Mono','Fira Code',monospace">${y}</text>`;
-    });
+    // Score colour
+    const scoreColor = s => s >= 80 ? '#22c55e' : s >= 65 ? '#00c8ff' : s >= 50 ? '#f59e0b' : '#ef4444';
 
-    reps.forEach((rep, ri) => {
+    const rows = reps.map((rep, ri) => {
       const color = COLORS[ri % COLORS.length];
-      const pts = rep.calls.map(c => ({ x: toX(c.ms), y: toY(c.score), score: c.score }));
+      const latest = rep.calls[rep.calls.length - 1].score;
+      const mid = Math.ceil(rep.calls.length / 2);
+      const firstAvg = rep.calls.slice(0, mid).reduce((a,c)=>a+c.score,0) / mid;
+      const secondHalf = rep.calls.slice(mid);
+      const secondAvg = secondHalf.length ? secondHalf.reduce((a,c)=>a+c.score,0)/secondHalf.length : firstAvg;
+      const delta = Math.round(secondAvg - firstAvg);
+      const trendColor = delta > 2 ? '#22c55e' : delta < -2 ? '#ef4444' : 'rgba(255,255,255,.25)';
+      const trendLabel = delta > 2 ? `▲${delta}` : delta < -2 ? `▼${Math.abs(delta)}` : '—';
+
+      // Build inline SVG sparkline — viewBox width=500
+      const W = 500;
+      const toX = ms => PAD.left + ((ms - minMs) / msRange) * (W - PAD.left - PAD.right);
+      const toY = v  => PAD.top + chartH - (Math.max(0, Math.min(100, v)) / 100) * chartH;
+
+      const pts = rep.calls.map(c => ({ x: toX(c.ms), y: toY(c.score), score: c.score, ms: c.ms }));
+
+      let sparkContent = '';
+      // Faint score bands
+      [40,60,80].forEach(band => {
+        const by = toY(band);
+        sparkContent += `<line x1="${PAD.left}" y1="${by}" x2="${W-PAD.right}" y2="${by}" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>`;
+      });
+
       if (pts.length === 1) {
-        content += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="4" fill="${color}" stroke="#061824" stroke-width="1.5"/>`;
+        sparkContent += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="5" fill="${color}" stroke="#061824" stroke-width="1.5"/>`;
       } else {
-        const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
-        content += `<path d="${lineD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>`;
+        const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+        // Area fill
+        const areaD = lineD + ` L ${pts[pts.length-1].x.toFixed(1)} ${toY(0).toFixed(1)} L ${pts[0].x.toFixed(1)} ${toY(0).toFixed(1)} Z`;
+        sparkContent += `<defs><linearGradient id="rfill${ri}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.18"/><stop offset="100%" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>`;
+        sparkContent += `<path d="${areaD}" fill="url(#rfill${ri})"/>`;
+        sparkContent += `<path d="${lineD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
         pts.forEach((p, pi) => {
           const isLast = pi === pts.length - 1;
-          content += `<circle cx="${p.x}" cy="${p.y}" r="${isLast?4:3}" fill="${color}" stroke="#061824" stroke-width="${isLast?2:1.5}" opacity="${isLast?1:0.7}"/>`;
+          sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isLast?5:3}" fill="${color}" stroke="#061824" stroke-width="${isLast?2:1.5}" opacity="${isLast?1:0.65}"/>`;
+          if (isLast) sparkContent += `<text x="${p.x.toFixed(1)}" y="${(p.y - 9).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}" font-family="system-ui">${p.score}</text>`;
         });
       }
+
+      // Date labels on first and last point
+      if (pts.length > 1) {
+        sparkContent += `<text x="${pts[0].x.toFixed(1)}" y="${(ROW_H-1).toFixed(1)}" text-anchor="start" font-size="8" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(pts[0].ms)}</text>`;
+        sparkContent += `<text x="${pts[pts.length-1].x.toFixed(1)}" y="${(ROW_H-1).toFixed(1)}" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(pts[pts.length-1].ms)}</text>`;
+      }
+
+      return `<div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(255,255,255,.05);padding:6px 0;">
+        <div style="width:130px;flex-shrink:0;padding-right:12px;">
+          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(rep.name)}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">${rep.calls.length} call${rep.calls.length!==1?'s':''}</div>
+        </div>
+        <svg style="flex:1;min-width:0;height:${ROW_H}px;display:block;" viewBox="0 0 ${W} ${ROW_H}" preserveAspectRatio="none">${sparkContent}</svg>
+        <div style="width:56px;flex-shrink:0;text-align:right;padding-left:12px;">
+          <div style="font-size:18px;font-weight:800;color:${scoreColor(latest)};line-height:1;">${latest}</div>
+          <div style="font-size:10px;font-weight:700;color:${trendColor};margin-top:3px;">${trendLabel}</div>
+        </div>
+      </div>`;
     });
 
-    // Date axis labels
-    if (reps.length) {
-      const fmt = ms => new Date(ms).toLocaleDateString([],{month:'short',day:'numeric'});
-      content += `<text x="${PAD.left}" y="${H-4}" text-anchor="start" font-size="9" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(minMs)}</text>`;
-      if (minMs !== maxMs)
-        content += `<text x="${W-PAD.right}" y="${H-4}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(maxMs)}</text>`;
-    }
+    // Shared date axis header
+    const axisHtml = `<div style="display:flex;padding:0 0 6px 0;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:2px;">
+      <div style="width:130px;flex-shrink:0;"></div>
+      <div style="flex:1;display:flex;justify-content:space-between;">
+        <span style="font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">${fmt(minMs)}</span>
+        ${minMs !== maxMs ? `<span style="font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">${fmt(maxMs)}</span>` : ''}
+      </div>
+      <div style="width:56px;flex-shrink:0;text-align:right;padding-left:12px;font-size:9px;color:rgba(255,255,255,.2);font-family:'SF Mono','Fira Code',monospace;">LAST</div>
+    </div>`;
 
-    svg.innerHTML = content;
-
-    legendEl.innerHTML = reps.map((rep, ri) => {
-      const color = COLORS[ri % COLORS.length];
-      const initials = rep.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-      const latest = rep.calls[rep.calls.length - 1].score;
-      return `<div style="display:flex;align-items:center;gap:5px;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-        <span style="font-size:11px;color:rgba(255,255,255,.6);">${escHtml(initials)}</span>
-        <span style="font-size:11px;color:rgba(255,255,255,.3);">${latest}</span>
-      </div>`;
-    }).join('');
+    container.innerHTML = axisHtml + rows.join('');
   }
 
   function renderLifecyclePage() {
@@ -5663,123 +5688,266 @@ function downloadResponses(){
 
   // ── Demo data seed ──────────────────────────────────────────────────────
   function seedDemoData() {
-    // Re-run every load to merge; demo records are identified by id prefix 'demo-'
     const alreadyHasDemos = loadHistory().some(h => h.id?.startsWith('demo-'));
     if (alreadyHasDemos) return;
     const now = Date.now();
+
+    // Dimensions helper — object keyed by name (matches Object.entries usage in codebase)
+    const dims = (o,d,te,v,s,c) => ({
+      'Opening & agenda control':           { score: o,  max: 15 },
+      'Discovery & needs assessment':       { score: d,  max: 20 },
+      'Value articulation & demo delivery': { score: te, max: 20 },
+      'Objection handling & MEDDIC signals':{ score: v,  max: 15 },
+      'SPICED qualification':               { score: s,  max: 15 },
+      'Call control & next steps':          { score: c,  max: 15 },
+    });
+
     const demoHistory = [
+
+      // ── Meridian Financial Group ─────────────────────────────────────────
+      // Ruben Posada (ISR) works cold call → discovery; Andie Prandini takes over from tech eval
       {
-        id: 'demo-1', ts: new Date('2026-06-02T14:30:00').toISOString(),
-        prospect: 'Meridian Financial Group', rep: 'Casey Liu', stage: 'Discovery',
-        callDate: '2026-06-02', letter_grade: 'C', total: 54,
-        next_steps: [
-          'Send NIST CSF gap summary before Friday',
-          'Schedule technical deep-dive with their IT director',
-          'Confirm budget authority — economic buyer not on this call'
-        ],
-        dimensions: [
-          { name: 'Opening & agenda control', score: 10, max: 15 },
-          { name: 'Discovery & needs assessment', score: 8, max: 20 },
-          { name: 'Value articulation & demo delivery', score: 9, max: 20 },
-          { name: 'Objection handling & MEDDIC signals', score: 12, max: 15 },
-          { name: 'SPICED qualification', score: 8, max: 15 },
-          { name: 'Call control & next steps', score: 7, max: 15 }
-        ],
-        overview: 'Casey opened well but lost control in the middle third. Discovery was surface-level — no probing on business impact or timeline drivers. Economic buyer was not identified.',
-        strengths: ['Strong rapport building in the first five minutes', 'Handled pricing objection confidently'],
-        gaps: ['Did not quantify pain or business impact', 'Never confirmed decision process or timeline', 'Next steps were vague — no date or owner'],
+        id: 'demo-mfg-1', ts: new Date('2026-03-05T09:15:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Cold Call', callDate: '2026-03-05', letter_grade: 'C', total: 52,
+        dimensions: dims(9,8,8,10,8,9),
+        top_strength: 'Good cold opener — got the prospect talking about their upcoming audit',
+        top_priority: 'Did not qualify budget authority or confirm the right contact',
+        next_steps: ['Send intro email with OneAxiom overview deck', 'Request 30-min discovery call with IT Director'],
+        overview: 'Ruben landed the cold call well — got past the gatekeeper and earned a conversation. But he moved too quickly to features before establishing pain. The prospect mentioned a pending SOC 2 audit but Ruben did not probe the timeline or consequences of failure.',
       },
       {
-        id: 'demo-2', ts: new Date('2026-05-28T10:00:00').toISOString(),
-        prospect: 'Northgate Healthcare Systems', rep: 'Jordan Vance', stage: 'Technical Evaluation',
-        callDate: '2026-05-28', letter_grade: 'B+', total: 81,
-        next_steps: [
-          'Deliver Executive Summary by June 6',
-          'Follow up with CISO on HIPAA scope confirmation',
-          'Loop in legal for BAA review'
-        ],
-        dimensions: [
-          { name: 'Opening & agenda control', score: 13, max: 15 },
-          { name: 'Discovery & needs assessment', score: 17, max: 20 },
-          { name: 'Value articulation & demo delivery', score: 16, max: 20 },
-          { name: 'Objection handling & MEDDIC signals', score: 12, max: 15 },
-          { name: 'SPICED qualification', score: 12, max: 15 },
-          { name: 'Call control & next steps', score: 11, max: 15 }
-        ],
-        overview: 'Strong technical call. Jordan mapped our assessment methodology directly to their HIPAA audit timeline. CISO was engaged throughout. Minor gap: champion vs. economic buyer distinction was blurred.',
-        strengths: ['Tight agenda, no scope creep', 'Tied technical gaps to concrete HIPAA breach risk', 'Confirmed Q3 exam deadline as hard driver'],
-        gaps: ['Did not lock economic buyer into next meeting', 'BAA dependency was surfaced late'],
+        id: 'demo-mfg-2', ts: new Date('2026-03-28T14:00:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Discovery', callDate: '2026-03-28', letter_grade: 'B-', total: 66,
+        dimensions: dims(11,13,10,11,11,10),
+        top_strength: 'Surfaced the SOC 2 timeline and board-level pressure — strong pain discovery',
+        top_priority: 'Economic buyer (CFO) was not on the call and was never confirmed as next step',
+        next_steps: ['Send follow-up email recapping SOC 2 scope discussion', 'Schedule intro call with CFO before moving to technical eval', 'Confirm assessment timeline fits Q3 board deadline'],
+        overview: 'Much improved from cold call. Ruben probed the SOC 2 gap effectively and tied it to a Q3 board presentation deadline. Discovery was solid for pain and situation. SPICED gaps remain: economic buyer unconfirmed and no quantified impact of non-compliance.',
       },
       {
-        id: 'demo-3', ts: new Date('2026-06-05T16:00:00').toISOString(),
-        prospect: 'Cascade Manufacturing Co.', rep: 'Morgan Reyes', stage: 'Proposal / Negotiation',
-        callDate: '2026-06-05', letter_grade: 'A-', total: 88,
-        next_steps: [
-          'Send final proposal with CMMC Level 2 scope by June 9',
-          'Confirm signature authority with CFO',
-          'Block kickoff date — they want to start before July 1'
-        ],
-        dimensions: [
-          { name: 'Opening & agenda control', score: 14, max: 15 },
-          { name: 'Discovery & needs assessment', score: 18, max: 20 },
-          { name: 'Value articulation & demo delivery', score: 17, max: 20 },
-          { name: 'Objection handling & MEDDIC signals', score: 14, max: 15 },
-          { name: 'SPICED qualification', score: 13, max: 15 },
-          { name: 'Call control & next steps', score: 12, max: 15 }
-        ],
-        overview: 'Morgan ran a textbook late-stage call. DoD contract pressure is the hard driver — CMMC Level 2 compliance required before contract renewal in August. CFO not yet looped in on final number.',
-        strengths: ['Crisp SPICED summary at the top', 'Anchored urgency to contract renewal deadline', 'Handled scope-reduction ask cleanly'],
-        gaps: ['CFO not confirmed for proposal review call', 'Payment terms not yet discussed'],
+        id: 'demo-mfg-3', ts: new Date('2026-04-22T10:30:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Technical Evaluation', callDate: '2026-04-22', letter_grade: 'B', total: 74,
+        dimensions: dims(13,15,14,12,12,8),
+        top_strength: 'Mapped OneAxiom methodology directly to their SOC 2 Type II readiness gaps',
+        top_priority: 'Next steps were weak — no clear owner or date for proposal delivery',
+        next_steps: ['Deliver scoping questionnaire by April 28', 'Schedule proposal review with CFO and IT Director', 'Confirm Michael joins for technical deep-dive if needed'],
+        overview: 'Andie ran a strong technical walkthrough. The IT Director was engaged and asked detailed questions about evidence collection. Value alignment was clear. The weak point was the close — the call ended without locking in a proposal review date or confirming CFO availability.',
       },
       {
-        id: 'demo-4', ts: new Date('2026-06-08T09:30:00').toISOString(),
-        prospect: 'Vantara Logistics', rep: 'Casey Liu', stage: 'Discovery',
-        callDate: '2026-06-08', letter_grade: 'D+', total: 41,
-        next_steps: [
-          'Re-engage with a clearer value prop focused on their breach history',
-          'Bring Jordan onto next call for technical credibility'
-        ],
-        dimensions: [
-          { name: 'Opening & agenda control', score: 7, max: 15 },
-          { name: 'Discovery & needs assessment', score: 6, max: 20 },
-          { name: 'Value articulation & demo delivery', score: 8, max: 20 },
-          { name: 'Objection handling & MEDDIC signals', score: 7, max: 15 },
-          { name: 'SPICED qualification', score: 6, max: 15 },
-          { name: 'Call control & next steps', score: 7, max: 15 }
-        ],
-        overview: 'Difficult call. Prospect was skeptical from the start — had a bad experience with a prior vendor. Casey did not address this head-on and pivoted to product features too early. No pain quantification.',
-        strengths: ['Showed up prepared with some background research'],
-        gaps: ['Never acknowledged prior vendor failure — lost trust early', 'Feature-dumped instead of leading with outcomes', 'Left without a confirmed next step or date'],
+        id: 'demo-mfg-4', ts: new Date('2026-05-15T13:00:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal', callDate: '2026-05-15', letter_grade: 'B+', total: 81,
+        dimensions: dims(13,16,15,14,13,10),
+        top_strength: 'Handled the scope-reduction objection cleanly and re-anchored to board deadline urgency',
+        top_priority: 'Payment terms and contract start date were not confirmed before ending the call',
+        next_steps: ['Send revised proposal with two scope options by May 19', 'Confirm legal review timeline with their counsel', 'Block kickoff date contingent on signed SOW'],
+        overview: 'Strong proposal call. Andie presented two pricing options, which gave the prospect agency without losing deal value. CFO engaged throughout and acknowledged the board deadline. Minor gap: contract logistics were left open, creating potential for a stall.',
+      },
+
+      // ── Northgate Healthcare Systems ─────────────────────────────────────
+      // Ryan Osegueda (ISR) owns cold call + two discovery touchpoints; Andie + Michael join for tech eval and proposal
+      {
+        id: 'demo-nhs-1', ts: new Date('2026-03-12T08:45:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold Call', callDate: '2026-03-12', letter_grade: 'C-', total: 47,
+        dimensions: dims(7,8,7,9,7,9),
+        top_strength: 'Identified HIPAA breach history early — strong hook',
+        top_priority: 'Lost control mid-call when asked about pricing; pivoted defensively instead of redirecting',
+        next_steps: ['Send case study from similar healthcare client', 'Request 45-min discovery with IT and compliance team'],
+        overview: 'Ryan identified a prior breach notification incident as a strong opener but could not sustain momentum. When the prospect pushed on pricing too early, Ryan fumbled and spent five minutes on budget conversation before re-establishing discovery. Ended without a firm next step.',
+      },
+      {
+        id: 'demo-nhs-2', ts: new Date('2026-04-02T10:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Discovery', callDate: '2026-04-02', letter_grade: 'C+', total: 59,
+        dimensions: dims(10,11,9,11,9,9),
+        top_strength: 'Connected prior breach to HHS-OCR audit risk — good pain escalation',
+        top_priority: 'CISO was on the call but was not engaged — Ryan spoke primarily to the IT Manager',
+        next_steps: ['Re-engage CISO directly with a targeted exec summary of HIPAA gap exposure', 'Set up second discovery with CISO and compliance officer', 'Confirm Q3 HHS exam date is hard deadline'],
+        overview: 'Improvement from cold call but discovery stalled at the IT Manager level. Ryan established the breach-to-audit risk narrative well but failed to activate the CISO who joined quietly and dropped off early. Pain is confirmed but the economic buyer chain is unclear.',
+      },
+      {
+        id: 'demo-nhs-3', ts: new Date('2026-04-18T14:30:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Discovery', callDate: '2026-04-18', letter_grade: 'B-', total: 67,
+        dimensions: dims(12,14,10,12,11,8),
+        top_strength: 'CISO confirmed Q3 HHS audit as a hard deadline — urgency now fully established',
+        top_priority: 'Did not confirm decision process or who signs the engagement letter',
+        next_steps: ['Hand off to Andie Prandini for technical evaluation', 'Send HIPAA assessment scope document', 'Confirm CISO availability for technical deep-dive'],
+        overview: 'Second discovery touchpoint successfully brought the CISO into the conversation. The Q3 HHS exam deadline is now locked as the hard driver. Handoff to AE warranted — Ryan has built enough context and champion-level trust for Andie to take the deal forward.',
+      },
+      {
+        id: 'demo-nhs-4', ts: new Date('2026-05-08T11:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Technical Evaluation', callDate: '2026-05-08', letter_grade: 'B+', total: 82,
+        dimensions: dims(13,16,16,13,13,11),
+        top_strength: 'Michael\'s technical depth on HIPAA evidence collection gave the CISO immediate confidence',
+        top_priority: 'BAA execution timeline was not confirmed — legal dependency could delay start date',
+        next_steps: ['Deliver Executive Summary to CISO by May 14', 'Initiate BAA review with their legal counsel', 'Confirm CFO intro call before proposal submission'],
+        overview: 'Andie and Michael ran an excellent technical evaluation. The CISO asked detailed questions about evidence collection methodology and Michael answered without hesitation. Credibility is high. The BAA requirement surfaced late in the call and needs immediate attention to protect the timeline.',
+      },
+      {
+        id: 'demo-nhs-5', ts: new Date('2026-06-02T09:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal', callDate: '2026-06-02', letter_grade: 'A-', total: 87,
+        dimensions: dims(14,17,17,14,14,11),
+        top_strength: 'Closed the call with a verbal commitment and confirmed legal review timeline',
+        top_priority: 'Payment terms discussion was deferred — CFO may revisit scope before signing',
+        next_steps: ['Send countersigned SOW by June 6', 'Confirm BAA execution with their legal by June 9', 'Schedule kickoff call for week of June 16'],
+        overview: 'Textbook proposal call. Andie re-established urgency with the Q3 HHS deadline, walked the CFO through the two-phase engagement structure, and handled a late-stage budget objection by splitting the scope into a Phase 1 priority assessment. Verbal commitment received.',
+      },
+
+      // ── Cascade Manufacturing Co. ─────────────────────────────────────────
+      // Ruben cold call; Andie takes discovery → proposal; CMMC driver
+      {
+        id: 'demo-cmc-1', ts: new Date('2026-04-08T08:30:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Cold Call', callDate: '2026-04-08', letter_grade: 'D+', total: 43,
+        dimensions: dims(7,7,7,8,7,7),
+        top_strength: 'Identified CMMC as relevant — correct vertical instinct',
+        top_priority: 'Called without knowing the prospect had an active DoD contract — appeared unprepared',
+        next_steps: ['Research DoD contract details and CMMC Level 2 requirements before re-engaging', 'Send CMMC-specific intro email referencing their contract renewal window'],
+        overview: 'Rough cold call. Ruben led with a generic cybersecurity pitch before the prospect mentioned their DoD subcontract. Once CMMC was identified as the real driver, Ruben pivoted, but the early impression of being unprepared was hard to recover from. Prospect agreed to a discovery call out of necessity, not enthusiasm.',
+      },
+      {
+        id: 'demo-cmc-2', ts: new Date('2026-04-28T13:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-04-28', letter_grade: 'B-', total: 63,
+        dimensions: dims(11,13,11,11,10,7),
+        top_strength: 'Anchored the entire call to CMMC Level 2 certification timeline and DoD contract renewal',
+        top_priority: 'Did not identify who owns the CMMC compliance program internally — no champion confirmed',
+        next_steps: ['Request intro to their CMMC POC or compliance lead', 'Send CMMC Level 2 readiness checklist', 'Confirm contract renewal date — is August deadline firm?'],
+        overview: 'Andie recovered the deal credibility lost in the cold call. The CMMC framing was tight and the prospect acknowledged they have zero documentation for Level 2 requirements. Gap: no internal champion identified — Andie spoke primarily to the VP of Operations who may not be the right buyer.',
+      },
+      {
+        id: 'demo-cmc-3', ts: new Date('2026-05-20T10:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Technical Evaluation', callDate: '2026-05-20', letter_grade: 'B', total: 74,
+        dimensions: dims(13,15,14,12,12,8),
+        top_strength: 'Michael\'s live gap walk-through against CMMC Level 2 practices was highly persuasive',
+        top_priority: 'CFO was not present and VP of Ops cannot approve budget — deal at risk of stalling',
+        next_steps: ['Get CFO on a 30-min call before proposal submission', 'Send technical assessment scope mapped to CMMC Level 2 practices', 'Confirm Michael\'s availability for CFO call if technical questions arise'],
+        overview: 'Strong technical session. Michael walked through the 110 CMMC Level 2 practices against what the prospect currently has documented, and the gaps were jarring enough to create urgency. The risk is that the VP of Ops, while enthusiastic, cannot approve the engagement budget.',
+      },
+      {
+        id: 'demo-cmc-4', ts: new Date('2026-06-05T15:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal', callDate: '2026-06-05', letter_grade: 'A-', total: 88,
+        dimensions: dims(14,18,17,14,13,12),
+        top_strength: 'CFO approved budget on the call after Andie framed non-compliance as a contract termination risk',
+        top_priority: 'Payment terms and contract start date were not finalized before ending the call',
+        next_steps: ['Send final proposal with CMMC Level 2 scope by June 9', 'Confirm CFO signature authority and legal review window', 'Block kickoff date — prospect wants to start before July 1'],
+        overview: 'Excellent close call. Andie framed the CMMC assessment not as a consulting engagement but as a contract protection measure — the CFO responded immediately. Budget objection was neutralized by tying cost to the value of the DoD contract at risk. Minor gap: logistics were left open.',
+      },
+
+      // ── Vantara Logistics ─────────────────────────────────────────────────
+      // Ryan Osegueda — struggling deal, prior bad vendor experience, two difficult discovery attempts
+      {
+        id: 'demo-vl-1', ts: new Date('2026-05-01T09:00:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold Call', callDate: '2026-05-01', letter_grade: 'D+', total: 41,
+        dimensions: dims(7,6,7,8,6,7),
+        top_strength: 'Persisted through initial skepticism and earned a discovery conversation',
+        top_priority: 'Prospect mentioned a bad prior vendor experience and Ryan did not address it — this will haunt future calls',
+        next_steps: ['Research prior vendor and what went wrong before discovery call', 'Lead next call with acknowledgment of prior experience, not product pitch'],
+        overview: 'Vantara\'s VP of IT mentioned a failed engagement with a prior security consultancy in the first two minutes. Ryan acknowledged it briefly and immediately pivoted to OneAxiom\'s methodology. This was a mistake — the wound is still fresh and needed more time. Prospect agreed to discovery reluctantly.',
+      },
+      {
+        id: 'demo-vl-2', ts: new Date('2026-05-22T14:00:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Discovery', callDate: '2026-05-22', letter_grade: 'C-', total: 46,
+        dimensions: dims(8,8,8,8,7,7),
+        top_strength: 'Asked good questions about their logistics platform and data classification requirements',
+        top_priority: 'Prospect remains guarded — prior vendor issue was not resolved and trust has not been rebuilt',
+        next_steps: ['Escalate to Andie to run second discovery with fresh credibility', 'Request introduction to CISO or security lead — VP IT may not be the right contact', 'Consider bringing a reference client from logistics vertical'],
+        overview: 'Second attempt at discovery fell flat. Ryan improved his questioning technique but the trust deficit from the prior vendor experience is still active. The prospect is engaged at a surface level but not sharing the real business context. Escalation to AE level is warranted.',
+      },
+      {
+        id: 'demo-vl-3', ts: new Date('2026-06-08T10:30:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Discovery', callDate: '2026-06-08', letter_grade: 'C', total: 54,
+        dimensions: dims(9,10,9,9,9,8),
+        top_strength: 'Brought a logistics sector reference story that visibly shifted prospect posture',
+        top_priority: 'Still no CISO access — all discovery is through the VP IT who has limited budget authority',
+        next_steps: ['Request Andie joins next call as lead — position as a senior resource review', 'Ask VP IT to facilitate intro to CISO before advancing', 'Send logistics sector case study with outcome metrics'],
+        overview: 'Measurable improvement. The logistics reference story Ryan introduced early in the call broke through the skepticism enough to get the prospect talking openly about their gap in endpoint visibility. However, without CISO access, discovery cannot be completed and the deal cannot move to technical evaluation.',
+      },
+
+      // ── Pinnacle Credit Union ─────────────────────────────────────────────
+      // Ryan cold call; Andie handles discovery — newer opportunity
+      {
+        id: 'demo-pcu-1', ts: new Date('2026-05-28T08:00:00').toISOString(),
+        prospect: 'Pinnacle Credit Union', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold Call', callDate: '2026-05-28', letter_grade: 'C', total: 56,
+        dimensions: dims(10,9,9,10,9,9),
+        top_strength: 'Tied the pitch to NCUA cybersecurity examination expectations — right regulatory hook',
+        top_priority: 'Call was too long — Ryan talked more than the prospect for the last 8 minutes',
+        next_steps: ['Send NCUA cybersecurity regulation summary with OneAxiom positioning', 'Book 45-min discovery with VP of IT and compliance officer'],
+        overview: 'Solid cold call for the most part. Ryan correctly identified NCUA examination pressure as the trigger and got the prospect to acknowledge they have not had an external assessment in three years. The call ran long because Ryan started presenting the service before completing discovery. Ended with a booked follow-up.',
+      },
+      {
+        id: 'demo-pcu-2', ts: new Date('2026-06-09T13:30:00').toISOString(),
+        prospect: 'Pinnacle Credit Union', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-06-09', letter_grade: 'B-', total: 66,
+        dimensions: dims(12,13,11,12,10,8),
+        top_strength: 'Uncovered a board-level request for a cybersecurity report tied to their Q3 member meeting',
+        top_priority: 'Critical Event timing (Q3 board meeting) was confirmed but next step was not scoped to that deadline',
+        next_steps: ['Send scoping questionnaire this week to qualify assessment scope', 'Schedule technical evaluation with IT Director and compliance officer', 'Confirm whether board presentation is a deliverable we can support'],
+        overview: 'Good first AE-level discovery call. Andie uncovered a board-level reporting requirement that Ryan had not surfaced — this changes the urgency profile significantly. The Q3 member meeting creates a hard deadline for a cybersecurity narrative. Next step should be scoped to that deliverable.',
       }
+
     ];
+
+    // Sort by callDate ascending for consistent history rendering
+    demoHistory.sort((a,b) => a.callDate < b.callDate ? 1 : -1);
 
     const demoPulseTasks = {
       'Meridian Financial Group': [
-        { text: 'Send NIST CSF gap summary before Friday', done: false, source: '2026-06-02', ts: now },
-        { text: 'Schedule technical deep-dive with their IT director', done: false, source: '2026-06-02', ts: now },
-        { text: 'Confirm budget authority — economic buyer not on this call', done: false, source: '2026-06-02', ts: now }
+        { text: 'Send revised proposal with two scope options', done: true,  source: '2026-05-15', ts: now },
+        { text: 'Confirm legal review timeline with their counsel', done: false, source: '2026-05-15', ts: now },
+        { text: 'Block kickoff date contingent on signed SOW', done: false, source: '2026-05-15', ts: now },
       ],
       'Northgate Healthcare Systems': [
-        { text: 'Deliver Executive Summary by June 6', done: true, source: '2026-05-28', ts: now },
-        { text: 'Follow up with CISO on HIPAA scope confirmation', done: false, source: '2026-05-28', ts: now },
-        { text: 'Loop in legal for BAA review', done: false, source: '2026-05-28', ts: now }
+        { text: 'Send countersigned SOW by June 6', done: false, source: '2026-06-02', ts: now },
+        { text: 'Confirm BAA execution with their legal by June 9', done: false, source: '2026-06-02', ts: now },
+        { text: 'Schedule kickoff call for week of June 16', done: false, source: '2026-06-02', ts: now },
       ],
       'Cascade Manufacturing Co.': [
         { text: 'Send final proposal with CMMC Level 2 scope by June 9', done: false, source: '2026-06-05', ts: now },
-        { text: 'Confirm signature authority with CFO', done: false, source: '2026-06-05', ts: now },
-        { text: 'Block kickoff date — they want to start before July 1', done: true, source: '2026-06-05', ts: now }
+        { text: 'Confirm CFO signature authority and legal review window', done: false, source: '2026-06-05', ts: now },
+        { text: 'Block kickoff date — prospect wants to start before July 1', done: true,  source: '2026-06-05', ts: now },
       ],
       'Vantara Logistics': [
-        { text: 'Re-engage with a clearer value prop focused on their breach history', done: false, source: '2026-06-08', ts: now },
-        { text: 'Bring Jordan onto next call for technical credibility', done: false, source: '2026-06-08', ts: now }
-      ]
+        { text: 'Request Andie joins next call as lead — senior resource review', done: false, source: '2026-06-08', ts: now },
+        { text: 'Ask VP IT to facilitate intro to CISO before advancing', done: false, source: '2026-06-08', ts: now },
+        { text: 'Send logistics sector case study with outcome metrics', done: false, source: '2026-06-08', ts: now },
+      ],
+      'Pinnacle Credit Union': [
+        { text: 'Send scoping questionnaire this week', done: false, source: '2026-06-09', ts: now },
+        { text: 'Schedule technical evaluation with IT Director', done: false, source: '2026-06-09', ts: now },
+        { text: 'Confirm whether board presentation is a deliverable we can support', done: false, source: '2026-06-09', ts: now },
+      ],
     };
 
     const existing = loadHistory().filter(h => !h.id?.startsWith('demo-'));
     saveHistoryData([...existing, ...demoHistory]);
-    localStorage.setItem('oa_pulse_tasks', JSON.stringify(demoPulseTasks));
+
+    // Merge pulse tasks — don't overwrite existing real tasks for a company
+    let existingTasks = {};
+    try { existingTasks = JSON.parse(localStorage.getItem('oa_pulse_tasks')||'{}'); } catch(e) {}
+    const mergedTasks = Object.assign({}, demoPulseTasks, existingTasks);
+    localStorage.setItem('oa_pulse_tasks', JSON.stringify(mergedTasks));
   }
 
+  // Clear old single-call demo records so new multi-call seed runs
+  if (localStorage.getItem('oa_demo_seeded')) {
+    const h = loadHistory().filter(r => !r.id?.startsWith('demo-'));
+    saveHistoryData(h);
+    localStorage.removeItem('oa_demo_seeded');
+  }
   seedDemoData();
 </script>
 </body>
