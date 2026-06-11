@@ -60,8 +60,6 @@ node --watch server.js
 | Call control & next steps | 15 |
 | **Total** | **100** |
 
-CMMC positioning is only surfaced if the transcript explicitly mentions DoD contracts, CMMC, or CUI.
-
 ## Cost
 
 Each graded call uses ~1,500–2,000 tokens. At Claude Sonnet 4.6 pricing ($3/$15 per million tokens input/output) that's well under $0.05 per call.
