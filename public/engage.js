@@ -695,13 +695,41 @@
 
     clearError();
     document.getElementById('results').style.display = 'none';
+    document.getElementById('submitBtn').disabled = true;
+
+    // ── Pre-scan step — show loading screen early ─────────────
+    const loadEl = document.getElementById('loading');
+    const parts = [prospect, selectedStage].filter(Boolean);
+    document.getElementById('loadContext').textContent = (parts.length ? parts.join(' // ') : 'ENGAGEMENT').toUpperCase();
+    loadEl.style.display = 'flex';
+    startRadar();
+    const preStep = document.getElementById('lstep-pre');
+    const preIcon = document.getElementById('lstep-icon-pre');
+    const preBar  = document.getElementById('lstep-bar-pre');
+    if (preStep) { preStep.classList.remove('done'); preStep.classList.add('visible', 'active'); }
 
     // ── Third-party participant check ─────────────────────────
     const { newUnknowns, known } = await detectUnknownParticipants(notes, prospect, contactTitle, rep);
+    // Mark pre-scan step done
+    if (preStep) { preStep.classList.remove('active'); preStep.classList.add('done'); }
+    if (preIcon) preIcon.textContent = '✓';
+    if (preBar)  preBar.style.width = '100%';
+
     let userEntries = {};
     if (newUnknowns.length) {
+      // Hide loading while user fills in the prompt
+      loadEl.style.display = 'none';
+      stopRadar();
+      document.getElementById('submitBtn').disabled = false;
       userEntries = await showThirdPartyPrompt(newUnknowns, known);
-      if (!userEntries) return; // user cancelled
+      if (!userEntries) {
+        // User cancelled — reset pre-scan step for next attempt
+        if (preStep) preStep.classList.remove('visible', 'active', 'done');
+        if (preIcon) preIcon.textContent = '○';
+        if (preBar)  preBar.style.width = '0%';
+        return;
+      }
+      document.getElementById('submitBtn').disabled = true;
     }
 
     // Build complete third-party list (known + newly identified)
@@ -1225,20 +1253,22 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       const ctx = (parts.length ? parts.join(' // ') : 'ENGAGEMENT').toUpperCase();
       document.getElementById('loadContext').textContent = ctx;
       // Reset all steps to hidden baseline — clear any inline styles from prior run
-      for (let i = 0; i < 4; i++) {
-        const s  = document.getElementById('lstep-' + i);
-        const ic = document.getElementById('lstep-icon-' + i);
-        const b  = document.getElementById('lstep-bar-' + i);
-        if (s)  {
-          s.style.opacity = '';
-          s.style.transform = '';
-          s.classList.remove('visible', 'active', 'done');
-        }
+      ['pre', 0, 1, 2, 3].forEach(key => {
+        const s  = document.getElementById('lstep-' + key);
+        const ic = document.getElementById('lstep-icon-' + key);
+        const b  = document.getElementById('lstep-bar-' + key);
+        if (s)  { s.style.opacity = ''; s.style.transform = ''; s.classList.remove('visible', 'active', 'done'); }
         if (ic) ic.textContent = '○';
         if (b)  b.style.width = '0%';
-      }
-      // Stagger steps into view — adding only 'visible' so CSS transition fires cleanly
-      // Step 0 also gets 'active' immediately so something is lit up before first stream data
+      });
+      // Pre-scan already completed before setLoading was called — show it as done immediately
+      const preS = document.getElementById('lstep-pre');
+      const preI = document.getElementById('lstep-icon-pre');
+      const preB = document.getElementById('lstep-bar-pre');
+      if (preS) { preS.classList.add('visible', 'done'); }
+      if (preI) preI.textContent = '✓';
+      if (preB) preB.style.width = '100%';
+      // Stagger the 4 grading steps into view
       for (let i = 0; i < 4; i++) {
         const s = document.getElementById('lstep-' + i);
         if (!s) continue;
@@ -1251,12 +1281,12 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     } else {
       stopRadar();
       // Flash all steps to done then hide
-      for (let i = 0; i < 4; i++) {
-        const s  = document.getElementById('lstep-' + i);
-        const ic = document.getElementById('lstep-icon-' + i);
+      ['pre', 0, 1, 2, 3].forEach(key => {
+        const s  = document.getElementById('lstep-' + key);
+        const ic = document.getElementById('lstep-icon-' + key);
         if (s)  { s.classList.remove('active'); s.classList.add('visible', 'done'); }
         if (ic) ic.textContent = '✓';
-      }
+      });
       setTimeout(() => { el.style.display = 'none'; }, 450);
     }
   }
