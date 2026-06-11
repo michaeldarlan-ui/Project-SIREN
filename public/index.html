@@ -6241,7 +6241,7 @@ function downloadResponses(){
       // ── Apex Biotech Sciences ──────────────────────────────────────────────
       {
         id: 'demo-abs-1', ts: new Date('2026-02-05T10:00:00').toISOString(),
-        prospect: 'Apex Biotech Sciences', rep: 'Ruben Castillo', repRole: 'Inside Sales Representative',
+        prospect: 'Apex Biotech Sciences', rep: 'Ruben Posada', repRole: 'ISR',
         stage: 'Cold outreach', callDate: '2026-02-05', letter_grade: 'C+', total: 57,
         dimensions: dims(10,9,10,10,9,9),
         top_strength: 'Connected biotech IP protection narrative to cyber exposure — right framing for a life sciences audience',
@@ -6293,7 +6293,7 @@ function downloadResponses(){
       // ── Coastal Community Bank ─────────────────────────────────────────────
       {
         id: 'demo-ccb-1', ts: new Date('2026-04-03T09:00:00').toISOString(),
-        prospect: 'Coastal Community Bank', rep: 'Ryan Odom', repRole: 'Inside Sales Representative',
+        prospect: 'Coastal Community Bank', rep: 'Ryan Osegueda', repRole: 'ISR',
         stage: 'Cold outreach', callDate: '2026-04-03', letter_grade: 'C', total: 54,
         dimensions: dims(9,9,9,10,9,8),
         top_strength: 'Led with FDIC cybersecurity examination framing — well-matched for a community bank audience and created immediate relevance',
@@ -6347,7 +6347,7 @@ function downloadResponses(){
       // ── Tri-State Transit Authority ────────────────────────────────────────
       {
         id: 'demo-tta-1', ts: new Date('2026-02-19T09:00:00').toISOString(),
-        prospect: 'Tri-State Transit Authority', rep: 'Ryan Odom', repRole: 'Inside Sales Representative',
+        prospect: 'Tri-State Transit Authority', rep: 'Ryan Osegueda', repRole: 'ISR',
         stage: 'Cold outreach', callDate: '2026-02-19', letter_grade: 'C', total: 52,
         dimensions: dims(9,8,9,9,8,9),
         top_strength: 'Connected recent transit ransomware headlines to TTA\'s exposure — created immediate relevance for a public agency audience',
@@ -6770,7 +6770,7 @@ function downloadResponses(){
   }
 
   // Version-gated demo seed — reseed when version changes OR demo data is absent
-  const DEMO_VERSION = 'v9-grade-scale';
+  const DEMO_VERSION = 'v10-team-names';
   const _demoAccounts = new Set(loadHistory().filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
   if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
