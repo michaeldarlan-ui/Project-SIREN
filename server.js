@@ -31,8 +31,7 @@ const API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const db = new Database(path.join(__dirname, 'siren.db'));
 db.pragma('journal_mode = WAL');
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS history (
+const HISTORY_COLS = `
     id            TEXT PRIMARY KEY,
     ts            TEXT NOT NULL,
     call_date     TEXT,
@@ -47,74 +46,95 @@ db.exec(`
     top_strength  TEXT,
     top_priority  TEXT,
     results_html  TEXT,
-    is_demo       INTEGER DEFAULT 0,
     participants  TEXT,
     dimensions    TEXT,
     next_steps    TEXT,
     overview      TEXT
-  )
+`;
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS history      (${HISTORY_COLS});
+  CREATE TABLE IF NOT EXISTS history_demo (${HISTORY_COLS});
 `);
 
-function dbRowToRecord(row) {
+// One-time migration: move any demo rows that landed in history into history_demo
+db.transaction(() => {
+  const demoRows = db.prepare("SELECT * FROM history WHERE is_demo = 1").all();
+  if (demoRows.length) {
+    const cols = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').join(', ');
+    const placeholders = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').map(k => `@${k}`).join(', ');
+    const ins = db.prepare(`INSERT OR IGNORE INTO history_demo (${cols}) VALUES (${placeholders})`);
+    demoRows.forEach(r => { const { is_demo, ...rest } = r; ins.run(rest); });
+    db.prepare("DELETE FROM history WHERE is_demo = 1").run();
+    console.log(`[db] Migrated ${demoRows.length} demo rows → history_demo`);
+  }
+})();
+
+const DB_COLS = `id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
+     total, letter_grade, grade_label, top_strength, top_priority,
+     results_html, participants, dimensions, next_steps, overview`;
+const DB_VALS = `@id, @ts, @call_date, @prospect, @rep, @rep_role, @contact_title, @stage,
+     @total, @letter_grade, @grade_label, @top_strength, @top_priority,
+     @results_html, @participants, @dimensions, @next_steps, @overview`;
+
+const stmtUpsertReal = db.prepare(`INSERT OR REPLACE INTO history      (${DB_COLS}) VALUES (${DB_VALS})`);
+const stmtUpsertDemo = db.prepare(`INSERT OR REPLACE INTO history_demo (${DB_COLS}) VALUES (${DB_VALS})`);
+
+function isDemo(r) { return !!(r.is_demo) || String(r.id || '').startsWith('demo-'); }
+
+function dbRowToRecord(row, demoFlag) {
   return {
     id:           row.id,
     ts:           row.ts,
-    callDate:     row.call_date  || '',
-    prospect:     row.prospect   || '',
-    rep:          row.rep        || '',
-    repRole:      row.rep_role   || '',
+    callDate:     row.call_date     || '',
+    prospect:     row.prospect      || '',
+    rep:          row.rep           || '',
+    repRole:      row.rep_role      || '',
     contactTitle: row.contact_title || '',
-    stage:        row.stage      || '',
-    total:        row.total      || 0,
-    letter_grade: row.letter_grade || '',
-    grade_label:  row.grade_label  || '',
-    top_strength: row.top_strength || '',
-    top_priority: row.top_priority || '',
-    resultsHtml:  row.results_html || '',
-    is_demo:      !!row.is_demo,
+    stage:        row.stage         || '',
+    total:        row.total         || 0,
+    letter_grade: row.letter_grade  || '',
+    grade_label:  row.grade_label   || '',
+    top_strength: row.top_strength  || '',
+    top_priority: row.top_priority  || '',
+    resultsHtml:  row.results_html  || '',
+    is_demo:      !!demoFlag,
     participants: row.participants ? JSON.parse(row.participants) : undefined,
     dimensions:   row.dimensions   ? JSON.parse(row.dimensions)   : undefined,
     next_steps:   row.next_steps   ? JSON.parse(row.next_steps)   : undefined,
-    overview:     row.overview     || undefined,
+    overview:     row.overview      || undefined,
   };
 }
 
 function recordToDbRow(r) {
-  const id = String(r.id);
   return {
-    id,
+    id:            String(r.id),
     ts:            r.ts || new Date().toISOString(),
-    call_date:     r.callDate     || null,
-    prospect:      r.prospect     || null,
-    rep:           r.rep          || null,
-    rep_role:      r.repRole      || null,
-    contact_title: r.contactTitle || null,
-    stage:         r.stage        || null,
-    total:         r.total        || 0,
-    letter_grade:  r.letter_grade || null,
-    grade_label:   r.grade_label  || null,
-    top_strength:  r.top_strength || null,
-    top_priority:  r.top_priority || null,
-    results_html:  r.resultsHtml  || null,
-    is_demo:       r.is_demo ? 1 : (id.startsWith('demo-') ? 1 : 0),
-    participants:  r.participants ? JSON.stringify(r.participants) : null,
-    dimensions:    r.dimensions   ? JSON.stringify(r.dimensions)   : null,
-    next_steps:    r.next_steps   ? JSON.stringify(r.next_steps)   : null,
-    overview:      r.overview     || null,
+    call_date:     r.callDate      || null,
+    prospect:      r.prospect      || null,
+    rep:           r.rep           || null,
+    rep_role:      r.repRole       || null,
+    contact_title: r.contactTitle  || null,
+    stage:         r.stage         || null,
+    total:         r.total         || 0,
+    letter_grade:  r.letter_grade  || null,
+    grade_label:   r.grade_label   || null,
+    top_strength:  r.top_strength  || null,
+    top_priority:  r.top_priority  || null,
+    results_html:  r.resultsHtml   || null,
+    participants:  r.participants  ? JSON.stringify(r.participants) : null,
+    dimensions:    r.dimensions    ? JSON.stringify(r.dimensions)   : null,
+    next_steps:    r.next_steps    ? JSON.stringify(r.next_steps)   : null,
+    overview:      r.overview      || null,
   };
 }
 
-const stmtUpsert = db.prepare(`
-  INSERT OR REPLACE INTO history
-    (id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
-     total, letter_grade, grade_label, top_strength, top_priority,
-     results_html, is_demo, participants, dimensions, next_steps, overview)
-  VALUES
-    (@id, @ts, @call_date, @prospect, @rep, @rep_role, @contact_title, @stage,
-     @total, @letter_grade, @grade_label, @top_strength, @top_priority,
-     @results_html, @is_demo, @participants, @dimensions, @next_steps, @overview)
-`);
-const bulkUpsert = db.transaction(records => records.forEach(r => stmtUpsert.run(recordToDbRow(r))));
+function upsertOne(r) {
+  const row = recordToDbRow(r);
+  (isDemo(r) ? stmtUpsertDemo : stmtUpsertReal).run(row);
+}
+
+const bulkUpsert = db.transaction(records => records.forEach(upsertOne));
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -170,15 +190,17 @@ const server = http.createServer(async (req, res) => {
 
   // ── History API ────────────────────────────────────────────
 
-  // GET /api/history — all records ordered newest first
+  // GET /api/history — real + demo records, newest first
   if (req.method === 'GET' && req.url.startsWith('/api/history')) {
-    const rows = db.prepare('SELECT * FROM history ORDER BY ts DESC').all();
+    const real = db.prepare('SELECT * FROM history      ORDER BY ts DESC').all().map(r => dbRowToRecord(r, false));
+    const demo = db.prepare('SELECT * FROM history_demo ORDER BY ts DESC').all().map(r => dbRowToRecord(r, true));
+    const all  = [...real, ...demo].sort((a, b) => (b.ts > a.ts ? 1 : -1));
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(rows.map(dbRowToRecord)));
+    res.end(JSON.stringify(all));
     return;
   }
 
-  // POST /api/history/bulk — insert/replace many records at once
+  // POST /api/history/bulk — insert/replace many records, routed by is_demo
   if (req.method === 'POST' && req.url === '/api/history/bulk') {
     try {
       const records = await readBody(req);
@@ -190,7 +212,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/history/migrate — one-time import from localStorage
+  // POST /api/history/migrate — one-time import from localStorage, routed by is_demo
   if (req.method === 'POST' && req.url === '/api/history/migrate') {
     try {
       const records = await readBody(req);
@@ -202,11 +224,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/history/rename — rename prospect across all records
+  // POST /api/history/rename — rename prospect in both tables
   if (req.method === 'POST' && req.url === '/api/history/rename') {
     try {
       const { oldName, newName } = await readBody(req);
-      db.prepare('UPDATE history SET prospect = ? WHERE prospect = ?').run(newName, oldName);
+      const stmt = 'UPDATE %t SET prospect = ? WHERE prospect = ?';
+      db.prepare(stmt.replace('%t', 'history'     )).run(newName, oldName);
+      db.prepare(stmt.replace('%t', 'history_demo')).run(newName, oldName);
       res.writeHead(200); res.end();
     } catch (e) {
       res.writeHead(400); res.end(e.message);
@@ -214,11 +238,11 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/history — upsert one record
+  // POST /api/history — upsert one record, routed by is_demo
   if (req.method === 'POST' && req.url === '/api/history') {
     try {
       const record = await readBody(req);
-      stmtUpsert.run(recordToDbRow(record));
+      upsertOne(record);
       res.writeHead(201); res.end();
     } catch (e) {
       res.writeHead(400); res.end(e.message);
@@ -226,22 +250,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // PUT /api/history/:id — partial field update
+  // PUT /api/history/:id — partial update, try real table then demo table
   if (req.method === 'PUT' && req.url.startsWith('/api/history/')) {
     try {
       const id = decodeURIComponent(req.url.slice('/api/history/'.length));
       const patch = await readBody(req);
-      // Map camelCase patch keys to DB columns
       const colMap = { rep: 'rep', repRole: 'rep_role', prospect: 'prospect',
                        callDate: 'call_date', stage: 'stage', total: 'total',
                        letter_grade: 'letter_grade', resultsHtml: 'results_html' };
       const sets = [], vals = [];
       for (const [k, v] of Object.entries(patch)) {
-        const col = colMap[k] || k;
-        sets.push(`${col} = ?`);
+        sets.push(`${colMap[k] || k} = ?`);
         vals.push(v);
       }
-      if (sets.length) db.prepare(`UPDATE history SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id);
+      if (sets.length) {
+        const sql = `SET ${sets.join(', ')} WHERE id = ?`;
+        const changed = db.prepare(`UPDATE history      ${sql}`).run(...vals, id).changes
+                      + db.prepare(`UPDATE history_demo ${sql}`).run(...vals, id).changes;
+        if (!changed) console.warn(`[PUT] id not found in either table: ${id}`);
+      }
       res.writeHead(200); res.end();
     } catch (e) {
       res.writeHead(400); res.end(e.message);
@@ -249,24 +276,25 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // DELETE /api/history/demo — delete all demo records
+  // DELETE /api/history/demo — clear entire demo table
   if (req.method === 'DELETE' && req.url === '/api/history/demo') {
-    db.prepare("DELETE FROM history WHERE is_demo = 1").run();
+    db.prepare('DELETE FROM history_demo').run();
     res.writeHead(200); res.end();
     return;
   }
 
-  // DELETE /api/history/real — delete all non-demo records
+  // DELETE /api/history/real — clear entire real table
   if (req.method === 'DELETE' && req.url === '/api/history/real') {
-    db.prepare("DELETE FROM history WHERE is_demo = 0").run();
+    db.prepare('DELETE FROM history').run();
     res.writeHead(200); res.end();
     return;
   }
 
-  // DELETE /api/history/:id — delete one record
+  // DELETE /api/history/:id — delete from whichever table holds it
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
-    db.prepare('DELETE FROM history WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history      WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history_demo WHERE id = ?').run(id);
     res.writeHead(200); res.end();
     return;
   }
