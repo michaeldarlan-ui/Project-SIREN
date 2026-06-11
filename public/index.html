@@ -1820,7 +1820,14 @@
       <div class="pulse-card" style="grid-column:1/-1;">
         <div class="pulse-card-title" style="display:flex;align-items:center;justify-content:space-between;">
           Rep Score Trends
-          <span style="font-size:9px;color:rgba(255,255,255,.2);font-weight:400;letter-spacing:.05em;">synced to leaderboard period</span>
+          <select id="repTrendPeriodSel" onchange="renderPulse()" style="background:var(--siren-bg-page);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:3px 7px;font-size:10px;font-family:inherit;outline:none;font-weight:600;letter-spacing:.05em;">
+            <option value="10">Last 10 calls</option>
+            <option value="20">Last 20 calls</option>
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90" selected>90 days</option>
+            <option value="0">All time</option>
+          </select>
         </div>
         <div id="pulseRepTrendRows"></div>
       </div>
@@ -3903,7 +3910,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const container = document.getElementById('pulseRepTrendRows');
     if (!container) return;
 
-    const trendVal = parseInt(document.getElementById('trendPeriodSel')?.value ?? '10');
+    const trendVal = parseInt(document.getElementById('repTrendPeriodSel')?.value ?? '90');
     const isCallCount = trendVal <= 20;
     const cutoff = (!isCallCount && trendVal > 0) ? Date.now() - trendVal * 86400000 : 0;
 
@@ -3961,11 +3968,13 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const trendLabel = delta > 2 ? `▲${delta}` : delta < -2 ? `▼${Math.abs(delta)}` : '—';
 
       // Build inline SVG sparkline — viewBox width=500
+      // Use sequential index for X so same-day calls don't collapse onto one point
       const W = 500;
-      const toX = ms => PAD.left + ((ms - minMs) / msRange) * (W - PAD.left - PAD.right);
+      const n = rep.calls.length;
+      const toX = i => PAD.left + (n <= 1 ? (W - PAD.left - PAD.right) / 2 : (i / (n - 1)) * (W - PAD.left - PAD.right));
       const toY = v  => PAD.top + chartH - (Math.max(0, Math.min(100, v)) / 100) * chartH;
 
-      const pts = rep.calls.map(c => ({ x: toX(c.ms), y: toY(c.score), score: c.score, ms: c.ms }));
+      const pts = rep.calls.map((c, i) => ({ x: toX(i), y: toY(c.score), score: c.score, ms: c.ms }));
 
       let sparkContent = '';
       // Faint score bands
