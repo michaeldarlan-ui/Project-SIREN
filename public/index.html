@@ -1736,6 +1736,31 @@
       </div>
     </div>
 
+    <!-- Account Next Steps & Deliverables -->
+    <div class="pulse-section-label" style="margin-top:2rem;">Account Action Tracker</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+      <select id="pulseAccountSelect" onchange="pulseSelectAccount(this.value)" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;min-width:220px;font-family:inherit;outline:none;"><option value="">— Select account —</option></select>
+    </div>
+    <div id="pulseAccountPanel" style="display:none;">
+      <div class="pulse-grid-2">
+        <div class="pulse-card">
+          <div class="pulse-card-title" style="display:flex;align-items:center;justify-content:space-between;">
+            Next Steps
+            <span id="pulseStepsCounter" style="font-size:11px;color:var(--siren-text-muted);font-weight:400;"></span>
+          </div>
+          <div id="pulseStepsList" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input id="pulseAddStepInput" type="text" placeholder="Add a next step…" onkeydown="if(event.key==='Enter')pulseAddStep()" style="flex:1;background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;padding:7px 10px;font-size:13px;color:var(--siren-text-body);font-family:inherit;outline:none;">
+            <button onclick="pulseAddStep()" style="background:var(--siren-cyan-12);color:var(--siren-cyan-90);border:1px solid var(--siren-border-mid);border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+          </div>
+        </div>
+        <div class="pulse-card">
+          <div class="pulse-card-title">Recommended Deliverables</div>
+          <div id="pulseDeliverables"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="pulse-api-strip" id="pulseApiStrip">
       <div class="pulse-api-item"><div class="pulse-api-dot"></div><span class="pulse-api-key">Last Call</span><span class="pulse-api-val" id="pulse-last-tokens">—</span></div>
       <div class="pulse-api-item"><span class="pulse-api-key">Session</span><span class="pulse-api-val" id="pulse-session-cost">—</span></div>
@@ -3280,6 +3305,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   function renderPulse() {
     const history = loadHistory();
     const allTime = loadAllTime();
+    pulsePopulateAccountSelect();
 
     // ── KPIs ──
     const total = history.length;
@@ -3433,6 +3459,152 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (lastTokensVal && lastTokensVal !== '—') {
       lastTokensEl.textContent = lastTokensVal + ' · ' + (lastCostVal||'');
     } else { lastTokensEl.textContent = '—'; }
+  }
+
+  // ── PULSE: Account Next Steps & Deliverables ─────────────────────────────
+
+  function loadPulseTasks(company) {
+    try { return JSON.parse(localStorage.getItem('oa_pulse_tasks')||'{}')[company] || []; }
+    catch(e) { return []; }
+  }
+  function savePulseTasks(company, tasks) {
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem('oa_pulse_tasks')||'{}'); } catch(e) {}
+    all[company] = tasks;
+    localStorage.setItem('oa_pulse_tasks', JSON.stringify(all));
+  }
+
+  function pulsePopulateAccountSelect() {
+    const sel = document.getElementById('pulseAccountSelect');
+    if (!sel) return;
+    const hist = loadHistory();
+    const seen = new Set();
+    hist.forEach(h => { const n=(h.prospect||'').trim(); if(n) seen.add(n); });
+    const companies = [...seen].sort((a,b)=>a.localeCompare(b));
+    sel.innerHTML = '<option value="">— Select account —</option>' +
+      companies.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  }
+
+  function pulseSelectAccount(company) {
+    const panel = document.getElementById('pulseAccountPanel');
+    if (!company) { if(panel) panel.style.display='none'; return; }
+    if (panel) panel.style.display = '';
+    // seed tasks from call next_steps if not already imported
+    const hist = loadHistory().filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase());
+    let tasks = loadPulseTasks(company);
+    const existingTexts = new Set(tasks.map(t => t.text.toLowerCase()));
+    hist.forEach(h => {
+      if (Array.isArray(h.next_steps)) {
+        h.next_steps.forEach(ns => {
+          const txt = ns.trim();
+          if (txt && !existingTexts.has(txt.toLowerCase())) {
+            tasks.push({ text: txt, done: false, source: h.callDate || h.ts.slice(0,10), ts: Date.now() });
+            existingTexts.add(txt.toLowerCase());
+          }
+        });
+      }
+    });
+    savePulseTasks(company, tasks);
+    pulseRenderSteps(company);
+    pulseRenderDeliverables(company, hist);
+  }
+
+  function pulseRenderSteps(company) {
+    const tasks = loadPulseTasks(company);
+    const el = document.getElementById('pulseStepsList');
+    const counter = document.getElementById('pulseStepsCounter');
+    if (!el) return;
+    const done = tasks.filter(t=>t.done).length;
+    if (counter) counter.textContent = `${done}/${tasks.length} complete`;
+    if (!tasks.length) { el.innerHTML = '<div style="color:var(--siren-text-muted);font-size:13px;padding:8px 0;">No next steps yet. Add one below or grade a call.</div>'; return; }
+    el.innerHTML = tasks.map((t, i) => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--siren-border-faint);">
+        <input type="checkbox" ${t.done?'checked':''} onchange="pulseToggleStep('${company.replace(/'/g,"\\'")}',${i})" style="margin-top:3px;accent-color:var(--siren-cyan);cursor:pointer;flex-shrink:0;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;color:${t.done?'var(--siren-text-muted)':'var(--siren-text-body)'};text-decoration:${t.done?'line-through':'none'};word-break:break-word;">${escHtml(t.text)}</div>
+          ${t.source?`<div style="font-size:10px;color:var(--siren-text-muted);margin-top:2px;">from ${escHtml(t.source)}</div>`:''}
+        </div>
+        <button onclick="pulseDeleteStep('${company.replace(/'/g,"\\'")}',${i})" style="background:none;border:none;color:var(--siren-text-muted);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px;" title="Remove">×</button>
+      </div>`).join('');
+  }
+
+  function pulseToggleStep(company, idx) {
+    const tasks = loadPulseTasks(company);
+    if (tasks[idx]) tasks[idx].done = !tasks[idx].done;
+    savePulseTasks(company, tasks);
+    pulseRenderSteps(company);
+  }
+
+  function pulseDeleteStep(company, idx) {
+    const tasks = loadPulseTasks(company);
+    tasks.splice(idx, 1);
+    savePulseTasks(company, tasks);
+    pulseRenderSteps(company);
+  }
+
+  function pulseAddStep() {
+    const sel = document.getElementById('pulseAccountSelect');
+    const company = sel && sel.value;
+    if (!company) return;
+    const inp = document.getElementById('pulseAddStepInput');
+    const txt = inp ? inp.value.trim() : '';
+    if (!txt) return;
+    const tasks = loadPulseTasks(company);
+    tasks.push({ text: txt, done: false, source: '', ts: Date.now() });
+    savePulseTasks(company, tasks);
+    if (inp) inp.value = '';
+    pulseRenderSteps(company);
+  }
+
+  function pulseRenderDeliverables(company, hist) {
+    const el = document.getElementById('pulseDeliverables');
+    if (!el) return;
+    if (!hist || !hist.length) { el.innerHTML = '<div style="color:var(--siren-text-muted);font-size:13px;">No calls found for this account.</div>'; return; }
+
+    const latest = hist[0];
+    const grade = latest.letter_grade || '';
+    const score = latest.total || 0;
+    const stage = (latest.stage || '').toLowerCase();
+
+    const recs = [];
+
+    // Always recommend
+    recs.push({ doc: 'Call Brief', reason: 'Internal summary of findings and coaching notes', priority: 'high' });
+
+    // Based on stage
+    if (stage.includes('discovery') || stage.includes('qualify')) {
+      recs.push({ doc: 'Scoping Questionnaire', reason: 'Collect environment details from prospect before proposal', priority: 'high' });
+    }
+    if (stage.includes('demo') || stage.includes('eval')) {
+      recs.push({ doc: 'Executive Summary', reason: 'Board-ready overview of deal context and risk indicators', priority: 'high' });
+      recs.push({ doc: 'Follow-Up Email', reason: 'Recap demo value and confirm next milestone', priority: 'medium' });
+    }
+    if (stage.includes('proposal') || stage.includes('close') || stage.includes('negot')) {
+      recs.push({ doc: 'Proposal Cover', reason: 'Tailored cover page tied to their drivers and risk context', priority: 'high' });
+      recs.push({ doc: 'Executive Summary', reason: 'Reinforce ROI and urgency for economic buyer', priority: 'medium' });
+    }
+    if (!recs.find(r=>r.doc==='Follow-Up Email')) {
+      recs.push({ doc: 'Follow-Up Email', reason: 'Keep momentum and confirm agreed actions', priority: 'medium' });
+    }
+
+    // Based on score
+    if (score < 60) {
+      recs.push({ doc: 'Coaching Notes', reason: `Score ${score} — rep needs structured feedback this week`, priority: 'high' });
+    }
+
+    // Deduplicate
+    const seen = new Set();
+    const unique = recs.filter(r => { if(seen.has(r.doc)) return false; seen.add(r.doc); return true; });
+
+    const priorityColor = p => p==='high' ? '#ef4444' : p==='medium' ? '#f59e0b' : '#6b7280';
+    el.innerHTML = unique.map(r => `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--siren-border-faint);">
+        <div style="width:6px;height:6px;border-radius:50%;background:${priorityColor(r.priority)};margin-top:5px;flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--siren-text-body);">${escHtml(r.doc)}</div>
+          <div style="font-size:11px;color:var(--siren-text-muted);margin-top:2px;">${escHtml(r.reason)}</div>
+        </div>
+      </div>`).join('');
   }
 
   function drawPulseTrend(data) {
