@@ -1251,10 +1251,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // ── End reference documents ────────────────────────────────
 
   // ── History ────────────────────────────────────────────────
-  function loadHistory() {
+  function loadHistory(raw) {
     try {
       const data = JSON.parse(localStorage.getItem('oa_history') || '[]');
       data.forEach(h => { if (typeof h.total === 'number' && h.total > 0) h.letter_grade = scoreToGrade(h.total); });
+      if (!raw && !isDemoEnabled()) return data.filter(h => !String(h.id).startsWith('demo-'));
       return data;
     } catch { return []; }
   }
@@ -1451,7 +1452,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   function deleteHistEntry(id, e) {
     e.stopPropagation();
     if (!confirm('Delete this history entry?')) return;
-    saveHistoryData(loadHistory().filter(h => h.id !== id));
+    saveHistoryData(loadHistory(true).filter(h => h.id !== id));
     renderHistory();
   }
 

@@ -727,7 +727,7 @@
       if (participantMap[h.id]) h.participants = participantMap[h.id];
     });
     // Strip resultsHtml from existing records to minimize localStorage usage before appending 53 demo records
-    const existing = loadHistory().filter(h => !h.id?.startsWith('demo-')).map(h => { const c={...h}; delete c.resultsHtml; return c; });
+    const existing = loadHistory(true).filter(h => !h.id?.startsWith('demo-')).map(h => { const c={...h}; delete c.resultsHtml; return c; });
     saveHistoryData([...existing, ...demoHistory]);
 
     // Merge pulse tasks — don't overwrite existing real tasks for a company
@@ -1032,9 +1032,9 @@
 
   // Version-gated demo seed — reseed when version changes OR demo data is absent
   const DEMO_VERSION = 'v11-all-rep-trends';
-  const _demoAccounts = new Set(loadHistory().filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
+  const _demoAccounts = new Set(loadHistory(true).filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
   if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
-    saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
+    saveHistoryData(loadHistory(true).filter(h => !String(h.id).startsWith('demo-')));
     localStorage.removeItem('oa_demo_seeded');
     seedDemoData();
     localStorage.setItem('oa_demo_version', DEMO_VERSION);
