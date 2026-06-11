@@ -760,6 +760,20 @@
   window.partnerDrillTo   = function(name) { _partnerDrill = name; drawPartnerTile(loadHistory()); };
   window.partnerDrillBack = function()     { _partnerDrill = null; drawPartnerTile(loadHistory()); };
 
+  window.pulseRefresh = async function() {
+    const btn  = document.getElementById('pulseRefreshBtn');
+    const icon = document.getElementById('pulseRefreshIcon');
+    if (btn) btn.disabled = true;
+    if (icon) icon.style.transform = 'rotate(360deg)';
+
+    await _loadHistoryFromDB();
+
+    renderPulse();
+
+    if (btn) btn.disabled = false;
+    setTimeout(() => { if (icon) icon.style.transform = ''; }, 520);
+  };
+
   function drawPulseTrend(data) {
     const svg = document.getElementById('pulseTrendSvg');
     if (!svg) return;
