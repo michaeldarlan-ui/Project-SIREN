@@ -3186,7 +3186,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   // ── History ────────────────────────────────────────────────
   function loadHistory() {
-    try { return JSON.parse(localStorage.getItem('oa_history') || '[]'); } catch { return []; }
+    try {
+      const data = JSON.parse(localStorage.getItem('oa_history') || '[]');
+      data.forEach(h => { if (typeof h.total === 'number' && h.total > 0) h.letter_grade = scoreToGrade(h.total); });
+      return data;
+    } catch { return []; }
   }
   function saveHistoryData(h) { try { localStorage.setItem('oa_history', JSON.stringify(h)); } catch {} }
 
