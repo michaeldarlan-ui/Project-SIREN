@@ -4012,6 +4012,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const root = document.getElementById('lcGraphRoot');
     if (!root) return;
     root.setAttribute('transform', `translate(${_lcT.x},${_lcT.y}) scale(${_lcT.s})`);
+    const collapseBtn = document.getElementById('lcCollapseBtn');
+    if (collapseBtn) collapseBtn.style.display = _lcAllEntries.length >= 3 ? '' : 'none';
 
     let edgeSvg = '', nodeSvg = '';
 
@@ -4051,7 +4053,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
       // Collapse/expand chevron toggle on the left of the first score node
       const isFirstScore = nd.type==='calls-summary' || (nd.type==='call' && nd.id==='call-'+(_lcAllEntries[0]?.id));
-      if (isFirstScore && _lcAllEntries.length > 0) {
+      if (isFirstScore && _lcAllEntries.length >= 3) {
         const tx = nd.x - r - 17, ty = nd.y;
         const chevron = _lcCallsCollapsed ? '›' : '‹'; // › collapsed / ‹ expanded
         nodeSvg += `<circle cx="${tx}" cy="${ty}" r="9" fill="#061824" stroke="#00c8ff" stroke-width="1.5" opacity="0.95" class="lc-collapse-toggle" style="cursor:pointer;"/>`;
