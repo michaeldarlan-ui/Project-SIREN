@@ -5721,8 +5721,6 @@ function downloadResponses(){
   //   CRO (Paulo)         — Late Touchpoints + Proposal/close; MAYBE quote review
   //   President (Camilo)  — Late Touchpoints only; never on same call as SE
   function seedDemoData() {
-    const alreadyHasDemos = loadHistory().some(h => h.id?.startsWith('demo-'));
-    if (alreadyHasDemos) return;
     const now = Date.now();
 
     // Dimensions helper — object keyed by name (matches Object.entries usage in codebase)
@@ -6697,7 +6695,7 @@ function downloadResponses(){
   }
 
   // Version-gated demo seed — reseed when version changes OR demo data is absent
-  const DEMO_VERSION = 'v6-four-more-accounts';
+  const DEMO_VERSION = 'v7-fix-seed-guard';
   const _hasDemoData = loadHistory().some(h => String(h.id).startsWith('demo-'));
   if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || !_hasDemoData) {
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
