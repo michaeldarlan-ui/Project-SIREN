@@ -72,14 +72,18 @@ db.transaction(() => {
   }
 
   // Move any demo rows that landed in history_prod into history_demo
-  const demoRows = db.prepare("SELECT * FROM history_prod WHERE is_demo = 1").all();
-  if (demoRows.length) {
-    const cols = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').join(', ');
-    const placeholders = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').map(k => `@${k}`).join(', ');
-    const ins = db.prepare(`INSERT OR IGNORE INTO history_demo (${cols}) VALUES (${placeholders})`);
-    demoRows.forEach(r => { const { is_demo, ...rest } = r; ins.run(rest); });
-    db.prepare("DELETE FROM history_prod WHERE is_demo = 1").run();
-    console.log(`[db] Migrated ${demoRows.length} demo rows → history_demo`);
+  // (only if the old schema's is_demo column still exists on the table)
+  const hasDemoCol = db.prepare("PRAGMA table_info(history_prod)").all().some(c => c.name === 'is_demo');
+  if (hasDemoCol) {
+    const demoRows = db.prepare("SELECT * FROM history_prod WHERE is_demo = 1").all();
+    if (demoRows.length) {
+      const cols = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').join(', ');
+      const placeholders = Object.keys(demoRows[0]).filter(k => k !== 'is_demo').map(k => `@${k}`).join(', ');
+      const ins = db.prepare(`INSERT OR IGNORE INTO history_demo (${cols}) VALUES (${placeholders})`);
+      demoRows.forEach(r => { const { is_demo, ...rest } = r; ins.run(rest); });
+      db.prepare("DELETE FROM history_prod WHERE is_demo = 1").run();
+      console.log(`[db] Migrated ${demoRows.length} demo rows → history_demo`);
+    }
   }
 })();
 
