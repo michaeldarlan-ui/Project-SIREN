@@ -23,8 +23,9 @@
     localStorage.setItem('oa_migrated_to_db', 'v1');
   }
 
-  // ── 2. Load history from DB into cache ───────────────────────
+  // ── 2. Load history + prospects from DB into cache ───────────
   await _loadHistFromDB();
+  await _loadProspectsFromDB();
 
   // ── 3. Demo version check — reseed if stale or incomplete ────
   const demoCount = _histCache.filter(h => h.is_demo).length;

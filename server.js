@@ -55,6 +55,10 @@ const HISTORY_COLS = `
 db.exec(`
   CREATE TABLE IF NOT EXISTS history      (${HISTORY_COLS});
   CREATE TABLE IF NOT EXISTS history_demo (${HISTORY_COLS});
+  CREATE TABLE IF NOT EXISTS prospects (
+    name     TEXT PRIMARY KEY,
+    industry TEXT
+  );
 `);
 
 // One-time migration: move any demo rows that landed in history into history_demo
@@ -224,13 +228,38 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/history/rename — rename prospect in both tables
+  // POST /api/history/rename — rename prospect in history + prospects tables
   if (req.method === 'POST' && req.url === '/api/history/rename') {
     try {
       const { oldName, newName } = await readBody(req);
       const stmt = 'UPDATE %t SET prospect = ? WHERE prospect = ?';
       db.prepare(stmt.replace('%t', 'history'     )).run(newName, oldName);
       db.prepare(stmt.replace('%t', 'history_demo')).run(newName, oldName);
+      db.prepare('UPDATE prospects SET name = ? WHERE name = ?').run(newName, oldName);
+      res.writeHead(200); res.end();
+    } catch (e) {
+      res.writeHead(400); res.end(e.message);
+    }
+    return;
+  }
+
+  // ── Prospects API ──────────────────────────────────────────
+
+  // GET /api/prospects — all prospect records
+  if (req.method === 'GET' && req.url === '/api/prospects') {
+    const rows = db.prepare('SELECT * FROM prospects ORDER BY name ASC').all();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows));
+    return;
+  }
+
+  // PUT /api/prospects/:name — upsert industry (and future fields)
+  if (req.method === 'PUT' && req.url.startsWith('/api/prospects/')) {
+    try {
+      const name = decodeURIComponent(req.url.slice('/api/prospects/'.length));
+      const fields = await readBody(req);
+      db.prepare('INSERT INTO prospects (name, industry) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET industry = excluded.industry')
+        .run(name, fields.industry || null);
       res.writeHead(200); res.end();
     } catch (e) {
       res.writeHead(400); res.end(e.message);

@@ -1439,15 +1439,18 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
         const groupId  = 'grp-' + company.replace(/\W+/g, '_');
         const cSafeQ = company.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const industry = _getProspectIndustry(company);
         return `<div style="margin-bottom:1.5rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:6px 4px;border-radius:5px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
             <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">
               <span style="font-size:16px;font-weight:700;color:var(--siren-cyan-90);">${escHtml(company)}</span>
+              ${industry ? `<span style="font-size:11px;color:var(--siren-text-faint);background:var(--siren-bg-card-raised);padding:2px 8px;border-radius:10px;">${escHtml(industry)}</span>` : ''}
               <span style="font-size:12px;color:var(--siren-text-faint);">${entries.length} transcript${entries.length !== 1 ? 's' : ''} · avg score ${avgScore}</span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
               ${stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--siren-bg-card-raised);color:var(--siren-text-muted);">${escHtml(s)}</span>`).join('')}
               ${repNames.length ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(repNames.join(', '))}</span>` : ''}
+              <button onclick="startEditIndustry(event,'${cSafeQ}')" title="Set industry" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:12px;padding:2px 4px;line-height:1;border-radius:3px;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.7)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">${industry ? '🏭' : '+ industry'}</button>
               <button onclick="startRenameAccount(this,'${cSafeQ}')" title="Rename account" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:13px;padding:2px 4px;line-height:1;border-radius:3px;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.7)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✎</button>
               <span class="hist-card-chevron open" id="grp-chev-${groupId}" style="margin-left:2px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">&#9660;</span>
             </div>
@@ -1529,6 +1532,29 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (chev) chev.classList.toggle('open', collapsed);
   }
 
+  function startEditIndustry(e, name) {
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    const current = _getProspectIndustry(name);
+    const inp = document.createElement('input');
+    inp.value = current;
+    inp.placeholder = 'e.g. Healthcare';
+    inp.style.cssText = 'font-size:12px;color:var(--siren-text);background:rgba(255,255,255,.06);border:1px solid rgba(0,200,255,.4);border-radius:4px;padding:2px 7px;outline:none;width:160px;';
+    btn.replaceWith(inp);
+    inp.focus();
+    inp.select();
+    const commit = () => {
+      const val = inp.value.trim();
+      _dbSaveProspect(name, { industry: val });
+      renderHistory();
+    };
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e2 => {
+      if (e2.key === 'Enter')  { e2.preventDefault(); inp.blur(); }
+      if (e2.key === 'Escape') { inp.value = current; inp.blur(); }
+    });
+  }
+
   function startRenameAccount(btn, oldName) {
     btn.stopPropagation?.();
     const nameSpan = btn.closest('[style*="margin-bottom:1.5rem"]')?.querySelector('span[style*="font-size:16px"]');
@@ -1552,8 +1578,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function renameAccount(oldName, newName) {
-    // 1. History cache + DB
+    // 1. History cache + DB (also renames in prospects table via server)
     _histCache.forEach(h => { if ((h.prospect || '').trim() === oldName) h.prospect = newName; });
+    if (_prospectsCache[oldName]) {
+      _prospectsCache[newName] = { ..._prospectsCache[oldName], name: newName };
+      delete _prospectsCache[oldName];
+    }
     _dbRenameProspect(oldName, newName);
 
     // 2. VIGIL tasks (localStorage)

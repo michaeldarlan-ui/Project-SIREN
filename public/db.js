@@ -73,3 +73,33 @@ async function _dbRenameProspect(oldName, newName) {
     });
   } catch (e) { console.error('[db] rename failed:', e.message); }
 }
+
+// ── Prospects DB cache ──────────────────────────────────────────
+// Keyed by prospect name: { name, industry }
+
+let _prospectsCache = {};
+
+async function _loadProspectsFromDB() {
+  try {
+    const res = await fetch('/api/prospects');
+    if (!res.ok) throw new Error('status ' + res.status);
+    const rows = await res.json();
+    _prospectsCache = {};
+    rows.forEach(r => { _prospectsCache[r.name] = r; });
+  } catch (e) { console.warn('[db] Failed to load prospects:', e.message); }
+}
+
+async function _dbSaveProspect(name, fields) {
+  _prospectsCache[name] = { ...(_prospectsCache[name] || {}), name, ...fields };
+  try {
+    await fetch('/api/prospects/' + encodeURIComponent(name), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    });
+  } catch (e) { console.error('[db] save prospect failed:', e.message); }
+}
+
+function _getProspectIndustry(name) {
+  return (_prospectsCache[name] || {}).industry || '';
+}
