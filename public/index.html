@@ -863,7 +863,7 @@
 
   /* ── PULSE Dashboard ── */
   #page-pulse { background: var(--siren-bg-page); }
-  #page-ops   { background: var(--siren-bg-page); min-height: calc(100vh - 56px); }
+  #page-vigil   { background: var(--siren-bg-page); min-height: calc(100vh - 56px); }
   .pulse-shell { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
   .pulse-section-label {
     font-family: var(--siren-font-hud); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; color: var(--siren-cyan-50);
@@ -1126,7 +1126,7 @@
     <button class="nav-tab" onclick="navTo('lifecycle')">ATLAS</button>
     <button class="nav-tab" onclick="navTo('scope')">SCOPE</button>
     <button class="nav-tab" onclick="navTo('forge')">FORGE</button>
-    <button class="nav-tab" onclick="navTo('ops')">OPS</button>
+    <button class="nav-tab" onclick="navTo('vigil')">VIGIL</button>
   </nav>
   <div class="topbar-settings" id="settingsMenu">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
@@ -1795,8 +1795,8 @@
   </div>
 </div>
 
-<!-- ══ OPS PAGE ══ -->
-<div class="page" id="page-ops">
+<!-- ══ VIGIL PAGE ══ -->
+<div class="page" id="page-vigil">
   <div class="pulse-shell">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
       <div class="pulse-section-label" style="margin:0;">Account Action Feed</div>
@@ -1846,7 +1846,7 @@
           (page === 'lifecycle' && t.textContent === 'ATLAS') ||
           (page === 'scope'     && t.textContent === 'SCOPE') ||
           (page === 'forge'     && t.textContent === 'FORGE') ||
-          (page === 'ops'       && t.textContent === 'OPS')) {
+          (page === 'vigil'       && t.textContent === 'VIGIL')) {
         t.classList.add('active');
       }
     });
@@ -1857,7 +1857,7 @@
     if (page === 'lifecycle') renderLifecyclePage();
     if (page === 'scope')     renderScopePage();
     if (page === 'forge')     forgeInit();
-    if (page === 'ops')       pulseRenderFeed();
+    if (page === 'vigil')       pulseRenderFeed();
   }
 
   // ── Settings menu ──────────────────────────────────────────
@@ -5486,6 +5486,125 @@ function downloadResponses(){
       if(el){ el.textContent='Copied to clipboard'; setTimeout(()=>{ el.textContent=''; },2000); }
     }).catch(()=>{ alert('Copy failed'); });
   }
+
+  // ── Demo data seed ──────────────────────────────────────────────────────
+  function seedDemoData() {
+    if (localStorage.getItem('oa_demo_seeded')) return;
+    const now = Date.now();
+    const demoHistory = [
+      {
+        id: 'demo-1', ts: new Date('2026-06-02T14:30:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Casey Liu', stage: 'Discovery',
+        callDate: '2026-06-02', letter_grade: 'C', total: 54,
+        next_steps: [
+          'Send NIST CSF gap summary before Friday',
+          'Schedule technical deep-dive with their IT director',
+          'Confirm budget authority — economic buyer not on this call'
+        ],
+        dimensions: [
+          { name: 'Opening & agenda control', score: 10, max: 15 },
+          { name: 'Discovery & needs assessment', score: 8, max: 20 },
+          { name: 'Value articulation & demo delivery', score: 9, max: 20 },
+          { name: 'Objection handling & MEDDIC signals', score: 12, max: 15 },
+          { name: 'SPICED qualification', score: 8, max: 15 },
+          { name: 'Call control & next steps', score: 7, max: 15 }
+        ],
+        overview: 'Casey opened well but lost control in the middle third. Discovery was surface-level — no probing on business impact or timeline drivers. Economic buyer was not identified.',
+        strengths: ['Strong rapport building in the first five minutes', 'Handled pricing objection confidently'],
+        gaps: ['Did not quantify pain or business impact', 'Never confirmed decision process or timeline', 'Next steps were vague — no date or owner'],
+      },
+      {
+        id: 'demo-2', ts: new Date('2026-05-28T10:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Jordan Vance', stage: 'Technical Evaluation',
+        callDate: '2026-05-28', letter_grade: 'B+', total: 81,
+        next_steps: [
+          'Deliver Executive Summary by June 6',
+          'Follow up with CISO on HIPAA scope confirmation',
+          'Loop in legal for BAA review'
+        ],
+        dimensions: [
+          { name: 'Opening & agenda control', score: 13, max: 15 },
+          { name: 'Discovery & needs assessment', score: 17, max: 20 },
+          { name: 'Value articulation & demo delivery', score: 16, max: 20 },
+          { name: 'Objection handling & MEDDIC signals', score: 12, max: 15 },
+          { name: 'SPICED qualification', score: 12, max: 15 },
+          { name: 'Call control & next steps', score: 11, max: 15 }
+        ],
+        overview: 'Strong technical call. Jordan mapped our assessment methodology directly to their HIPAA audit timeline. CISO was engaged throughout. Minor gap: champion vs. economic buyer distinction was blurred.',
+        strengths: ['Tight agenda, no scope creep', 'Tied technical gaps to concrete HIPAA breach risk', 'Confirmed Q3 exam deadline as hard driver'],
+        gaps: ['Did not lock economic buyer into next meeting', 'BAA dependency was surfaced late'],
+      },
+      {
+        id: 'demo-3', ts: new Date('2026-06-05T16:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Morgan Reyes', stage: 'Proposal / Negotiation',
+        callDate: '2026-06-05', letter_grade: 'A-', total: 88,
+        next_steps: [
+          'Send final proposal with CMMC Level 2 scope by June 9',
+          'Confirm signature authority with CFO',
+          'Block kickoff date — they want to start before July 1'
+        ],
+        dimensions: [
+          { name: 'Opening & agenda control', score: 14, max: 15 },
+          { name: 'Discovery & needs assessment', score: 18, max: 20 },
+          { name: 'Value articulation & demo delivery', score: 17, max: 20 },
+          { name: 'Objection handling & MEDDIC signals', score: 14, max: 15 },
+          { name: 'SPICED qualification', score: 13, max: 15 },
+          { name: 'Call control & next steps', score: 12, max: 15 }
+        ],
+        overview: 'Morgan ran a textbook late-stage call. DoD contract pressure is the hard driver — CMMC Level 2 compliance required before contract renewal in August. CFO not yet looped in on final number.',
+        strengths: ['Crisp SPICED summary at the top', 'Anchored urgency to contract renewal deadline', 'Handled scope-reduction ask cleanly'],
+        gaps: ['CFO not confirmed for proposal review call', 'Payment terms not yet discussed'],
+      },
+      {
+        id: 'demo-4', ts: new Date('2026-06-08T09:30:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Casey Liu', stage: 'Discovery',
+        callDate: '2026-06-08', letter_grade: 'D+', total: 41,
+        next_steps: [
+          'Re-engage with a clearer value prop focused on their breach history',
+          'Bring Jordan onto next call for technical credibility'
+        ],
+        dimensions: [
+          { name: 'Opening & agenda control', score: 7, max: 15 },
+          { name: 'Discovery & needs assessment', score: 6, max: 20 },
+          { name: 'Value articulation & demo delivery', score: 8, max: 20 },
+          { name: 'Objection handling & MEDDIC signals', score: 7, max: 15 },
+          { name: 'SPICED qualification', score: 6, max: 15 },
+          { name: 'Call control & next steps', score: 7, max: 15 }
+        ],
+        overview: 'Difficult call. Prospect was skeptical from the start — had a bad experience with a prior vendor. Casey did not address this head-on and pivoted to product features too early. No pain quantification.',
+        strengths: ['Showed up prepared with some background research'],
+        gaps: ['Never acknowledged prior vendor failure — lost trust early', 'Feature-dumped instead of leading with outcomes', 'Left without a confirmed next step or date'],
+      }
+    ];
+
+    const demoPulseTasks = {
+      'Meridian Financial Group': [
+        { text: 'Send NIST CSF gap summary before Friday', done: false, source: '2026-06-02', ts: now },
+        { text: 'Schedule technical deep-dive with their IT director', done: false, source: '2026-06-02', ts: now },
+        { text: 'Confirm budget authority — economic buyer not on this call', done: false, source: '2026-06-02', ts: now }
+      ],
+      'Northgate Healthcare Systems': [
+        { text: 'Deliver Executive Summary by June 6', done: true, source: '2026-05-28', ts: now },
+        { text: 'Follow up with CISO on HIPAA scope confirmation', done: false, source: '2026-05-28', ts: now },
+        { text: 'Loop in legal for BAA review', done: false, source: '2026-05-28', ts: now }
+      ],
+      'Cascade Manufacturing Co.': [
+        { text: 'Send final proposal with CMMC Level 2 scope by June 9', done: false, source: '2026-06-05', ts: now },
+        { text: 'Confirm signature authority with CFO', done: false, source: '2026-06-05', ts: now },
+        { text: 'Block kickoff date — they want to start before July 1', done: true, source: '2026-06-05', ts: now }
+      ],
+      'Vantara Logistics': [
+        { text: 'Re-engage with a clearer value prop focused on their breach history', done: false, source: '2026-06-08', ts: now },
+        { text: 'Bring Jordan onto next call for technical credibility', done: false, source: '2026-06-08', ts: now }
+      ]
+    };
+
+    saveHistoryData(demoHistory);
+    localStorage.setItem('oa_pulse_tasks', JSON.stringify(demoPulseTasks));
+    localStorage.setItem('oa_demo_seeded', '1');
+  }
+
+  seedDemoData();
 </script>
 </body>
 </html>
