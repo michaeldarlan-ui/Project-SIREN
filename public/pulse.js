@@ -55,6 +55,9 @@
     // ── Rep Score Trendlines ──
     drawRepTrends(history);
 
+    // ── Industry Breakdown ──
+    drawIndustryBreakdown(history);
+
     // ── Recent Calls ──
     const recentEl = document.getElementById('pulseRecentCalls');
     const recent = history.slice(0, 6);
@@ -415,6 +418,140 @@
     pulseRenderFeed();
     _pulseRestoreRows(open);
   }
+
+  // ── Industry Breakdown tile ───────────────────────────────────
+  let _industryDrill = null;
+
+  function drawIndustryBreakdown(history) {
+    const container = document.getElementById('pulseIndustryChart');
+    const titleEl   = document.getElementById('pulseIndustryTitle');
+    const backBtn   = document.getElementById('pulseIndustryBack');
+    if (!container) return;
+
+    const indMap = {};
+    history.forEach(h => {
+      const prospect = (h.prospect || '').trim();
+      if (!prospect) return;
+      const industry = _getProspectIndustry(prospect) || 'Unassigned';
+      if (!indMap[industry]) indMap[industry] = { accounts: new Set(), calls: [] };
+      indMap[industry].accounts.add(prospect);
+      indMap[industry].calls.push(h);
+    });
+
+    const industries = Object.entries(indMap).map(([name, d]) => {
+      const scores = d.calls.map(c => c.total).filter(s => s > 0);
+      return { name, accounts: d.accounts, accountCount: d.accounts.size, calls: d.calls,
+               avg: scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0 };
+    }).sort((a,b) => b.avg - a.avg);
+
+    if (_industryDrill) {
+      if (titleEl) titleEl.textContent = _industryDrill;
+      if (backBtn) backBtn.style.display = '';
+      const d = indMap[_industryDrill] || { accounts: new Set(), calls: [] };
+      _drawIndustryTrend(container, d.calls, d.accounts);
+    } else {
+      if (titleEl) titleEl.textContent = 'Industry Breakdown';
+      if (backBtn) backBtn.style.display = 'none';
+      _drawIndustryOverview(container, industries);
+    }
+  }
+
+  function _drawIndustryOverview(container, industries) {
+    if (!industries.length) {
+      container.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.2);padding:1rem 0;text-align:center;">No industry data yet — set industries on the History page.</div>';
+      return;
+    }
+    const scoreColor = s => s >= 80 ? '#22c55e' : s >= 65 ? '#00c8ff' : s >= 50 ? '#f59e0b' : '#ef4444';
+    container.innerHTML = industries.map(ind => {
+      const color  = scoreColor(ind.avg);
+      const qname  = JSON.stringify(ind.name);
+      const unassigned = ind.name === 'Unassigned';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;border-radius:4px;transition:background .12s;" onclick="industryDrillTo(${qname})" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+        <div style="width:130px;font-size:12px;font-weight:600;color:${unassigned?'rgba(255,255,255,.3)':'rgba(255,255,255,.85)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">${escHtml(ind.name)}</div>
+        <div style="flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:12px;position:relative;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${ind.avg}%;background:${color};opacity:.7;border-radius:3px;"></div>
+        </div>
+        <div style="width:28px;font-size:13px;font-weight:800;color:${color};text-align:right;flex-shrink:0;">${ind.avg || '—'}</div>
+        <div style="width:90px;font-size:10px;color:rgba(255,255,255,.28);text-align:right;flex-shrink:0;">${ind.accountCount} acct${ind.accountCount!==1?'s':''} · ${ind.calls.length} call${ind.calls.length!==1?'s':''}</div>
+        <div style="width:14px;font-size:11px;color:rgba(255,255,255,.2);flex-shrink:0;">›</div>
+      </div>`;
+    }).join('');
+  }
+
+  function _drawIndustryTrend(container, calls, accounts) {
+    if (!calls.length) {
+      container.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.2);padding:1rem 0;text-align:center;">No calls in this industry.</div>';
+      return;
+    }
+    const callDateOf = h => h.callDate ? new Date(h.callDate + 'T12:00:00') : new Date(h.ts);
+    const sorted = [...calls].filter(h => h.total > 0).sort((a,b) => callDateOf(a) - callDateOf(b));
+    if (!sorted.length) {
+      container.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.2);padding:1rem 0;text-align:center;">No scored calls in this industry yet.</div>';
+      return;
+    }
+
+    const W=540, H=180, PAD={top:14,right:16,bottom:24,left:32};
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top - PAD.bottom;
+    const toX = i => PAD.left + (i / Math.max(sorted.length-1, 1)) * chartW;
+    const toY = v => PAD.top + chartH - (Math.max(0, Math.min(100,v)) / 100) * chartH;
+
+    const COLORS = ['#00c8ff','#f59e0b','#a78bfa','#34d399','#f87171','#fb923c','#38bdf8','#e879f9'];
+    const accountList = [...accounts];
+    const acctColor = name => COLORS[accountList.indexOf(name) % COLORS.length] || '#00c8ff';
+
+    let svg = '';
+    // Grid lines
+    [30,60,90].forEach(y => {
+      const gy = toY(y);
+      svg += `<line x1="${PAD.left}" y1="${gy}" x2="${W-PAD.right}" y2="${gy}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+      svg += `<text x="${PAD.left-6}" y="${gy+4}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.2)" font-family="'SF Mono','Fira Code',monospace">${y}</text>`;
+    });
+
+    const pts = sorted.map((h,i) => ({
+      x: toX(i), y: toY(h.total), score: h.total, prospect: h.prospect || '',
+      color: acctColor(h.prospect || ''),
+      date: callDateOf(h).toLocaleDateString([],{month:'short',day:'numeric'}),
+    }));
+
+    // Area fill behind the line
+    const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+    const areaD = lineD + ` L ${pts[pts.length-1].x.toFixed(1)} ${toY(0).toFixed(1)} L ${pts[0].x.toFixed(1)} ${toY(0).toFixed(1)} Z`;
+    svg += `<defs><linearGradient id="indFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(0,200,255,0.18)"/><stop offset="100%" stop-color="rgba(0,200,255,0.02)"/></linearGradient></defs>`;
+    svg += `<path d="${areaD}" fill="url(#indFill)"/>`;
+    svg += `<path d="${lineD}" fill="none" stroke="rgba(0,200,255,0.35)" stroke-width="1.5" stroke-dasharray="5 3" stroke-linejoin="round"/>`;
+
+    // Dots colored by account
+    pts.forEach((p,i) => {
+      const isLast = i === pts.length-1;
+      const tipSafe = (p.prospect + ' · ' + p.score + ' · ' + p.date).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      if (isLast) {
+        svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="${p.color}" opacity="0.2" stroke="none"/>`;
+        svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${p.color}" stroke="#061824" stroke-width="2" style="cursor:crosshair" onmouseover="_repTip(event,'${tipSafe}')" onmouseout="_repTipHide()"/>`;
+      } else {
+        svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${p.color}" opacity="0.8" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${tipSafe}')" onmouseout="_repTipHide()"/>`;
+      }
+    });
+
+    // X-axis date labels
+    const showIdx = [0, Math.floor((sorted.length-1)/2), sorted.length-1].filter((v,i,a) => a.indexOf(v)===i);
+    showIdx.forEach(i => {
+      svg += `<text x="${toX(i).toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.2)" font-family="system-ui">${pts[i].date}</text>`;
+    });
+
+    // Account legend (up to 8)
+    const legendItems = accountList.slice(0,8).map(name =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,.45);">` +
+      `<span style="width:8px;height:8px;border-radius:50%;background:${acctColor(name)};flex-shrink:0;display:inline-block;"></span>${escHtml(name)}</span>`
+    ).join('');
+
+    container.innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${svg}</svg>` +
+      (accountList.length > 1 ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;padding:0 2px;">${legendItems}</div>` : '');
+  }
+
+  window.industryDrillTo = function(name) { _industryDrill = name; drawIndustryBreakdown(loadHistory()); };
+  window.industryDrillBack = function()   { _industryDrill = null; drawIndustryBreakdown(loadHistory()); };
 
   function drawPulseTrend(data) {
     const svg = document.getElementById('pulseTrendSvg');
