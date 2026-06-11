@@ -5964,11 +5964,14 @@ function downloadResponses(){
     localStorage.setItem('oa_pulse_tasks', JSON.stringify(mergedTasks));
   }
 
-  // Clear old single-call demo records so new multi-call seed runs
-  if (localStorage.getItem('oa_demo_seeded')) {
-    const h = loadHistory().filter(r => !r.id?.startsWith('demo-'));
-    saveHistoryData(h);
-    localStorage.removeItem('oa_demo_seeded');
+  // Migrate: remove old single-call demo records (demo-1…demo-4) so new multi-call seed runs
+  {
+    const OLD_IDS = new Set(['demo-1','demo-2','demo-3','demo-4']);
+    const hasOld  = loadHistory().some(h => OLD_IDS.has(h.id));
+    if (hasOld || localStorage.getItem('oa_demo_seeded')) {
+      saveHistoryData(loadHistory().filter(h => !OLD_IDS.has(h.id) && !h.id?.startsWith('demo-mfg-') && !h.id?.startsWith('demo-nhs-') && !h.id?.startsWith('demo-cmc-') && !h.id?.startsWith('demo-vl-') && !h.id?.startsWith('demo-pcu-')));
+      localStorage.removeItem('oa_demo_seeded');
+    }
   }
   seedDemoData();
 </script>
