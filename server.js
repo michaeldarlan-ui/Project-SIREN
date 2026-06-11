@@ -28,6 +28,7 @@ const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
 
 const server = http.createServer((req, res) => {
+  console.log(`[${req.method}] ${req.url}`);
   // ── Claude API proxy ─────────────────────────────────────────
   if (req.method === 'POST' && req.url === '/api/claude') {
     if (!API_KEY) {
