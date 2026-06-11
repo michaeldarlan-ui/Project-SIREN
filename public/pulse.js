@@ -1,7 +1,7 @@
 ﻿  // ── Pulse tile layout (drag-to-reorder + resize) ─────────────
   const _TILE_DEFAULTS = {
-    order: ['pt-score-trend','pt-rep-trends','pt-industry','pt-recent','pt-leaderboard'],
-    spans: { 'pt-score-trend':1, 'pt-rep-trends':2, 'pt-industry':2, 'pt-recent':1, 'pt-leaderboard':1 },
+    order: ['pt-score-trend','pt-rep-trends','pt-industry','pt-partners','pt-recent','pt-leaderboard'],
+    spans: { 'pt-score-trend':1, 'pt-rep-trends':2, 'pt-industry':2, 'pt-partners':1, 'pt-recent':1, 'pt-leaderboard':1 },
   };
 
   function _getPulseLayout() {
@@ -148,6 +148,9 @@
 
     // ── Industry Breakdown ──
     drawIndustryBreakdown(history);
+
+    // ── Partner Performance ──
+    drawPartnerTile(history);
 
     // ── Apply tile layout (order + spans) ──
     applyPulseLayout();
@@ -647,6 +650,115 @@
 
   window.industryDrillTo = function(name) { _industryDrill = name; drawIndustryBreakdown(loadHistory()); };
   window.industryDrillBack = function()   { _industryDrill = null; drawIndustryBreakdown(loadHistory()); };
+
+  // ── Partner Performance Tile ──────────────────────────────────
+  let _partnerDrill = null;
+
+  function drawPartnerTile(history) {
+    const container = document.getElementById('pulsePartnersChart');
+    const titleEl   = document.getElementById('pulsePartnersTitle');
+    const backBtn   = document.getElementById('pulsePartnersBack');
+    if (!container) return;
+
+    // Aggregate partner_scores across all history records
+    const partnerMap = {};
+    history.forEach(h => {
+      const scores = h.partner_scores;
+      if (!Array.isArray(scores)) return;
+      scores.forEach(p => {
+        const key = (p.name || '').toLowerCase();
+        if (!key) return;
+        if (!partnerMap[key]) {
+          partnerMap[key] = {
+            name: p.name,
+            org:  p.organization || p.org || '',
+            role: p.role || '',
+            scores: [],
+            deltas: [],
+            calls: [],
+          };
+        }
+        const entry = partnerMap[key];
+        if (typeof p.total === 'number') entry.scores.push(p.total);
+        if (typeof p.call_impact_delta === 'number') entry.deltas.push(p.call_impact_delta);
+        entry.calls.push({ date: h.callDate || h.ts, prospect: h.prospect, total: p.total, delta: p.call_impact_delta });
+      });
+    });
+
+    const partners = Object.values(partnerMap);
+
+    if (_partnerDrill && partnerMap[_partnerDrill.toLowerCase()]) {
+      const p = partnerMap[_partnerDrill.toLowerCase()];
+      if (titleEl) titleEl.textContent = p.name + (p.org ? ` — ${p.org}` : '');
+      if (backBtn) backBtn.style.display = '';
+      _drawPartnerDetail(container, p);
+    } else {
+      _partnerDrill = null;
+      if (titleEl) titleEl.textContent = 'Partner Performance';
+      if (backBtn) backBtn.style.display = 'none';
+      _drawPartnerOverview(container, partners);
+    }
+  }
+
+  function _drawPartnerOverview(container, partners) {
+    if (!partners.length) {
+      container.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.2);padding:1rem 0;text-align:center;">No partner data yet — partner participants are detected during grading.</div>';
+      return;
+    }
+
+    const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+    const sorted = partners.slice().sort((a,b) => {
+      const sa = avg(a.scores) ?? 0;
+      const sb = avg(b.scores) ?? 0;
+      return sb - sa;
+    });
+
+    const rows = sorted.map(p => {
+      const avgScore = avg(p.scores);
+      const avgDelta = avg(p.deltas);
+      const scoreStr = avgScore !== null ? avgScore.toFixed(1) : '—';
+      const deltaCls = avgDelta === null ? '' : avgDelta > 0 ? 'partner-delta-pos' : avgDelta < 0 ? 'partner-delta-neg' : 'partner-delta-neu';
+      const deltaStr = avgDelta === null ? '' : (avgDelta > 0 ? '+' : '') + avgDelta.toFixed(1);
+      const callsLbl = `${p.calls.length} call${p.calls.length !== 1 ? 's' : ''}`;
+      const orgLbl   = p.org ? escHtml(p.org) : '';
+      const roleLbl  = p.role ? escHtml(p.role) : '';
+      const meta = [orgLbl, roleLbl].filter(Boolean).join(' · ');
+      return `<div class="pulse-call-row" style="cursor:pointer;" onclick="partnerDrillTo(${JSON.stringify(p.name)})">
+        <div class="pulse-call-badge" style="background:var(--clr-accent);color:#000;font-size:12px;font-weight:700;min-width:36px;text-align:center;">${escHtml(scoreStr)}</div>
+        <div class="pulse-call-info">
+          <div class="pulse-call-company">${escHtml(p.name)}</div>
+          <div class="pulse-call-meta">${meta ? meta + ' · ' : ''}${callsLbl}</div>
+        </div>
+        ${avgDelta !== null ? `<div class="partner-delta ${deltaCls}" style="font-size:12px;font-weight:700;min-width:40px;text-align:right;">${deltaStr}</div>` : ''}
+      </div>`;
+    });
+
+    container.innerHTML = rows.join('');
+  }
+
+  function _drawPartnerDetail(container, p) {
+    if (!p.calls.length) { container.innerHTML = ''; return; }
+
+    const rows = p.calls.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(c => {
+      const ds = c.date ? new Date(c.date+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'}) : '';
+      const scoreStr = typeof c.total === 'number' ? c.total.toFixed(0) : '—';
+      const deltaCls = typeof c.delta !== 'number' ? '' : c.delta > 0 ? 'partner-delta-pos' : c.delta < 0 ? 'partner-delta-neg' : 'partner-delta-neu';
+      const deltaStr = typeof c.delta !== 'number' ? '' : (c.delta > 0 ? '+' : '') + c.delta;
+      return `<div class="pulse-call-row">
+        <div class="pulse-call-badge" style="background:var(--clr-accent);color:#000;font-size:12px;font-weight:700;min-width:36px;text-align:center;">${escHtml(scoreStr)}</div>
+        <div class="pulse-call-info">
+          <div class="pulse-call-company">${escHtml(c.prospect || 'Unknown')}</div>
+          <div class="pulse-call-meta">${ds}</div>
+        </div>
+        ${deltaStr ? `<div class="partner-delta ${deltaCls}" style="font-size:12px;font-weight:700;min-width:40px;text-align:right;">${escHtml(deltaStr)}</div>` : ''}
+      </div>`;
+    });
+
+    container.innerHTML = rows.join('');
+  }
+
+  window.partnerDrillTo   = function(name) { _partnerDrill = name; drawPartnerTile(loadHistory()); };
+  window.partnerDrillBack = function()     { _partnerDrill = null; drawPartnerTile(loadHistory()); };
 
   function drawPulseTrend(data) {
     const svg = document.getElementById('pulseTrendSvg');
