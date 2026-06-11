@@ -1193,11 +1193,13 @@ Michael Darlan (8:10): Perfect. Jason, thanks for your time today. We'll get you
 Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   const callNotesEl = document.getElementById('callNotes');
-  callNotesEl.value = SAMPLE_TRANSCRIPT;
-  callNotesEl.addEventListener('focus', function onFocus() {
-    if (callNotesEl.value === SAMPLE_TRANSCRIPT) callNotesEl.value = '';
-    callNotesEl.removeEventListener('focus', onFocus);
-  });
+  if (isDemoEnabled()) {
+    callNotesEl.value = SAMPLE_TRANSCRIPT;
+    callNotesEl.addEventListener('focus', function onFocus() {
+      if (callNotesEl.value === SAMPLE_TRANSCRIPT) callNotesEl.value = '';
+      callNotesEl.removeEventListener('focus', onFocus);
+    });
+  }
 
   // ── Reference documents ────────────────────────────────────
   const DOC_CHAR_LIMIT = 10000;
