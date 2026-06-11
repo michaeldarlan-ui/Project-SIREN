@@ -1450,8 +1450,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
               ${stages.map(s => `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:var(--siren-bg-card-raised);color:var(--siren-text-muted);">${escHtml(s)}</span>`).join('')}
               ${repNames.length ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(repNames.join(', '))}</span>` : ''}
-              <button onclick="startEditIndustry(event,'${cSafeQ}')" title="Set industry" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:12px;padding:2px 4px;line-height:1;border-radius:3px;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.7)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">${industry ? '🏭' : '+ industry'}</button>
-              <button onclick="startRenameAccount(this,'${cSafeQ}')" title="Rename account" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:13px;padding:2px 4px;line-height:1;border-radius:3px;transition:color .15s;" onmouseover="this.style.color='rgba(255,255,255,.7)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✎</button>
               <span class="hist-card-chevron open" id="grp-chev-${groupId}" style="margin-left:2px;cursor:pointer;" onclick="toggleGroupCards('${groupId}')">&#9660;</span>
             </div>
           </div>

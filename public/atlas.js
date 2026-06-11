@@ -294,11 +294,32 @@
       const company=nd.sublabel||nd.label;
       const prof=loadAccountProfile(company);
 
+      const industry = _getProspectIndustry(company);
+      const cSafe = company.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
       html += `<div class="lc-sb-section">
         <div class="lc-sb-section-label">Account Overview</div>
         <div class="lc-sb-row"><span class="lc-sb-key">Total Calls</span><span class="lc-sb-val">${calls.length}</span></div>
         <div class="lc-sb-row"><span class="lc-sb-key">Avg Score</span><span class="lc-sb-val">${avg}${avg!=='—'?'/100':''}</span></div>
         <div class="lc-sb-row"><span class="lc-sb-key">Stages</span><span class="lc-sb-val" style="text-align:right;">${stages.join(', ')||'—'}</span></div>
+      </div>
+      <div class="lc-profile-divider"></div>
+      <div class="lc-sb-section">
+        <div class="lc-sb-section-label">Account Settings</div>
+        <div style="margin-bottom:10px;">
+          <div class="lc-sb-key" style="margin-bottom:5px;">Account Name</div>
+          <div style="display:flex;gap:6px;">
+            <input id="atlas-acct-name" class="lc-profile-input" style="flex:1;" value="${escHtml(company)}" onkeydown="if(event.key==='Enter')atlasRenameAccount('${cSafe}')"/>
+            <button class="lc-profile-add-btn" onclick="atlasRenameAccount('${cSafe}')" title="Save name">✓</button>
+          </div>
+        </div>
+        <div>
+          <div class="lc-sb-key" style="margin-bottom:5px;">Industry</div>
+          <div style="display:flex;gap:6px;">
+            <input id="atlas-acct-industry" class="lc-profile-input" style="flex:1;" value="${escHtml(industry)}" placeholder="e.g. Healthcare" onkeydown="if(event.key==='Enter')atlasSetIndustry('${cSafe}')"/>
+            <button class="lc-profile-add-btn" onclick="atlasSetIndustry('${cSafe}')" title="Save industry">✓</button>
+          </div>
+        </div>
       </div>
       <div class="lc-profile-divider"></div>`;
 
@@ -395,6 +416,29 @@
   }
 
   // ── Account Profile storage ──
+  function atlasRenameAccount(oldName) {
+    const inp = document.getElementById('atlas-acct-name');
+    if (!inp) return;
+    const newName = inp.value.trim();
+    if (!newName || newName === oldName) return;
+    renameAccount(oldName, newName);
+    // Re-populate dropdown with new name and re-render graph
+    renderLifecyclePage();
+    const sel = document.getElementById('lcCompanySelect');
+    if (sel) { sel.value = newName; onLcCompanyChange(); }
+    // Re-open account node sidebar with updated name
+    setTimeout(() => lcSelectNode('account'), 80);
+  }
+
+  function atlasSetIndustry(company) {
+    const inp = document.getElementById('atlas-acct-industry');
+    if (!inp) return;
+    const industry = inp.value.trim();
+    _dbSaveProspect(company, { industry });
+    inp.style.borderColor = 'rgba(34,197,94,.55)';
+    setTimeout(() => { if (inp) inp.style.borderColor = ''; }, 1400);
+  }
+
   function loadAccountProfiles() {
     try { return JSON.parse(localStorage.getItem('siren_account_profiles') || '{}'); } catch { return {}; }
   }
