@@ -1796,8 +1796,9 @@
         <svg id="pulseTrendSvg" class="pulse-trend-svg" height="160" viewBox="0 0 540 160" preserveAspectRatio="none"></svg>
       </div>
       <div class="pulse-card">
-        <div class="pulse-card-title">Avg Score by Dimension</div>
-        <div id="pulseDimBars"></div>
+        <div class="pulse-card-title">Rep Score Trends</div>
+        <svg id="pulseRepTrendSvg" class="pulse-trend-svg" height="160" viewBox="0 0 540 160" preserveAspectRatio="none"></svg>
+        <div id="pulseRepTrendLegend" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;"></div>
       </div>
     </div>
 
@@ -3421,35 +3422,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const trendData = history.slice(0, 8).reverse();
     drawPulseTrend(trendData);
 
-    // ── Dimension Averages ──
-    const dimTotals = {}, dimCounts = {};
-    history.forEach(h => {
-      if (!h.dimensions || typeof h.dimensions !== 'object') return;
-      Object.entries(h.dimensions).forEach(([name, d]) => {
-        dimTotals[name] = (dimTotals[name]||0) + (d.score||0);
-        dimCounts[name] = (dimCounts[name]||0) + 1;
-      });
-    });
-    const dims = Object.keys(dimTotals).map(k => ({
-      name: k, avg: Math.round(dimTotals[k]/dimCounts[k]),
-      pct: (dimTotals[k]/dimCounts[k]) / 100
-    })).sort((a,b) => b.avg - a.avg);
-
-    const dimEl = document.getElementById('pulseDimBars');
-    if (dims.length) {
-      dimEl.innerHTML = dims.map(d => {
-        const shortName = d.name.replace(' & needs assessment','').replace(' & demo delivery','').replace(' & objection handling','').replace(' & MEDDIC signals','').replace(' & next steps','');
-        const pct = Math.round(d.pct * 100);
-        const color = pct >= 75 ? 'rgba(0,200,255,0.75)' : pct >= 55 ? 'rgba(0,200,255,0.45)' : 'rgba(232,160,32,0.7)';
-        return `<div class="pulse-dim-row">
-          <span class="pulse-dim-name" title="${escHtml(d.name)}">${escHtml(shortName)}</span>
-          <div class="pulse-dim-track"><div class="pulse-dim-fill" style="width:${pct}%;background:${color};"></div></div>
-          <span class="pulse-dim-score">${d.avg}/100</span>
-        </div>`;
-      }).join('');
-    } else {
-      dimEl.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.2);padding:1rem 0;">Grade calls to see dimension breakdown.</div>';
-    }
+    // ── Rep Score Trendlines ──
+    drawRepTrends(history);
 
     // ── Recent Calls ──
     const recentEl = document.getElementById('pulseRecentCalls');
@@ -3530,15 +3504,19 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
     // Weakest shared dimension
     const weakDimEl = document.getElementById('pulseWeakDim');
-    if (dims.length) {
-      const weakest = [...dims].sort((a,b) => a.pct - b.pct)[0];
-      const weakPct = Math.round(weakest.pct * 100);
-      weakDimEl.style.display = 'block';
-      weakDimEl.innerHTML = `<div class="pulse-weak-label">Weakest Dimension — Team</div>
-        <div class="pulse-weak-name">${escHtml(weakest.name)}</div>
-        <div class="pulse-weak-sub">Avg ${weakPct}% · Focus coaching effort here</div>`;
-    } else {
-      weakDimEl.style.display = 'none';
+    { const dt={}, dc={};
+      history.forEach(h => { if(!h.dimensions||typeof h.dimensions!=='object') return; Object.entries(h.dimensions).forEach(([n,d])=>{ dt[n]=(dt[n]||0)+(d.score||0); dc[n]=(dc[n]||0)+1; }); });
+      const allDims = Object.keys(dt).map(k=>({name:k,pct:(dt[k]/dc[k])/100}));
+      if (allDims.length) {
+        const weakest = [...allDims].sort((a,b) => a.pct - b.pct)[0];
+        const weakPct = Math.round(weakest.pct * 100);
+        weakDimEl.style.display = 'block';
+        weakDimEl.innerHTML = `<div class="pulse-weak-label">Weakest Dimension — Team</div>
+          <div class="pulse-weak-name">${escHtml(weakest.name)}</div>
+          <div class="pulse-weak-sub">Avg ${weakPct}% · Focus coaching effort here</div>`;
+      } else {
+        weakDimEl.style.display = 'none';
+      }
     }
 
     // ── VIGIL KPIs ──
@@ -3846,6 +3824,95 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     });
 
     svg.innerHTML = content;
+  }
+
+  function drawRepTrends(history) {
+    const svg = document.getElementById('pulseRepTrendSvg');
+    const legendEl = document.getElementById('pulseRepTrendLegend');
+    if (!svg || !legendEl) return;
+
+    const periodDays = parseInt(document.getElementById('lbPeriodSel')?.value || '90');
+    const cutoff = periodDays > 0 ? Date.now() - periodDays * 86400000 : 0;
+
+    // Build per-rep sorted call list within period
+    const repMap = {};
+    history.forEach(h => {
+      if (!h.rep || !h.total) return;
+      const ms = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
+      if (cutoff > 0 && ms < cutoff) return;
+      if (!repMap[h.rep]) repMap[h.rep] = [];
+      repMap[h.rep].push({ ms, score: h.total });
+    });
+
+    const reps = Object.entries(repMap)
+      .map(([name, calls]) => ({ name, calls: calls.sort((a,b) => a.ms - b.ms) }))
+      .filter(r => r.calls.length > 0)
+      .sort((a,b) => a.name.localeCompare(b.name));
+
+    const W = 540, H = 160, PAD = { top: 14, right: 16, bottom: 24, left: 32 };
+    const chartW = W - PAD.left - PAD.right;
+    const chartH = H - PAD.top - PAD.bottom;
+
+    if (!reps.length) {
+      svg.innerHTML = `<text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.15)" font-family="system-ui">No calls in this period</text>`;
+      legendEl.innerHTML = '';
+      return;
+    }
+
+    // Shared time domain across all reps
+    const allMs = reps.flatMap(r => r.calls.map(c => c.ms));
+    const minMs = Math.min(...allMs), maxMs = Math.max(...allMs);
+    const msRange = maxMs - minMs || 1;
+
+    const toX = ms => PAD.left + ((ms - minMs) / msRange) * chartW;
+    const toY = v  => PAD.top + chartH - ((v - 0) / 100) * chartH;
+
+    // Colour palette
+    const COLORS = ['#00c8ff','#f59e0b','#a78bfa','#34d399','#f87171','#fb923c','#38bdf8','#e879f9'];
+
+    let content = '';
+    // Grid lines
+    [30, 60, 90].forEach(y => {
+      const gy = toY(y);
+      content += `<line x1="${PAD.left}" y1="${gy}" x2="${W-PAD.right}" y2="${gy}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+      content += `<text x="${PAD.left-6}" y="${gy+4}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.2)" font-family="'SF Mono','Fira Code',monospace">${y}</text>`;
+    });
+
+    reps.forEach((rep, ri) => {
+      const color = COLORS[ri % COLORS.length];
+      const pts = rep.calls.map(c => ({ x: toX(c.ms), y: toY(c.score), score: c.score }));
+      if (pts.length === 1) {
+        content += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="4" fill="${color}" stroke="#061824" stroke-width="1.5"/>`;
+      } else {
+        const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
+        content += `<path d="${lineD}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"/>`;
+        pts.forEach((p, pi) => {
+          const isLast = pi === pts.length - 1;
+          content += `<circle cx="${p.x}" cy="${p.y}" r="${isLast?4:3}" fill="${color}" stroke="#061824" stroke-width="${isLast?2:1.5}" opacity="${isLast?1:0.7}"/>`;
+        });
+      }
+    });
+
+    // Date axis labels
+    if (reps.length) {
+      const fmt = ms => new Date(ms).toLocaleDateString([],{month:'short',day:'numeric'});
+      content += `<text x="${PAD.left}" y="${H-4}" text-anchor="start" font-size="9" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(minMs)}</text>`;
+      if (minMs !== maxMs)
+        content += `<text x="${W-PAD.right}" y="${H-4}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.2)" font-family="system-ui">${fmt(maxMs)}</text>`;
+    }
+
+    svg.innerHTML = content;
+
+    legendEl.innerHTML = reps.map((rep, ri) => {
+      const color = COLORS[ri % COLORS.length];
+      const initials = rep.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      const latest = rep.calls[rep.calls.length - 1].score;
+      return `<div style="display:flex;align-items:center;gap:5px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+        <span style="font-size:11px;color:rgba(255,255,255,.6);">${escHtml(initials)}</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.3);">${latest}</span>
+      </div>`;
+    }).join('');
   }
 
   function renderLifecyclePage() {
