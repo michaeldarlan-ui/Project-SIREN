@@ -1293,18 +1293,21 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // ── History ────────────────────────────────────────────────
   function loadHistory(raw) {
     try {
-      const data = JSON.parse(localStorage.getItem('oa_history') || '[]');
+      const data = _histCache.map(h => ({ ...h }));
       data.forEach(h => { if (typeof h.total === 'number' && h.total > 0) h.letter_grade = scoreToGrade(h.total); });
-      if (!raw && !isDemoEnabled()) return data.filter(h => !String(h.id).startsWith('demo-'));
+      if (!raw && !isDemoEnabled()) return data.filter(h => !h.is_demo);
       return data;
     } catch { return []; }
   }
-  function saveHistoryData(h) { try { localStorage.setItem('oa_history', JSON.stringify(h)); } catch(e) { console.error('[saveHistoryData] failed:', e.message, '— records:', h.length); } }
+
+  function saveHistoryData(records) {
+    _histCache = [...records];
+    _dbBulkSave(records);
+  }
 
   function saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml) {
-    const history = loadHistory();
-    history.unshift({
-      id: Date.now(),
+    const record = {
+      id: String(Date.now()),
       ts: new Date().toISOString(),
       callDate: callDate || '',
       rep: rep ? rep.name : '',
@@ -1317,10 +1320,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       grade_label: r.grade_label || '',
       top_strength: r.top_strength || '',
       top_priority: r.top_priority || '',
-      resultsHtml
-    });
-    if (history.length > 50) history.splice(50);
-    saveHistoryData(history);
+      resultsHtml,
+      is_demo: false,
+    };
+    _histCache.unshift(record);
+    if (_histCache.length > 200) _histCache.splice(200);
+    _dbSaveRecord(record);
   }
 
   // Sort state: 'company' | 'date' | 'score' | 'stage'  +  direction per key
@@ -1371,7 +1376,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const scores = scoreMatch[2];   // rep-toggle + score-view blocks
       const after  = scoreMatch[3] || ''; // highlights, books, spiced
       bodyHtml = `${before}
-        <div class="hist-scores-toggle" onclick="toggleHistScores(${h.id},event)">
+        <div class="hist-scores-toggle" onclick="toggleHistScores(${qid},event)">
           <span class="hist-scores-toggle-label">Scoring Details</span>
           <span class="hist-scores-toggle-chev" id="hist-sc-chev-${h.id}">&#9660;</span>
         </div>
@@ -1384,8 +1389,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
     const metaParts = [showCompany ? null : null, h.rep, h.repRole, h.contactTitle].filter(Boolean);
+    const qid = JSON.stringify(String(h.id));
     return `<div class="hist-card" id="hist-${h.id}">
-      <div class="hist-card-header" onclick="toggleHistCard(${h.id})">
+      <div class="hist-card-header" onclick="toggleHistCard(${qid})">
         <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
         <div class="hist-card-center">
           <div class="hist-card-title">${titleLine}</div>
@@ -1401,10 +1407,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;gap:10px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--siren-text-faint);">Rep:</span>
-            <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${h.id})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
+            <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${qid})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
           </div>
-          <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
+          <button class="hist-delete-btn" onclick="deleteHistEntry(${qid},event)">Delete this entry</button>
         </div>
       </div>
     </div>`;
@@ -1546,13 +1552,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function renameAccount(oldName, newName) {
-    // 1. History records
-    const hist = loadHistory(true).map(h =>
-      (h.prospect || '').trim() === oldName ? { ...h, prospect: newName } : h
-    );
-    saveHistoryData(hist);
+    // 1. History cache + DB
+    _histCache.forEach(h => { if ((h.prospect || '').trim() === oldName) h.prospect = newName; });
+    _dbRenameProspect(oldName, newName);
 
-    // 2. VIGIL tasks
+    // 2. VIGIL tasks (localStorage)
     try {
       const tasks = JSON.parse(localStorage.getItem('oa_pulse_tasks') || '{}');
       if (tasks[oldName] !== undefined) {
@@ -1562,7 +1566,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       }
     } catch {}
 
-    // 3. SCOPE data
+    // 3. SCOPE data (localStorage)
     try {
       const scope = JSON.parse(localStorage.getItem('oa_scope_v2') || '{}');
       if (scope[oldName] !== undefined) {
@@ -1572,7 +1576,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       }
     } catch {}
 
-    // 4. SCOPE companies list
+    // 4. SCOPE companies list (localStorage)
     try {
       const companies = JSON.parse(localStorage.getItem('oa_scope_companies') || '[]');
       const idx = companies.indexOf(oldName);
@@ -1587,7 +1591,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (!display) return;
     const team = loadTeam();
     const hist = loadHistory(true);
-    const rec = hist.find(h => h.id === id);
+    const rec = hist.find(h => String(h.id) === String(id));
     const current = rec ? rec.rep || '' : '';
 
     // Build datalist for team autocomplete
@@ -1619,27 +1623,30 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   function saveHistRep(id, name, team) {
     if (team === undefined) team = loadTeam();
-    const hist = loadHistory(true);
-    const idx = hist.findIndex(h => h.id === id);
+    const sid = String(id);
+    const idx = _histCache.findIndex(h => String(h.id) === sid);
     if (idx === -1) { renderHistory(); return; }
-    // Try to match to team roster for role
     const normalize = s => (s || '').toLowerCase().trim();
     const match = team.find(m => normalize(m.name) === normalize(name));
-    hist[idx] = { ...hist[idx], rep: name, repRole: match ? match.role : hist[idx].repRole || '' };
-    saveHistoryData(hist);
+    const patch = { rep: name, repRole: match ? match.role : _histCache[idx].repRole || '' };
+    Object.assign(_histCache[idx], patch);
+    _dbPatchRecord(sid, patch);
     renderHistory();
   }
 
   function deleteHistEntry(id, e) {
     e.stopPropagation();
     if (!confirm('Delete this history entry?')) return;
-    saveHistoryData(loadHistory(true).filter(h => h.id !== id));
+    const sid = String(id);
+    _histCache = _histCache.filter(h => String(h.id) !== sid);
+    _dbDeleteRecord(sid);
     renderHistory();
   }
 
   function clearHistory() {
     if (!confirm('Clear all call history? This cannot be undone.')) return;
-    saveHistoryData([]);
+    _histCache = [];
+    _dbBulkSave([]);
     renderHistory();
   }
 

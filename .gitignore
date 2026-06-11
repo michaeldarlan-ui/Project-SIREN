@@ -12,3 +12,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+siren.db
+siren.db-shm
+siren.db-wal

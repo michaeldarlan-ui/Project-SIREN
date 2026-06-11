@@ -1,22 +1,11 @@
-﻿  // ── Init ───────────────────────────────────────────────────
-  initKeyUI();
-  renderMemberList();
-  renderLibrary();
-  renderTemplates();
-  populateReportTypeSelect();
-  renderDocList();
-  renderHistory();
-  initUsageBar();
-  forgeInit();
-  renderScopePage();
-  // ── Demo data seed ──────────────────────────────────────────────────────
+﻿  // ── Demo data seed ──────────────────────────────────────────────────────
   // Role rules enforced:
   //   ISR (Ruben, Ryan)   — Cold outreach only
   //   AE (Andie)          — All stages; cold outreach limited to 1 account (Perimeter Law)
   //   SE (Michael)        — Discovery, Demo, Quote Review, optional Touchpoint; never on exec calls with President
   //   CRO (Paulo)         — Late Touchpoints + Proposal/close; MAYBE quote review
   //   President (Camilo)  — Late Touchpoints only; never on same call as SE
-  function seedDemoData() {
+  async function seedDemoData() {
     const now = Date.now();
 
     // Dimensions helper — object keyed by name (matches Object.entries usage in codebase)
@@ -725,10 +714,12 @@
     demoHistory.forEach(h => {
       if (typeof h.total === 'number') h.letter_grade = scoreToGrade(h.total);
       if (participantMap[h.id]) h.participants = participantMap[h.id];
+      h.is_demo = true;
     });
-    // Strip resultsHtml from existing records to minimize localStorage usage before appending 53 demo records
-    const existing = loadHistory(true).filter(h => !h.id?.startsWith('demo-')).map(h => { const c={...h}; delete c.resultsHtml; return c; });
-    saveHistoryData([...existing, ...demoHistory]);
+    // Clear existing demo records and bulk-insert fresh ones
+    await _dbClearDemo();
+    await _dbBulkSave(demoHistory);
+    _histCache = [..._histCache.filter(h => !h.is_demo), ...demoHistory];
 
     // Merge pulse tasks — don't overwrite existing real tasks for a company
     let existingTasks = {};
@@ -1030,13 +1021,5 @@
     localStorage.setItem('oa_scope_v2', JSON.stringify(mergedScope));
   }
 
-  // Version-gated demo seed — reseed when version changes OR demo data is absent
+  // DEMO_VERSION — bump this string to force a reseed of demo data
   const DEMO_VERSION = 'v11-all-rep-trends';
-  const _demoAccounts = new Set(loadHistory(true).filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
-  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
-    saveHistoryData(loadHistory(true).filter(h => !String(h.id).startsWith('demo-')));
-    localStorage.removeItem('oa_demo_seeded');
-    seedDemoData();
-    localStorage.setItem('oa_demo_version', DEMO_VERSION);
-  }
-  navTo('pulse');
