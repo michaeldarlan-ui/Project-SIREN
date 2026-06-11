@@ -89,7 +89,8 @@
     { title: 'Gap Selling', author: 'Keenan', type: 'Book', why: 'Problem-centric selling focused on quantifying the gap between current state and desired state — highly applicable to MSSP conversations.' },
     { title: 'Fanatical Prospecting', author: 'Jeb Blount', type: 'Book', why: 'Pipeline discipline and outreach cadence for reps who need to build consistent top-of-funnel activity.' },
     { title: 'The Qualified Sales Leader', author: 'John McMahon', type: 'Book', why: 'Enterprise qualification rigor — MEDDIC/MEDDPICC methodology for complex deals with multiple stakeholders.' },
-    { title: 'The JOLT Effect', author: 'Matthew Dixon & Ted McKenna', type: 'Book', why: 'Addresses indecision as the primary reason deals are lost — practical techniques for moving stuck prospects forward.' }
+    { title: 'The JOLT Effect', author: 'Matthew Dixon & Ted McKenna', type: 'Book', why: 'Addresses indecision as the primary reason deals are lost — practical techniques for moving stuck prospects forward.' },
+    { title: 'Never Split the Difference', author: 'Chris Voss', type: 'Book', why: 'FBI negotiation tactics applied to sales — tactical empathy, calibrated questions, and mirroring for handling objections and closing without pressure.' }
   ];
 
   function loadLibrary() {
