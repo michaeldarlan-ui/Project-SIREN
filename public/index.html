@@ -971,6 +971,10 @@
   .pulse-rep-track { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; }
   .pulse-rep-fill { height: 100%; border-radius: 2px; background: rgba(0,200,255,0.6); }
   .pulse-rep-score { font-size: 12px; color: rgba(255,255,255,0.4); width: 52px; text-align: right; flex-shrink: 0; font-family: 'SF Mono','Fira Code',monospace; }
+  .pulse-rep-trend { font-size: 11px; font-weight: 700; width: 36px; text-align: right; flex-shrink: 0; }
+  .pulse-rep-trend.up   { color: #22c55e; }
+  .pulse-rep-trend.down { color: #ef4444; }
+  .pulse-rep-trend.flat { color: rgba(255,255,255,.2); }
 
   .pulse-weak-dim { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); }
   .pulse-weak-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.25); text-transform: uppercase; margin-bottom: 6px; }
@@ -1803,7 +1807,15 @@
         <div id="pulseRecentCalls"></div>
       </div>
       <div class="pulse-card">
-        <div class="pulse-card-title">Rep Leaderboard</div>
+        <div class="pulse-card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          ISR / BDR Performance
+          <select id="lbPeriodSel" onchange="renderPulse()" style="background:var(--siren-bg-page);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);border-radius:5px;padding:3px 7px;font-size:10px;font-family:inherit;outline:none;font-weight:600;letter-spacing:.05em;">
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90" selected>90 days</option>
+            <option value="0">All time</option>
+          </select>
+        </div>
         <div id="pulseLeaderboard"></div>
         <div class="pulse-weak-dim" id="pulseWeakDim" style="display:none;"></div>
       </div>
@@ -3462,43 +3474,57 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       recentEl.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.2);padding:1rem 0;">No calls graded yet.</div>';
     }
 
-    // ── Rep Leaderboard ──
+    // ── ISR/BDR Performance Leaderboard ──
+    const team = loadTeam();
+    const isrBdrNames = new Set(
+      team.filter(m => /ISR|BDR/i.test(m.role)).map(m => m.name.toLowerCase())
+    );
+    const periodDays = parseInt(document.getElementById('lbPeriodSel')?.value || '90');
+    const cutoff = periodDays > 0 ? Date.now() - periodDays * 86400000 : 0;
+
     const repMap = {};
     history.forEach(h => {
       if (!h.rep) return;
-      if (!repMap[h.rep]) repMap[h.rep] = { scores:[], initials: h.rep.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() };
-      if (h.total > 0) repMap[h.rep].scores.push(h.total);
+      if (isrBdrNames.size > 0 && !isrBdrNames.has(h.rep.toLowerCase())) return;
+      const callMs = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
+      if (cutoff > 0 && callMs < cutoff) return;
+      if (!repMap[h.rep]) repMap[h.rep] = { calls: [], initials: h.rep.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() };
+      if (h.total > 0) repMap[h.rep].calls.push({ score: h.total, ms: callMs });
     });
-    const reps = Object.entries(repMap).map(([name, d]) => ({
-      name, initials: d.initials,
-      avg: d.scores.length ? Math.round(d.scores.reduce((a,b)=>a+b,0)/d.scores.length) : 0,
-      calls: d.scores.length
-    })).filter(r => r.calls > 0).sort((a,b) => b.avg - a.avg);
+
+    const reps = Object.entries(repMap).map(([name, d]) => {
+      const sorted = d.calls.sort((a,b) => a.ms - b.ms);
+      const scores = sorted.map(c => c.score);
+      const avg = Math.round(scores.reduce((a,b)=>a+b,0) / scores.length);
+      // trend: compare first half avg vs second half avg
+      const mid = Math.ceil(scores.length / 2);
+      const firstHalf = scores.slice(0, mid);
+      const secondHalf = scores.slice(mid);
+      const firstAvg = firstHalf.reduce((a,b)=>a+b,0) / firstHalf.length;
+      const secondAvg = secondHalf.length ? secondHalf.reduce((a,b)=>a+b,0) / secondHalf.length : firstAvg;
+      const delta = Math.round(secondAvg - firstAvg);
+      return { name, initials: d.initials, avg, calls: scores.length, delta };
+    }).filter(r => r.calls > 0).sort((a,b) => b.avg - a.avg);
 
     const topScore = reps.length ? reps[0].avg : 100;
     const lbEl = document.getElementById('pulseLeaderboard');
-    const slots = Math.max(3, reps.length);
     let lbHtml = '';
-    for (let i = 0; i < Math.min(slots, 5); i++) {
-      const rep = reps[i];
-      if (rep) {
+    if (!reps.length) {
+      lbHtml = `<div style="font-size:13px;color:rgba(255,255,255,0.2);padding:.75rem 0;">No ISR/BDR calls in this period.</div>`;
+    } else {
+      reps.forEach((rep, i) => {
         const barW = Math.round((rep.avg / Math.max(topScore, 1)) * 100);
+        const trendClass = rep.delta > 2 ? 'up' : rep.delta < -2 ? 'down' : 'flat';
+        const trendLabel = rep.delta > 2 ? `▲${rep.delta}` : rep.delta < -2 ? `▼${Math.abs(rep.delta)}` : '—';
         lbHtml += `<div class="pulse-rep-row">
           <span class="pulse-rep-rank">${i+1}</span>
           <div class="pulse-rep-avatar">${escHtml(rep.initials)}</div>
-          <span class="pulse-rep-name">${escHtml(rep.name)}</span>
+          <span class="pulse-rep-name" title="${escHtml(rep.name)}">${escHtml(rep.name)}</span>
           <div class="pulse-rep-track"><div class="pulse-rep-fill" style="width:${barW}%;"></div></div>
-          <span class="pulse-rep-score">${rep.avg} avg</span>
+          <span class="pulse-rep-score">${rep.avg}</span>
+          <span class="pulse-rep-trend ${trendClass}">${trendLabel}</span>
         </div>`;
-      } else {
-        lbHtml += `<div class="pulse-rep-row">
-          <span class="pulse-rep-rank">${i+1}</span>
-          <div class="pulse-rep-avatar empty">+</div>
-          <span class="pulse-rep-name empty">Add rep</span>
-          <div class="pulse-rep-track"><div class="pulse-rep-fill" style="width:0%;"></div></div>
-          <span class="pulse-rep-score" style="color:rgba(255,255,255,0.1);">—</span>
-        </div>`;
-      }
+      });
     }
     lbEl.innerHTML = lbHtml;
 
