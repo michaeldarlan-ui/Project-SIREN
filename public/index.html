@@ -3909,11 +3909,17 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
     const repMap = {};
     history.forEach(h => {
-      if (!h.rep || !h.total) return;
       const ms = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
       if (!isCallCount && cutoff > 0 && ms < cutoff) return;
-      if (!repMap[h.rep]) repMap[h.rep] = [];
-      repMap[h.rep].push({ ms, score: h.total, stage: h.stage || '' });
+      if (h.rep && h.total) {
+        if (!repMap[h.rep]) repMap[h.rep] = [];
+        repMap[h.rep].push({ ms, score: h.total, stage: h.stage || '' });
+      }
+      (h.participants || []).forEach(p => {
+        if (!p.name || !p.score) return;
+        if (!repMap[p.name]) repMap[p.name] = [];
+        repMap[p.name].push({ ms, score: p.score, stage: h.stage || '' });
+      });
     });
 
     const reps = Object.entries(repMap)
@@ -6464,7 +6470,45 @@ function downloadResponses(){
       ],
     };
 
-    demoHistory.forEach(h => { if (typeof h.total === 'number') h.letter_grade = scoreToGrade(h.total); });
+    // Participant scores for supporting reps (SE, CRO, CFO) keyed by record id
+    const participantMap = {
+      'demo-mfg-3': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-mfg-4': [{ name: 'Paulo Veloso',   score: 74 }],
+      'demo-mfg-5': [{ name: 'Paulo Veloso',   score: 84 }],
+      'demo-nhs-3': [{ name: 'Michael Darlan', score: 65 }],
+      'demo-nhs-4': [{ name: 'Michael Darlan', score: 84 }],
+      'demo-nhs-5': [{ name: 'Camilo Garces',  score: 78 }],
+      'demo-nhs-6': [{ name: 'Paulo Veloso',   score: 88 }],
+      'demo-cmc-3': [{ name: 'Michael Darlan', score: 77 }],
+      'demo-cmc-4': [{ name: 'Paulo Veloso',   score: 90 }],
+      'demo-vl-3':  [{ name: 'Michael Darlan', score: 62 }],
+      'demo-vl-4':  [{ name: 'Michael Darlan', score: 65 }],
+      'demo-pcu-3': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-sds-3': [{ name: 'Michael Darlan', score: 74 }],
+      'demo-sds-4': [{ name: 'Michael Darlan', score: 83 }],
+      'demo-sds-5': [{ name: 'Camilo Garces',  score: 77 }],
+      'demo-sds-6': [{ name: 'Paulo Veloso',   score: 80 }],
+      'demo-sds-7': [{ name: 'Paulo Veloso',   score: 87 }],
+      'demo-kes-3': [{ name: 'Michael Darlan', score: 74 }],
+      'demo-kes-4': [{ name: 'Paulo Veloso',   score: 75 }],
+      'demo-kes-5': [{ name: 'Camilo Garces',  score: 82 }],
+      'demo-kes-6': [{ name: 'Paulo Veloso',   score: 85 }],
+      'demo-plg-2': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-abs-2': [{ name: 'Michael Darlan', score: 68 }],
+      'demo-abs-3': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-abs-4': [{ name: 'Paulo Veloso',   score: 80 }],
+      'demo-abs-5': [{ name: 'Paulo Veloso',   score: 87 }],
+      'demo-ccb-3': [{ name: 'Michael Darlan', score: 74 }],
+      'demo-sph-2': [{ name: 'Michael Darlan', score: 75 }],
+      'demo-tta-2': [{ name: 'Michael Darlan', score: 68 }],
+      'demo-tta-3': [{ name: 'Michael Darlan', score: 75 }],
+      'demo-tta-4': [{ name: 'Camilo Garces',  score: 81 }],
+      'demo-tta-5': [{ name: 'Paulo Veloso',   score: 88 }],
+    };
+    demoHistory.forEach(h => {
+      if (typeof h.total === 'number') h.letter_grade = scoreToGrade(h.total);
+      if (participantMap[h.id]) h.participants = participantMap[h.id];
+    });
     // Strip resultsHtml from existing records to minimize localStorage usage before appending 53 demo records
     const existing = loadHistory().filter(h => !h.id?.startsWith('demo-')).map(h => { const c={...h}; delete c.resultsHtml; return c; });
     saveHistoryData([...existing, ...demoHistory]);
@@ -6770,7 +6814,7 @@ function downloadResponses(){
   }
 
   // Version-gated demo seed — reseed when version changes OR demo data is absent
-  const DEMO_VERSION = 'v10-team-names';
+  const DEMO_VERSION = 'v11-all-rep-trends';
   const _demoAccounts = new Set(loadHistory().filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
   if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
     saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
