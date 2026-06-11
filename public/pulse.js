@@ -456,6 +456,24 @@
     svg.innerHTML = content;
   }
 
+  function _repTip(e, text) {
+    let tip = document.getElementById('repNodeTip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'repNodeTip';
+      tip.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;background:#1a2535;border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);font-family:system-ui;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.5);display:none;';
+      document.body.appendChild(tip);
+    }
+    tip.textContent = text;
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 12) + 'px';
+    tip.style.top  = (e.clientY - 28) + 'px';
+  }
+  function _repTipHide() {
+    const tip = document.getElementById('repNodeTip');
+    if (tip) tip.style.display = 'none';
+  }
+
   function drawRepTrends(history) {
     const container = document.getElementById('pulseRepTrendRows');
     if (!container) return;
@@ -534,7 +552,8 @@
       });
 
       if (pts.length === 1) {
-        sparkContent += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="5" fill="${color}" stroke="#061824" stroke-width="1.5"/>`;
+        const t0 = `${pts[0].score} · ${fmt(pts[0].ms)}`;
+        sparkContent += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="6" fill="${color}" stroke="#061824" stroke-width="1.5" style="cursor:crosshair" onmouseover="_repTip(event,'${t0}')" onmouseout="_repTipHide()"/>`;
       } else {
         const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
         // Area fill
@@ -545,11 +564,12 @@
         pts.forEach((p, pi) => {
           const isLast = pi === pts.length - 1;
           const tipDate = fmt(p.ms);
+          const tipText = `${p.score} · ${tipDate}`;
           if (isLast) {
             sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="11" fill="${color}" opacity="0.12" stroke="none"/>`;
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6" fill="${color}" stroke="#061824" stroke-width="2"><title>${p.score} · ${tipDate}</title></circle>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="6" fill="${color}" stroke="#061824" stroke-width="2" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
           } else {
-            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#061824" stroke-width="1.5" opacity="0.7"><title>${p.score} · ${tipDate}</title></circle>`;
+            sparkContent += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3.5" fill="${color}" stroke="#061824" stroke-width="1.5" opacity="0.7" style="cursor:crosshair" onmouseover="_repTip(event,'${tipText}')" onmouseout="_repTipHide()"/>`;
           }
         });
       }
