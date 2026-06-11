@@ -3192,7 +3192,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       return data;
     } catch { return []; }
   }
-  function saveHistoryData(h) { try { localStorage.setItem('oa_history', JSON.stringify(h)); } catch {} }
+  function saveHistoryData(h) { try { localStorage.setItem('oa_history', JSON.stringify(h)); } catch(e) { console.error('[saveHistoryData] failed:', e.message, '— records:', h.length); } }
 
   function saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml) {
     const history = loadHistory();
@@ -6453,7 +6453,8 @@ function downloadResponses(){
     };
 
     demoHistory.forEach(h => { if (typeof h.total === 'number') h.letter_grade = scoreToGrade(h.total); });
-    const existing = loadHistory().filter(h => !h.id?.startsWith('demo-'));
+    // Strip resultsHtml from existing records to minimize localStorage usage before appending 53 demo records
+    const existing = loadHistory().filter(h => !h.id?.startsWith('demo-')).map(h => { const c={...h}; delete c.resultsHtml; return c; });
     saveHistoryData([...existing, ...demoHistory]);
 
     // Merge pulse tasks — don't overwrite existing real tasks for a company
