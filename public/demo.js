@@ -1,0 +1,1042 @@
+﻿  // ── Init ───────────────────────────────────────────────────
+  initKeyUI();
+  renderMemberList();
+  renderLibrary();
+  renderTemplates();
+  populateReportTypeSelect();
+  renderDocList();
+  renderHistory();
+  initUsageBar();
+  forgeInit();
+  renderScopePage();
+  // ── Demo data seed ──────────────────────────────────────────────────────
+  // Role rules enforced:
+  //   ISR (Ruben, Ryan)   — Cold outreach only
+  //   AE (Andie)          — All stages; cold outreach limited to 1 account (Perimeter Law)
+  //   SE (Michael)        — Discovery, Demo, Quote Review, optional Touchpoint; never on exec calls with President
+  //   CRO (Paulo)         — Late Touchpoints + Proposal/close; MAYBE quote review
+  //   President (Camilo)  — Late Touchpoints only; never on same call as SE
+  function seedDemoData() {
+    const now = Date.now();
+
+    // Dimensions helper — object keyed by name (matches Object.entries usage in codebase)
+    const dims = (o,d,te,v,s,c) => ({
+      'Opening & agenda control':           { score: o,  max: 15 },
+      'Discovery & needs assessment':       { score: d,  max: 20 },
+      'Value articulation & demo delivery': { score: te, max: 20 },
+      'Objection handling & MEDDIC signals':{ score: v,  max: 15 },
+      'SPICED qualification':               { score: s,  max: 15 },
+      'Call control & next steps':          { score: c,  max: 15 },
+    });
+
+    const demoHistory = [
+
+      // ── Meridian Financial Group ─────────────────────────────────────────
+      // Ruben (ISR) — cold call only
+      // Andie (AE) — Discovery, Demo, Touchpoint, Proposal
+      // Michael (SE) — joins Demo
+      // Paulo (CRO) — joins Touchpoint and Proposal
+      {
+        id: 'demo-mfg-1', ts: new Date('2026-03-05T09:15:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-03-05', letter_grade: 'C', total: 52,
+        dimensions: dims(9,8,8,10,8,9),
+        top_strength: 'Good cold opener — got the prospect talking about their upcoming SOC 2 audit',
+        top_priority: 'Did not qualify budget authority or confirm the right economic buyer',
+        next_steps: ['Send intro email with OneAxiom overview deck', 'Request 30-min discovery call with IT Director'],
+        overview: 'Ruben landed the cold call well — got past the gatekeeper and earned a conversation. He moved too quickly to features before establishing pain. The prospect mentioned a pending SOC 2 audit but Ruben did not probe the timeline or consequences of failure.',
+      },
+      {
+        id: 'demo-mfg-2', ts: new Date('2026-03-28T14:00:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-03-28', letter_grade: 'B-', total: 67,
+        dimensions: dims(11,13,11,11,11,10),
+        top_strength: 'Surfaced the SOC 2 timeline and board-level pressure — strong pain anchoring',
+        top_priority: 'Economic buyer (CFO) was not on the call and was never confirmed as a next step',
+        next_steps: ['Send follow-up email recapping SOC 2 scope discussion', 'Schedule CFO intro before technical evaluation', 'Confirm assessment timeline fits Q3 board deadline'],
+        overview: 'Andie effectively built on the cold call context Ruben handed off. She probed the SOC 2 gap and tied it to a Q3 board presentation deadline. Discovery was solid on pain and situation. SPICED gaps remain: economic buyer unconfirmed and no quantified impact of non-compliance established.',
+      },
+      {
+        id: 'demo-mfg-3', ts: new Date('2026-04-22T10:30:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-04-22', letter_grade: 'B', total: 74,
+        dimensions: dims(13,15,14,12,12,8),
+        top_strength: 'Michael mapped OneAxiom\'s methodology to their SOC 2 Type II readiness gaps — very persuasive',
+        top_priority: 'Next steps were weak — no clear owner or date for proposal delivery',
+        next_steps: ['Deliver scoping questionnaire by April 28', 'Schedule proposal review with CFO and IT Director', 'Confirm Paulo joins for executive-level proposal call'],
+        overview: 'Andie led the call; Michael ran the technical walkthrough. The IT Director was engaged and asked detailed questions about evidence collection. Value alignment was clear. The weak point was the close — the call ended without locking in a proposal review date or confirming CFO availability.',
+      },
+      {
+        id: 'demo-mfg-4', ts: new Date('2026-05-06T11:00:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-05-06', letter_grade: 'B-', total: 69,
+        dimensions: dims(12,13,13,12,11,8),
+        top_strength: 'Paulo\'s CRO presence elevated the conversation and got the CFO fully engaged',
+        top_priority: 'Andie lost track of the agenda after Paulo joined — call ran over and next steps were rushed',
+        next_steps: ['Send proposal draft by May 12', 'Confirm CFO calendar for proposal review call', 'Paulo to send exec-level follow-up reinforcing OneAxiom\'s leadership commitment'],
+        overview: 'A pre-proposal executive touchpoint with Andie and Paulo. The CFO entered guarded but Paulo\'s credibility and peer-to-peer framing shifted the dynamic. Andie struggled briefly to re-take call control after Paulo spoke, leading to an overrun and rushed close. Proposal is ready.',
+      },
+      {
+        id: 'demo-mfg-5', ts: new Date('2026-05-15T13:00:00').toISOString(),
+        prospect: 'Meridian Financial Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-05-15', letter_grade: 'B+', total: 81,
+        dimensions: dims(13,16,15,14,13,10),
+        top_strength: 'Handled the scope-reduction objection cleanly; Paulo re-anchored to board deadline urgency',
+        top_priority: 'Payment terms and contract start date were not confirmed before ending the call',
+        next_steps: ['Send revised proposal with two scope options by May 19', 'Confirm legal review timeline with their counsel', 'Block kickoff date contingent on signed SOW'],
+        overview: 'Strong proposal call with Andie leading and Paulo present. Two pricing options gave the CFO agency without losing deal value. Paulo\'s brief reinforcement of executive commitment helped neutralize a scope objection. Minor gap: contract logistics were left open, creating potential for a stall.',
+      },
+
+      // ── Northgate Healthcare Systems ─────────────────────────────────────
+      // Ryan (ISR) — cold call only
+      // Andie (AE) — Discovery ×2, Demo, Touchpoint, Proposal
+      // Michael (SE) — joins 2nd Discovery and Demo (NOT on exec touchpoint with Camilo)
+      // Camilo (President) — exec Touchpoint only (no SE)
+      // Paulo (CRO) — Proposal
+      {
+        id: 'demo-nhs-1', ts: new Date('2026-03-12T08:45:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-03-12', letter_grade: 'C-', total: 47,
+        dimensions: dims(7,8,7,9,7,9),
+        top_strength: 'Identified HIPAA breach history as a strong hook early in the call',
+        top_priority: 'Lost control when asked about pricing — pivoted defensively instead of redirecting to discovery',
+        next_steps: ['Send healthcare compliance case study', 'Request 45-min discovery with IT and compliance team'],
+        overview: 'Ryan identified a prior breach notification incident as a strong opener but could not sustain momentum. When the prospect pushed on pricing too early, Ryan fumbled and spent five minutes on budget before re-establishing discovery. Ended without a firm next step.',
+      },
+      {
+        id: 'demo-nhs-2', ts: new Date('2026-04-02T10:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-04-02', letter_grade: 'C+', total: 59,
+        dimensions: dims(10,11,9,11,9,9),
+        top_strength: 'Connected prior breach to HHS-OCR audit risk — strong pain escalation from Ryan\'s cold call context',
+        top_priority: 'CISO was on the call but was not engaged — Andie spoke primarily to the IT Manager',
+        next_steps: ['Re-engage CISO directly with a targeted exec summary of HIPAA gap exposure', 'Set up second discovery with CISO and compliance officer', 'Confirm Q3 HHS exam date is a hard deadline'],
+        overview: 'Andie picked up where Ryan left off and established the breach-to-audit risk narrative effectively. Discovery stalled at the IT Manager level. The CISO joined quietly and dropped off early without being drawn into the conversation. Pain is confirmed but the economic buyer chain remains unclear.',
+      },
+      {
+        id: 'demo-nhs-3', ts: new Date('2026-04-18T14:30:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-04-18', letter_grade: 'B-', total: 67,
+        dimensions: dims(12,14,10,12,11,8),
+        top_strength: 'CISO confirmed Q3 HHS audit as a hard deadline — urgency now fully established',
+        top_priority: 'Decision process still unclear — no confirmation of who signs the engagement letter',
+        next_steps: ['Schedule demo with Michael for technical depth', 'Send HIPAA assessment scope document', 'Confirm CISO availability for full technical session'],
+        overview: 'Second discovery call successfully brought the CISO into the conversation. The Q3 HHS exam deadline is now locked as the hard driver. Michael joined briefly in the last 10 minutes to tease the technical assessment approach, which created immediate interest. Handoff to demo stage is ready.',
+      },
+      {
+        id: 'demo-nhs-4', ts: new Date('2026-05-08T11:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-05-08', letter_grade: 'B+', total: 82,
+        dimensions: dims(13,16,16,13,13,11),
+        top_strength: 'Michael\'s technical depth on HIPAA evidence collection gave the CISO immediate confidence',
+        top_priority: 'BAA execution timeline was not confirmed — legal dependency could delay the start date',
+        next_steps: ['Deliver executive summary to CISO by May 14', 'Initiate BAA review with their legal counsel', 'Confirm CFO intro before proposal submission'],
+        overview: 'Andie and Michael ran an excellent demonstration session. The CISO asked detailed questions about evidence collection methodology and Michael answered without hesitation. Credibility is high. The BAA requirement surfaced late in the call and needs immediate attention to protect the deal timeline.',
+      },
+      {
+        id: 'demo-nhs-5', ts: new Date('2026-05-27T09:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-05-27', letter_grade: 'B', total: 72,
+        dimensions: dims(12,13,13,12,12,10),
+        top_strength: 'Camilo\'s executive presence established OneAxiom\'s leadership commitment — prospect CEO visibly reassured',
+        top_priority: 'Andie should have led with a tighter agenda brief before handing the floor to Camilo',
+        next_steps: ['Prepare proposal framed around Phase 1 HIPAA assessment priority', 'Confirm legal team availability for BAA review week of June 2', 'Paulo to follow up with CFO on investment and phased engagement model'],
+        overview: 'A well-timed executive touchpoint with Andie and Camilo (President). Michael was not on this exec-format call. The prospect CEO, who had been hesitant, became noticeably more engaged once Camilo spoke to OneAxiom\'s delivery track record. The conversation set up the proposal strongly.',
+      },
+      {
+        id: 'demo-nhs-6', ts: new Date('2026-06-02T09:00:00').toISOString(),
+        prospect: 'Northgate Healthcare Systems', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-06-02', letter_grade: 'A-', total: 87,
+        dimensions: dims(14,17,17,14,14,11),
+        top_strength: 'Closed with verbal commitment; Paulo\'s presence aligned the CFO on investment and phased structure',
+        top_priority: 'Payment terms discussion was deferred — CFO may revisit scope before signing',
+        next_steps: ['Send countersigned SOW by June 6', 'Confirm BAA execution with their legal by June 9', 'Schedule kickoff call for week of June 16'],
+        overview: 'Textbook proposal call with Andie leading and Paulo present. Andie re-established urgency with the Q3 HHS deadline, walked the CFO through the two-phase engagement structure, and handled a late-stage budget objection by splitting scope into a Phase 1 priority assessment. Verbal commitment received.',
+      },
+
+      // ── Cascade Manufacturing Co. ─────────────────────────────────────────
+      // Ruben (ISR) — cold call only
+      // Andie (AE) — Discovery, Demo, Proposal
+      // Michael (SE) — joins Discovery and Demo
+      // Paulo (CRO) — joins Proposal
+      {
+        id: 'demo-cmc-1', ts: new Date('2026-04-08T08:30:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-04-08', letter_grade: 'D+', total: 43,
+        dimensions: dims(7,7,7,8,7,7),
+        top_strength: 'Identified CMMC as relevant once DoD subcontract was mentioned — correct instinct',
+        top_priority: 'Called without researching the prospect\'s DoD contract — appeared completely unprepared',
+        next_steps: ['Research DoD contract details and CMMC Level 2 requirements before re-engaging', 'Send CMMC-specific intro email referencing their contract renewal window'],
+        overview: 'Rough cold call. Ruben led with a generic cybersecurity pitch before the prospect mentioned their DoD subcontract. Once CMMC was identified as the real driver, Ruben pivoted, but the early impression of being unprepared was hard to recover from. Prospect agreed to discovery out of necessity, not enthusiasm.',
+      },
+      {
+        id: 'demo-cmc-2', ts: new Date('2026-04-28T13:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-04-28', letter_grade: 'B-', total: 65,
+        dimensions: dims(11,13,12,11,10,8),
+        top_strength: 'Anchored the entire call to CMMC Level 2 certification timeline and DoD contract renewal risk',
+        top_priority: 'No internal champion confirmed — Andie spoke primarily to the VP of Operations who may lack budget authority',
+        next_steps: ['Request intro to their CMMC POC or compliance lead', 'Michael to review current security controls documentation before demo', 'Confirm contract renewal date — is August deadline firm?'],
+        overview: 'Andie recovered the credibility lost in Ruben\'s cold call. The CMMC framing was tight and the prospect acknowledged zero documentation for Level 2 requirements. Gap: no internal champion identified — the VP of Ops may not be the right buyer for a compliance engagement of this size.',
+      },
+      {
+        id: 'demo-cmc-3', ts: new Date('2026-05-20T10:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-05-20', letter_grade: 'B', total: 74,
+        dimensions: dims(13,15,14,12,12,8),
+        top_strength: 'Michael\'s live gap walk-through against 110 CMMC Level 2 practices was highly persuasive',
+        top_priority: 'CFO was not present; VP of Ops cannot approve budget — deal at risk of stalling',
+        next_steps: ['Get CFO on a 30-min call before proposal submission', 'Send technical assessment scope mapped to CMMC Level 2 practices', 'Confirm Paulo\'s availability if CFO meeting requires executive credibility'],
+        overview: 'Strong technical session with Andie leading and Michael driving the CMMC gap walk-through. The VP of Ops was enthusiastic but cannot approve the engagement budget. CFO introduction is the critical next step to protect the deal from stalling at the champion level.',
+      },
+      {
+        id: 'demo-cmc-4', ts: new Date('2026-06-05T15:00:00').toISOString(),
+        prospect: 'Cascade Manufacturing Co.', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-06-05', letter_grade: 'A-', total: 88,
+        dimensions: dims(14,18,17,14,13,12),
+        top_strength: 'Paulo framed non-compliance as a contract termination risk — CFO approved budget on the call',
+        top_priority: 'Payment terms and contract start date were not finalized before ending the call',
+        next_steps: ['Send final proposal with CMMC Level 2 scope by June 9', 'Confirm CFO signature authority and legal review window', 'Block kickoff date — prospect wants to start before July 1'],
+        overview: 'Excellent close call with Andie and Paulo presenting together. Paulo framed the CMMC assessment as a contract protection measure rather than a consulting expense — the CFO responded immediately. Budget objection neutralized by tying cost to the DoD contract value at risk. Minor gap: logistics left open.',
+      },
+
+      // ── Vantara Logistics ─────────────────────────────────────────────────
+      // Ryan (ISR) — cold call only
+      // Andie (AE) — Discovery ×2, Demo
+      // Michael (SE) — joins 2nd Discovery and Demo
+      {
+        id: 'demo-vl-1', ts: new Date('2026-05-01T09:00:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-05-01', letter_grade: 'D+', total: 41,
+        dimensions: dims(7,6,7,8,6,7),
+        top_strength: 'Persisted through initial skepticism and earned a discovery conversation',
+        top_priority: 'Prospect mentioned a bad prior vendor experience and Ryan did not address it — this will haunt future calls',
+        next_steps: ['Brief Andie on prior vendor context before discovery', 'Lead next call by directly acknowledging prior experience before any product discussion'],
+        overview: 'Vantara\'s VP of IT mentioned a failed engagement with a prior security consultancy in the first two minutes. Ryan acknowledged it briefly and immediately pivoted to OneAxiom\'s methodology. This was a mistake — the wound is still fresh. Prospect agreed to discovery reluctantly.',
+      },
+      {
+        id: 'demo-vl-2', ts: new Date('2026-05-22T14:00:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-05-22', letter_grade: 'C-', total: 50,
+        dimensions: dims(9,9,8,8,8,8),
+        top_strength: 'Directly addressed prior vendor failure in the first five minutes — set the right tone',
+        top_priority: 'Prospect remains guarded — real business pain has not been surfaced yet',
+        next_steps: ['Bring Michael on next call to add technical credibility', 'Request introduction to CISO — VP IT may not be the right discovery contact', 'Share a logistics-sector reference story before next call'],
+        overview: 'Andie acknowledged the prior vendor failure upfront which improved prospect posture, but the session stayed surface-level. The VP IT is engaging but not sharing real context. A second discovery call with Michael adding technical credibility may help break through the defensiveness.',
+      },
+      {
+        id: 'demo-vl-3', ts: new Date('2026-06-08T10:30:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-06-08', letter_grade: 'C', total: 57,
+        dimensions: dims(9,10,10,9,9,10),
+        top_strength: 'Michael\'s technical questions surfaced real endpoint visibility gaps the VP IT hadn\'t wanted to admit',
+        top_priority: 'Still no CISO access — discovery cannot be completed without an economic buyer in the room',
+        next_steps: ['Ask VP IT to facilitate CISO intro before advancing to demo', 'Send logistics sector case study with documented outcomes', 'Target demo only after CISO is confirmed on the invite'],
+        overview: 'Measurable improvement with Michael on the call. His technical credibility broke through the skepticism enough to surface real gap context around endpoint visibility. However, without CISO access, discovery remains incomplete and demo scheduling is premature.',
+      },
+      {
+        id: 'demo-vl-4', ts: new Date('2026-06-10T14:00:00').toISOString(),
+        prospect: 'Vantara Logistics', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-06-10', letter_grade: 'C+', total: 63,
+        dimensions: dims(11,12,12,10,10,8),
+        top_strength: 'CISO joined the demo and responded positively to the endpoint assessment framework',
+        top_priority: 'Value proposition still not differentiated from prior vendor — this objection must be resolved before proposal',
+        next_steps: ['Prepare one-page differentiation brief comparing prior vendor approach vs OneAxiom methodology', 'Confirm CISO as champion and secure a 1:1 before proposal', 'Target proposal submission by June 25 if CISO confirms interest'],
+        overview: 'CISO finally attended. Andie and Michael ran the demo with the prior vendor context in mind, emphasizing methodology differences. The CISO was engaged and asked follow-up questions about the gap assessment structure. The prospect is moving but slowly — prior trust damage still present.',
+      },
+
+      // ── Pinnacle Credit Union ─────────────────────────────────────────────
+      // Ryan (ISR) — cold call only
+      // Andie (AE) — Discovery, Demo, Proposal
+      // Michael (SE) — joins Demo
+      {
+        id: 'demo-pcu-1', ts: new Date('2026-05-28T08:00:00').toISOString(),
+        prospect: 'Pinnacle Credit Union', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-05-28', letter_grade: 'C', total: 56,
+        dimensions: dims(10,9,9,10,9,9),
+        top_strength: 'Tied the pitch to NCUA cybersecurity examination expectations — right regulatory hook',
+        top_priority: 'Call ran too long — Ryan presented the solution for 8 minutes before completing discovery',
+        next_steps: ['Send NCUA cybersecurity regulation summary with OneAxiom positioning', 'Book 45-min discovery with VP of IT and compliance officer'],
+        overview: 'Solid cold call. Ryan correctly identified NCUA examination pressure and got the prospect to acknowledge they have not had an external assessment in three years. The call ran long because Ryan started presenting the service before completing discovery. Ended with a booked follow-up.',
+      },
+      {
+        id: 'demo-pcu-2', ts: new Date('2026-06-05T13:30:00').toISOString(),
+        prospect: 'Pinnacle Credit Union', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-06-05', letter_grade: 'B-', total: 66,
+        dimensions: dims(12,13,11,12,10,8),
+        top_strength: 'Uncovered a board-level request for a cybersecurity report tied to their Q3 member meeting',
+        top_priority: 'Critical Event timing was confirmed but the next step was not scoped to that hard deadline',
+        next_steps: ['Send scoping questionnaire this week to qualify assessment scope', 'Schedule demo with Michael for technical walkthrough', 'Confirm whether board presentation narrative is a deliverable we can support'],
+        overview: 'Good first AE-level discovery call. Andie surfaced a board-level reporting requirement that Ryan had not uncovered — this changes the urgency profile significantly. The Q3 member meeting creates a hard deadline for a cybersecurity narrative. Next step should be scoped to that deliverable.',
+      },
+      {
+        id: 'demo-pcu-3', ts: new Date('2026-06-10T10:00:00').toISOString(),
+        prospect: 'Pinnacle Credit Union', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-06-10', letter_grade: 'B', total: 73,
+        dimensions: dims(13,14,14,12,11,9),
+        top_strength: 'Michael\'s demo of the assessment report output directly addressed the board presentation requirement',
+        top_priority: 'VP IT raised a resource constraint concern — internal readiness for the assessment is unconfirmed',
+        next_steps: ['Send sample board-ready cybersecurity assessment report for review', 'Confirm internal champion can dedicate time to the evidence collection process', 'Target proposal delivery by June 16 to hit Q3 board prep window'],
+        overview: 'Andie and Michael ran a tight demo anchored around the board presentation deliverable. Michael\'s ability to show a sample output report immediately resonated with both the VP IT and compliance officer. A resource concern from the VP IT needs to be addressed before proposal to avoid scope-reduction requests.',
+      },
+
+      // ── Strata Defense Solutions ──────────────────────────────────────────
+      // DoD prime contractor, CMMC Level 3, large enterprise deal — longest cycle
+      // Ruben (ISR) — cold call only
+      // Andie (AE) — Discovery ×2, Demo, Touchpoint ×2, Proposal
+      // Michael (SE) — Discovery ×2 and Demo; NOT on exec touchpoints
+      // Camilo (President) — exec Touchpoint only (no SE on this call)
+      // Paulo (CRO) — CRO Touchpoint + Proposal
+      {
+        id: 'demo-sds-1', ts: new Date('2026-01-14T09:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-01-14', letter_grade: 'C+', total: 58,
+        dimensions: dims(10,9,10,10,10,9),
+        top_strength: 'Led with CMMC Level 3 framing for a DoD prime — correct and well-researched hook',
+        top_priority: 'Overpromised on timeline — said we could complete CMMC Level 3 readiness in 60 days, which is not accurate',
+        next_steps: ['Correct timeline expectations before discovery call', 'Send CMMC Level 3 overview document and accurate scoping benchmarks', 'Request discovery with CISO and compliance program lead'],
+        overview: 'Ruben came into this call prepared — he had researched their DoD prime contract scope and correctly led with CMMC Level 3. The hook landed well. The error was overstating the delivery timeline under pressure from the prospect. This needs to be walked back cleanly in discovery to protect credibility.',
+      },
+      {
+        id: 'demo-sds-2', ts: new Date('2026-02-03T10:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-02-03', letter_grade: 'B-', total: 66,
+        dimensions: dims(11,13,12,11,11,8),
+        top_strength: 'Cleanly corrected the timeline misstatement from cold call — rebuilt credibility immediately',
+        top_priority: 'CISO was guarded about sharing current security posture; discovery depth was limited by this resistance',
+        next_steps: ['Send NDA before second discovery to unlock more posture details', 'Michael to research current DoD contractor security requirements for sector context', 'Confirm DFARS 7012 compliance status before second discovery call'],
+        overview: 'Andie addressed the timeline correction in the first three minutes, which visibly impressed the CISO. Discovery uncovered the deal driver: a December contract renewal requires CMMC L3 certification evidence. Deal size is significant. CISO reticence about sharing current posture is a trust gap to close.',
+      },
+      {
+        id: 'demo-sds-3', ts: new Date('2026-02-24T14:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-02-24', letter_grade: 'B', total: 72,
+        dimensions: dims(12,14,13,13,12,8),
+        top_strength: 'NDA in place; CISO shared full current-state posture including known Level 3 gaps',
+        top_priority: 'Technical scope is now large — must confirm with Michael whether a 90-day assessment is achievable',
+        next_steps: ['Schedule technical deep-dive demo with Michael', 'Validate 90-day assessment feasibility internally before committing', 'Identify whether CTO needs to be brought into the conversation'],
+        overview: 'Post-NDA discovery was substantially more open. The CISO shared a detailed gap list across Level 3 practices and the scale of the engagement is now clear. Andie and Michael managed the scope conversation well. Michael needs to confirm delivery feasibility before the demo to ensure proposal credibility.',
+      },
+      {
+        id: 'demo-sds-4', ts: new Date('2026-03-18T10:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-03-18', letter_grade: 'B+', total: 80,
+        dimensions: dims(13,16,16,13,13,9),
+        top_strength: 'Michael\'s live walk-through of the CMMC Level 3 practice mapping was technically excellent and clearly differentiated',
+        top_priority: 'CTO joined unexpectedly and asked questions outside Michael\'s prepared scope — some were not fully answered',
+        next_steps: ['Send CTO-specific follow-up addressing build vs buy architecture questions', 'Confirm exec touchpoint with Camilo — deal size warrants President-level presence', 'Target proposal timeline: April 15 pending exec alignment'],
+        overview: 'Andie and Michael delivered the strongest demo of this deal cycle. The CISO was visibly impressed. The unexpected CTO presence introduced off-script questions around integration architecture that were handled adequately but not crisply. An executive touchpoint with Camilo is now warranted given the deal size.',
+      },
+      {
+        id: 'demo-sds-5', ts: new Date('2026-04-10T11:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-04-10', letter_grade: 'B', total: 71,
+        dimensions: dims(12,13,13,12,12,9),
+        top_strength: 'Camilo\'s executive credibility and direct DoD sector experience resonated strongly with their VP of Programs',
+        top_priority: 'Andie\'s intro framing before handing to Camilo was too long — exec calls need tighter agendas',
+        next_steps: ['Paulo to follow up with their CFO on investment structure before proposal', 'Confirm Phase 1 vs full Level 3 scope for proposal', 'Andie to reconnect with CISO and confirm exec alignment outcome'],
+        overview: 'An executive alignment touchpoint with Andie and Camilo (President). Michael was not included in this exec-format call. Camilo\'s DoD sector credibility was the right match for this audience. His presence effectively removed the remaining vendor-risk concern and opened the path to a commercial conversation.',
+      },
+      {
+        id: 'demo-sds-6', ts: new Date('2026-05-02T13:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-05-02', letter_grade: 'B+', total: 77,
+        dimensions: dims(13,15,14,13,12,10),
+        top_strength: 'Paulo walked CFO through the phased investment model and pre-empted the budget objection before it surfaced',
+        top_priority: 'No firm proposal delivery date was locked — Paulo should have driven a harder commitment',
+        next_steps: ['Deliver proposal draft to Andie by May 10', 'Paulo to send CFO-level investment summary with ROI framing', 'Set proposal review call for week of May 26'],
+        overview: 'A CFO-focused commercial touchpoint with Andie and Paulo (CRO). Paulo\'s pre-emptive handling of the phased investment structure was well-timed and prevented the typical budget stall. The CFO is now aligned in principle. No proposal date was formally committed to — a gap that Andie should close.',
+      },
+      {
+        id: 'demo-sds-7', ts: new Date('2026-05-28T10:00:00').toISOString(),
+        prospect: 'Strata Defense Solutions', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-05-28', letter_grade: 'A-', total: 85,
+        dimensions: dims(14,17,16,14,14,10),
+        top_strength: 'Paulo and Andie co-led a clean two-option proposal close; CFO approved Phase 1 scope on the call',
+        top_priority: 'Legal review timeline is uncertain — prospect\'s general counsel is new and process is unclear',
+        next_steps: ['Expedite NDA-to-SOW transition via their procurement team', 'Paulo to follow up directly with CFO if legal review stalls past June 10', 'Block kickoff resources for first week of July pending signed SOW'],
+        overview: 'Strong close call. Andie presented two scope options; Paulo reinforced the Phase 1 ROI case. The CFO approved Phase 1 budget on the call and indicated full Phase 2 is likely contingent on Phase 1 delivery. The only risk is legal review velocity — procurement is a new relationship and process is unknown.',
+      },
+
+      // ── Keystone Energy Services ──────────────────────────────────────────
+      // Utility company, NERC CIP compliance, critical infrastructure
+      // Ryan (ISR) — cold call only
+      // Andie (AE) — Discovery, Demo, Touchpoint ×2, Proposal
+      // Michael (SE) — Discovery and Demo; NOT on exec touchpoints
+      // Paulo (CRO) — CRO Touchpoint + Proposal
+      // Camilo (President) — exec Touchpoint only (no SE on this call)
+      {
+        id: 'demo-kes-1', ts: new Date('2026-02-12T08:30:00').toISOString(),
+        prospect: 'Keystone Energy Services', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-02-12', letter_grade: 'C', total: 53,
+        dimensions: dims(9,9,9,9,9,8),
+        top_strength: 'NERC CIP framing was accurate and caught the prospect\'s attention immediately',
+        top_priority: 'Went too technical too soon — lost the VP of IT before establishing rapport',
+        next_steps: ['Send NERC CIP compliance overview positioned for utility sector', 'Book discovery with VP of IT and their compliance officer'],
+        overview: 'Ryan correctly identified NERC CIP as the compliance driver and the prospect was initially engaged. However, Ryan moved into technical specifics about CIP-005 and CIP-007 before establishing any rapport or pain context. The prospect became passive in the second half. Discovery call booked on goodwill.',
+      },
+      {
+        id: 'demo-kes-2', ts: new Date('2026-03-04T10:00:00').toISOString(),
+        prospect: 'Keystone Energy Services', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-03-04', letter_grade: 'B-', total: 64,
+        dimensions: dims(11,13,11,11,10,8),
+        top_strength: 'Tied NERC CIP non-compliance penalties to their recent grid expansion — strong situational hook',
+        top_priority: 'Two compliance officers were on the call and spoke over each other — Andie did not mediate or clarify who the decision-maker was',
+        next_steps: ['Identify primary compliance lead and build champion relationship with them', 'Michael to prepare NERC CIP standards gap matrix before demo', 'Confirm FERC enforcement timeline as the urgency driver'],
+        overview: 'Andie connected the NERC CIP risk to their grid expansion project effectively. The challenge was two compliance officers with competing views on scope — Andie let them debate without clarifying the decision process. Champion identification is the critical gap before advancing to demo.',
+      },
+      {
+        id: 'demo-kes-3', ts: new Date('2026-03-25T14:00:00').toISOString(),
+        prospect: 'Keystone Energy Services', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-03-25', letter_grade: 'B', total: 72,
+        dimensions: dims(12,14,14,12,12,8),
+        top_strength: 'Michael\'s CIP-005 / CIP-007 gap mapping to their actual control environment was technically exceptional',
+        top_priority: 'Primary compliance officer was not present — key technical buy-in is missing',
+        next_steps: ['Re-run demo summary for primary compliance officer who missed the session', 'Confirm FERC enforcement date creates hard Q3 urgency', 'Escalate to Paulo for CRO-level touchpoint before proposal'],
+        overview: 'Andie and Michael delivered a strong demo to the VP IT and secondary compliance officer. The NERC CIP control mapping was technically impressive. The problem: the primary compliance officer who controls the budget recommendation was absent. A follow-up briefing is needed before the deal can advance.',
+      },
+      {
+        id: 'demo-kes-4', ts: new Date('2026-04-15T11:00:00').toISOString(),
+        prospect: 'Keystone Energy Services', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-04-15', letter_grade: 'B', total: 70,
+        dimensions: dims(12,13,13,12,11,9),
+        top_strength: 'Paulo established commercial credibility with the CFO and reframed the investment as a regulatory protection cost',
+        top_priority: 'Primary compliance officer still not fully committed — a targeted 1:1 is needed before proposal',
+        next_steps: ['Set up 30-min 1:1 between Andie and primary compliance officer to confirm buy-in', 'Paulo to send CFO-facing investment summary tied to FERC penalty exposure', 'Confirm exec touchpoint with Camilo if deal value justifies'],
+        overview: 'A commercial alignment call with Andie and Paulo (CRO). The CFO engagement improved significantly — Paulo\'s framing of NERC non-compliance penalties as a quantifiable financial risk resonated. The primary compliance officer remains a question mark. Her formal buy-in is needed before the deal can close.',
+      },
+      {
+        id: 'demo-kes-5', ts: new Date('2026-05-12T09:00:00').toISOString(),
+        prospect: 'Keystone Energy Services', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-05-12', letter_grade: 'B+', total: 76,
+        dimensions: dims(13,14,14,13,12,10),
+        top_strength: 'Camilo\'s credibility with critical infrastructure reference clients turned the compliance officer into an advocate',
+        top_priority: 'Andie should have pre-briefed Camilo on the compliance officer\'s specific concerns — slight misalignment early in call',
+        next_steps: ['Submit proposal by May 22 with Phase 1 and full-scope pricing options', 'Paulo to align with CFO on payment timing before proposal call', 'Compliance officer confirmed as internal champion — protect this relationship'],
+        overview: 'A well-placed executive touchpoint with Andie and Camilo (President). Note: Michael was not on this call. Camilo\'s reference stories from similar critical infrastructure clients directly addressed the compliance officer\'s concerns. She is now actively championing the deal internally.',
+      },
+      {
+        id: 'demo-kes-6', ts: new Date('2026-06-03T13:00:00').toISOString(),
+        prospect: 'Keystone Energy Services', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-06-03', letter_grade: 'B+', total: 82,
+        dimensions: dims(14,16,15,14,13,10),
+        top_strength: 'Two-phase proposal structure removed the budget barrier — CFO approved Phase 1 scope immediately',
+        top_priority: 'Procurement process is 30-day minimum — deal may not close before FERC examination window',
+        next_steps: ['Escalate procurement timeline with their legal and procurement team', 'Paulo to contact CFO directly if procurement stalls past June 17', 'Prepare Phase 1 kickoff timeline that begins parallel to procurement review'],
+        overview: 'Andie and Paulo delivered a strong close call. The two-phase structure neutralized the budget constraint and the compliance officer\'s advocacy helped close the CFO. The risk is a 30-day procurement cycle that may miss the FERC exam window — Paulo needs to activate his CFO relationship to accelerate.',
+      },
+
+      // ── Perimeter Law Group ───────────────────────────────────────────────
+      // Mid-size law firm; data security and client confidentiality compliance
+      // Andie (AE) — cold call (one of two AE-owned cold calls), Discovery, Proposal
+      // Michael (SE) — joins Discovery
+      {
+        id: 'demo-plg-1', ts: new Date('2026-04-17T09:30:00').toISOString(),
+        prospect: 'Perimeter Law Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Cold outreach', callDate: '2026-04-17', letter_grade: 'B-', total: 65,
+        dimensions: dims(11,11,11,11,11,10),
+        top_strength: 'Led with client data breach liability framing — strong hook for a law firm audience',
+        top_priority: 'Did not confirm who manages IT or security internally — champion is unknown',
+        next_steps: ['Identify IT or security decision-maker or external MSSP managing their environment', 'Send law firm data security case study before discovery', 'Book discovery with managing partner and IT lead'],
+        overview: 'Andie executed a targeted outbound cold call directly to the Managing Partner. The client data breach liability framing was well-chosen for a legal audience. The call surfaced that they have no formal security program despite handling sensitive client financial and litigation data. Champion identification is the first discovery gap to close.',
+      },
+      {
+        id: 'demo-plg-2', ts: new Date('2026-05-06T11:00:00').toISOString(),
+        prospect: 'Perimeter Law Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-05-06', letter_grade: 'B', total: 73,
+        dimensions: dims(12,14,13,12,12,10),
+        top_strength: 'Michael surfaced a state bar cybersecurity rule the firm was unaware of — created urgency immediately',
+        top_priority: 'Managing Partner confirmed budget authority but is not technical — IT Director must be the implementation champion',
+        next_steps: ['Send state bar cybersecurity compliance brief with OneAxiom positioning', 'Engage IT Director to build a technical champion before demo', 'Michael to prepare discovery summary tied to specific data security obligations'],
+        overview: 'Andie and Michael ran a strong discovery call. Michael\'s knowledge of state bar cybersecurity obligations created a genuinely new urgency signal for the Managing Partner. Budget authority is confirmed. The gap is an IT Director who has not yet been engaged — without a technical champion the proposal may stall in implementation planning.',
+      },
+      {
+        id: 'demo-plg-3', ts: new Date('2026-06-02T14:00:00').toISOString(),
+        prospect: 'Perimeter Law Group', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-06-02', letter_grade: 'B+', total: 80,
+        dimensions: dims(13,16,15,13,13,10),
+        top_strength: 'Closing on state bar compliance deadline as the urgency driver was precise and unanswerable',
+        top_priority: 'IT Director was on the call but non-committal — implementation readiness risk remains',
+        next_steps: ['Send finalized engagement proposal by June 6', 'Andie to do a 1:1 with IT Director to confirm implementation readiness', 'Confirm kickoff date — Managing Partner wants to start before summer recess'],
+        overview: 'Clean proposal call. Andie anchored urgency to the state bar compliance deadline — the Managing Partner did not push back. The IT Director remained quiet throughout, which is a mild yellow flag for implementation readiness. Managing Partner indicated willingness to proceed pending proposal review.',
+      },
+
+      // ── Apex Biotech Sciences ──────────────────────────────────────────────
+      {
+        id: 'demo-abs-1', ts: new Date('2026-02-05T10:00:00').toISOString(),
+        prospect: 'Apex Biotech Sciences', rep: 'Ruben Posada', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-02-05', letter_grade: 'C+', total: 57,
+        dimensions: dims(10,9,10,10,9,9),
+        top_strength: 'Connected biotech IP protection narrative to cyber exposure — right framing for a life sciences audience',
+        top_priority: 'Call screened before reaching IT or security contact — gatekeeper not navigated',
+        next_steps: ['Research IT Director direct-dial before next attempt', 'Send biotech IP security brief to correct contact once identified', 'Rebook with decision-maker — avoid front desk on next call'],
+        overview: 'Ruben executed a targeted cold call into Apex Biotech Sciences, a mid-size R&D-driven biotech. The IP protection framing was appropriate for the audience but the call was screened before reaching a technology or security decision-maker. The qualifying hook was effective — the challenge is access, not relevance. Next attempt should bypass the front desk with a direct-dial approach.',
+      },
+      {
+        id: 'demo-abs-2', ts: new Date('2026-02-26T11:00:00').toISOString(),
+        prospect: 'Apex Biotech Sciences', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-02-26', letter_grade: 'B-', total: 64,
+        dimensions: dims(11,13,12,11,10,7),
+        top_strength: 'Michael identified unclassified R&D endpoints with no EDR coverage — created genuine urgency for the IT Director',
+        top_priority: 'CISO role is vacant — IT Director is acting security lead with limited bandwidth and no formal security mandate',
+        next_steps: ['Send R&D data protection brief tailored to biotech IP lifecycle', 'Engage IT Director directly to build technical champion before demo', 'Michael to map endpoint gaps to FDA 21 CFR Part 11 audit trail obligations'],
+        overview: 'Andie led discovery with Michael supporting on technical depth. Michael\'s identification of unprotected R&D endpoints created a genuine urgency signal the IT Director had not previously quantified. The CISO vacancy is a structural risk — the IT Director is technically capable but stretched thin. The engagement needs a clear technical champion before moving to demo.',
+      },
+      {
+        id: 'demo-abs-3', ts: new Date('2026-03-20T13:00:00').toISOString(),
+        prospect: 'Apex Biotech Sciences', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-03-20', letter_grade: 'B', total: 73,
+        dimensions: dims(12,15,14,12,12,8),
+        top_strength: 'Live demo of data classification tagging on R&D file shares resonated strongly — IT Director requested follow-up on scope',
+        top_priority: 'IT Director wants a 30-day pilot before committing to full engagement — pilot scope needs to be defined quickly',
+        next_steps: ['Draft a 30-day pilot scope for R&D endpoint protection and data classification', 'Andie to confirm pilot budget authority with IT Director', 'Michael to prepare pilot success criteria tied to FDA audit readiness'],
+        overview: 'Andie and Michael delivered a strong demo focused on R&D data protection. The live data classification demo on a simulated file share environment was the highlight — the IT Director paused the presentation to ask follow-up questions. Pilot request is a buying signal. Moving fast on pilot scope definition is critical before budget cycle ends.',
+      },
+      {
+        id: 'demo-abs-4', ts: new Date('2026-04-14T10:00:00').toISOString(),
+        prospect: 'Apex Biotech Sciences', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-04-14', letter_grade: 'B+', total: 76,
+        dimensions: dims(13,14,14,13,12,10),
+        top_strength: 'Paulo connected cybersecurity investment to FDA audit trail obligations — COO engaged immediately on liability exposure',
+        top_priority: 'Budget cycle closes end of Q2 — proposal must be delivered before June 15 to secure this year\'s allocation',
+        next_steps: ['Deliver full proposal before June 15 to align with Q2 budget close', 'Paulo to reinforce IP breach liability narrative in proposal cover letter', 'Andie to confirm legal review process and procurement timeline'],
+        overview: 'Andie and Paulo ran a strong executive touchpoint with the COO and IT Director. Paulo\'s framing of FDA audit trail obligations as a cybersecurity driver was the pivotal moment — the COO confirmed it was a board-level concern. The Q2 budget deadline creates a hard proposal deadline. Paulo\'s executive presence accelerated the COO\'s sense of urgency.',
+      },
+      {
+        id: 'demo-abs-5', ts: new Date('2026-05-09T14:00:00').toISOString(),
+        prospect: 'Apex Biotech Sciences', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-05-09', letter_grade: 'A-', total: 84,
+        dimensions: dims(14,16,16,14,14,10),
+        top_strength: 'Paulo anchored proposal value to IP breach liability exposure quantified in discovery — COO accepted the framing without objection',
+        top_priority: 'Legal counsel will review SOW — anticipate a 10–14 day legal cycle that could delay signing past Q2 budget close',
+        next_steps: ['Provide redlined SOW template in advance to compress legal review cycle', 'Andie to maintain daily touchpoint with IT Director during legal review', 'Paulo to contact COO directly if legal review extends past May 25'],
+        overview: 'Andie and Paulo delivered a clean proposal presentation. Paulo\'s IP breach liability narrative — grounded in discovery-phase data — was accepted by the COO without negotiation. The primary close risk is legal review speed, not budget or will. Proactive SOW template delivery can compress the legal cycle. Strong close probability if legal review completes before Q2 budget lock.',
+      },
+
+      // ── Coastal Community Bank ─────────────────────────────────────────────
+      {
+        id: 'demo-ccb-1', ts: new Date('2026-04-03T09:00:00').toISOString(),
+        prospect: 'Coastal Community Bank', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-04-03', letter_grade: 'C', total: 54,
+        dimensions: dims(9,9,9,10,9,8),
+        top_strength: 'Led with FDIC cybersecurity examination framing — well-matched for a community bank audience and created immediate relevance',
+        top_priority: 'Call reached branch operations manager rather than IT or security contact — wrong entry point',
+        next_steps: ['Research IT Manager and VP of Operations direct contacts before next call', 'Send FDIC cybersecurity exam prep brief to warm the right contact', 'Rebook directly with IT Manager — branch ops is not the right champion path'],
+        overview: 'Ryan executed a strong cold call hook using FDIC examination framing, which was well-suited for a community bank. The narrative created genuine interest but the call was fielded by a branch operations manager with no IT or security authority. The message landed well — the access problem needs to be solved before progressing. Direct outreach to the IT Manager is the immediate next step.',
+      },
+      {
+        id: 'demo-ccb-2', ts: new Date('2026-04-24T10:30:00').toISOString(),
+        prospect: 'Coastal Community Bank', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-04-24', letter_grade: 'B-', total: 63,
+        dimensions: dims(11,13,11,11,10,7),
+        top_strength: 'Surfaced that the bank\'s core banking platform has no third-party vendor risk review on file — a clear FDIC examination gap',
+        top_priority: 'IT Manager is technical lead but lacks budget authority — VP of Operations controls cybersecurity spend',
+        next_steps: ['Map vendor risk gap to specific FDIC examination requirements and send to IT Manager', 'Andie to request a joint meeting with IT Manager and VP of Operations', 'Prepare a community bank FDIC exam readiness brief for VP of Operations review'],
+        overview: 'Andie ran a productive solo discovery with the IT Manager. The vendor risk gap surfaced is directly relevant to FDIC examination requirements and created a clear urgency anchor. The budget authority gap is the primary obstacle — the IT Manager is an ideal technical champion but cannot commit spend. A joint meeting with the VP of Operations is the critical next step.',
+      },
+      {
+        id: 'demo-ccb-3', ts: new Date('2026-05-15T11:00:00').toISOString(),
+        prospect: 'Coastal Community Bank', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-05-15', letter_grade: 'B', total: 71,
+        dimensions: dims(12,14,14,12,11,8),
+        top_strength: 'Michael\'s community bank-specific risk assessment preview visibly engaged the VP of Operations — concrete and exam-relevant',
+        top_priority: 'VP of Operations confirmed interest but wants a proposal scoped specifically to their FDIC examination window',
+        next_steps: ['Andie to draft proposal scoped to FDIC exam timeline — target delivery by May 30', 'Michael to include vendor risk assessment preview section in the proposal', 'Confirm whether VP of Operations is final signer or if board approval is required'],
+        overview: 'Andie and Michael delivered a demo that successfully pulled the VP of Operations into the buying conversation. Michael\'s community bank risk assessment preview — framed around FDIC examination evidence requirements — was the session\'s turning point. The VP of Operations is now engaged and budget authority confirmed. A scoped proposal tied to the FDIC exam window is the clear next step.',
+      },
+
+      // ── Summit Property Holdings ───────────────────────────────────────────
+      {
+        id: 'demo-sph-1', ts: new Date('2026-05-14T09:30:00').toISOString(),
+        prospect: 'Summit Property Holdings', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Cold outreach', callDate: '2026-05-14', letter_grade: 'B-', total: 66,
+        dimensions: dims(12,11,11,12,11,9),
+        top_strength: 'Led with a real estate data breach case study — CFO had not previously considered cybersecurity as an operational liability',
+        top_priority: 'IT is fully outsourced to an MSP — MSP relationship could complicate a direct assessment engagement',
+        next_steps: ['Research MSP name and relationship structure before discovery call', 'Send real estate sector cybersecurity liability brief to CFO', 'Book discovery with CFO and any internal IT point of contact'],
+        overview: 'Andie executed a targeted cold call into Summit Property Holdings, a commercial real estate holding firm. The data breach liability framing created a new risk awareness for the CFO, who had not previously considered cybersecurity as a financial exposure. The MSP dependency is the key structural complexity to navigate in discovery — need to understand whether MSP has any contractual exclusivity before engaging on an assessment.',
+      },
+      {
+        id: 'demo-sph-2', ts: new Date('2026-06-04T10:00:00').toISOString(),
+        prospect: 'Summit Property Holdings', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-06-04', letter_grade: 'B', total: 71,
+        dimensions: dims(12,14,13,12,12,8),
+        top_strength: 'Michael surfaced that the MSP has never produced a security assessment or audit report in four years of engagement',
+        top_priority: 'MSP may resist a third-party assessment — an internal champion at Summit must be secured before any MSP conversation',
+        next_steps: ['Michael to prepare a brief on MSP oversight gaps and client risk exposure', 'Andie to position OneAxiom as a client-side advisor, not an MSP replacement — reduce resistance risk', 'CFO to be briefed on the MSP accountability gap before demo scheduling'],
+        overview: 'Andie and Michael ran a strong discovery call. Michael\'s finding that the MSP had never produced an independent security assessment in four years of service was the session\'s pivotal moment — the CFO was visibly surprised. The strategic positioning challenge is to engage without triggering MSP defensiveness. Positioning OneAxiom as a client-side advisor rather than a vendor replacement is the right narrative to develop going into demo.',
+      },
+
+      // ── Tri-State Transit Authority ────────────────────────────────────────
+      {
+        id: 'demo-tta-1', ts: new Date('2026-02-19T09:00:00').toISOString(),
+        prospect: 'Tri-State Transit Authority', rep: 'Ryan Osegueda', repRole: 'ISR',
+        stage: 'Cold outreach', callDate: '2026-02-19', letter_grade: 'C', total: 52,
+        dimensions: dims(9,8,9,9,8,9),
+        top_strength: 'Connected recent transit ransomware headlines to TTA\'s exposure — created immediate relevance for a public agency audience',
+        top_priority: 'Call routed to procurement before IT leadership was reached — public sector gatekeeping adds a multi-step access challenge',
+        next_steps: ['Identify IT Director and Deputy Executive Director direct contacts', 'Send transit agency cybersecurity brief via LinkedIn to IT Director', 'Request warm introduction through transit industry contact if available'],
+        overview: 'Ryan executed a well-framed cold call using recent transit system ransomware incidents as a relevance anchor. The message was appropriate for the audience but was intercepted by a procurement contact who could not evaluate the proposal. Public sector access requires a different approach — direct outreach to IT leadership via LinkedIn or a mutual contact is the recommended path forward.',
+      },
+      {
+        id: 'demo-tta-2', ts: new Date('2026-03-12T11:00:00').toISOString(),
+        prospect: 'Tri-State Transit Authority', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Discovery', callDate: '2026-03-12', letter_grade: 'B-', total: 65,
+        dimensions: dims(11,13,12,11,11,7),
+        top_strength: 'Michael identified OT/SCADA exposure in fare collection and station management systems — a tangible urgency signal for a transit operator',
+        top_priority: 'IT Director and OT operations team work in separate silos — any security engagement requires sign-off from both groups',
+        next_steps: ['Michael to prepare a transit OT/IT convergence brief for both IT Director and OT Lead', 'Andie to request a joint meeting with IT Director and OT team lead', 'Map CISA transit sector guidance to discovery findings before demo'],
+        overview: 'Andie and Michael ran a productive discovery with the IT Director. Michael\'s identification of OT/SCADA exposure in fare collection systems surfaced a risk the IT Director acknowledged but had not formally assessed. The IT/OT silo is the structural challenge — both groups must be engaged simultaneously. CISA transit sector guidance is a strong third-party anchor for the next conversation.',
+      },
+      {
+        id: 'demo-tta-3', ts: new Date('2026-04-07T13:00:00').toISOString(),
+        prospect: 'Tri-State Transit Authority', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Demo / solution presentation', callDate: '2026-04-07', letter_grade: 'B', total: 72,
+        dimensions: dims(12,14,14,12,12,8),
+        top_strength: 'OT/IT convergence framework demo engaged both the IT Director and OT Lead simultaneously — rare alignment in a siloed agency',
+        top_priority: 'Public agency procurement above the $50K threshold requires board approval — timeline risk is significant',
+        next_steps: ['Prepare board-ready cybersecurity risk summary for Executive Director review', 'Andie to research procurement approval threshold and board meeting cadence with IT Director', 'Michael to draft OT/IT assessment scope document to support board submission'],
+        overview: 'Andie and Michael delivered a strong demo that achieved what discovery could not — simultaneous engagement of both the IT Director and OT Lead. The OT/IT convergence framework was the session\'s turning point. The procurement timeline risk is the primary obstacle: board approval is required above the $50K threshold and board cycles at public agencies are slow. Board-ready materials need to be prepared proactively.',
+      },
+      {
+        id: 'demo-tta-4', ts: new Date('2026-05-05T10:00:00').toISOString(),
+        prospect: 'Tri-State Transit Authority', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Touchpoint', callDate: '2026-05-05', letter_grade: 'B+', total: 76,
+        dimensions: dims(13,14,14,13,12,10),
+        top_strength: 'Camilo\'s public sector compliance narrative connected directly to the Executive Director\'s board accountability concerns',
+        top_priority: 'Board approval required for any engagement above $50K — Executive Director needs board-ready materials before next board cycle',
+        next_steps: ['Prepare a one-page board cybersecurity risk summary for Executive Director', 'Andie to confirm next board meeting date and submission deadline', 'Camilo to follow up with Executive Director 1:1 if board submission window is at risk'],
+        overview: 'Andie and Camilo ran a strong executive touchpoint with the Transit Authority\'s Executive Director. This call did not include Michael or technical staff — it was a pure executive alignment conversation. Camilo\'s framing of CISA transit sector guidance as a board accountability obligation resonated immediately with the Executive Director. The board approval cycle is now the critical path — materials must be submitted before the next meeting.',
+      },
+      {
+        id: 'demo-tta-5', ts: new Date('2026-06-02T14:00:00').toISOString(),
+        prospect: 'Tri-State Transit Authority', rep: 'Andie Prandini', repRole: 'Account Executive',
+        stage: 'Proposal / close', callDate: '2026-06-02', letter_grade: 'A-', total: 85,
+        dimensions: dims(14,16,16,14,14,11),
+        top_strength: 'Paulo framed the proposal around CISA transit system guidance — Executive Director treated it as a compliance obligation, not a vendor pitch',
+        top_priority: 'Legal and procurement review will require 3–4 weeks for a public agency — kickoff timing is at risk without an expedited procurement path',
+        next_steps: ['Andie to request expedited procurement review citing CISA compliance urgency', 'Paulo to provide a public agency contract reference to accelerate legal review', 'Confirm July board meeting date — target formal engagement vote before summer recess'],
+        overview: 'Andie and Paulo delivered a strong proposal presentation to the Executive Director and IT Director. Paulo\'s decision to frame the proposal around CISA transit sector guidance was the session\'s defining move — the Executive Director confirmed it was a compliance requirement rather than a discretionary investment. Public agency procurement will be the primary friction point. An expedited procurement path and a July board meeting vote are the critical milestones to close before summer recess.',
+      },
+
+    ];
+
+    // Sort by callDate descending for consistent history rendering (most recent first)
+    demoHistory.sort((a,b) => a.callDate < b.callDate ? 1 : -1);
+
+    const demoPulseTasks = {
+      'Meridian Financial Group': [
+        { text: 'Send revised proposal with two scope options', done: true,  source: '2026-05-15', ts: now },
+        { text: 'Confirm legal review timeline with their counsel', done: false, source: '2026-05-15', ts: now },
+        { text: 'Block kickoff date contingent on signed SOW', done: false, source: '2026-05-15', ts: now },
+      ],
+      'Northgate Healthcare Systems': [
+        { text: 'Send countersigned SOW by June 6', done: false, source: '2026-06-02', ts: now },
+        { text: 'Confirm BAA execution with their legal by June 9', done: false, source: '2026-06-02', ts: now },
+        { text: 'Schedule kickoff call for week of June 16', done: false, source: '2026-06-02', ts: now },
+      ],
+      'Cascade Manufacturing Co.': [
+        { text: 'Send final proposal with CMMC Level 2 scope by June 9', done: false, source: '2026-06-05', ts: now },
+        { text: 'Confirm CFO signature authority and legal review window', done: false, source: '2026-06-05', ts: now },
+        { text: 'Block kickoff date — prospect wants to start before July 1', done: true,  source: '2026-06-05', ts: now },
+      ],
+      'Vantara Logistics': [
+        { text: 'Prepare one-page differentiation brief vs prior vendor', done: false, source: '2026-06-10', ts: now },
+        { text: 'Confirm CISO as champion and secure 1:1 before proposal', done: false, source: '2026-06-10', ts: now },
+        { text: 'Target proposal submission by June 25 if CISO confirms', done: false, source: '2026-06-10', ts: now },
+      ],
+      'Pinnacle Credit Union': [
+        { text: 'Send sample board-ready cybersecurity assessment report', done: false, source: '2026-06-10', ts: now },
+        { text: 'Confirm internal champion can dedicate time to evidence collection', done: false, source: '2026-06-10', ts: now },
+        { text: 'Target proposal delivery by June 16 for Q3 board prep window', done: false, source: '2026-06-10', ts: now },
+      ],
+      'Strata Defense Solutions': [
+        { text: 'Expedite NDA-to-SOW transition via procurement team', done: false, source: '2026-05-28', ts: now },
+        { text: 'Paulo to follow up with CFO if legal review stalls past June 10', done: false, source: '2026-05-28', ts: now },
+        { text: 'Block kickoff resources for first week of July pending SOW', done: false, source: '2026-05-28', ts: now },
+      ],
+      'Keystone Energy Services': [
+        { text: 'Escalate procurement timeline with legal and procurement team', done: false, source: '2026-06-03', ts: now },
+        { text: 'Paulo to contact CFO directly if procurement stalls past June 17', done: false, source: '2026-06-03', ts: now },
+        { text: 'Prepare Phase 1 kickoff timeline parallel to procurement review', done: true,  source: '2026-06-03', ts: now },
+      ],
+      'Perimeter Law Group': [
+        { text: 'Send finalized engagement proposal by June 6', done: true,  source: '2026-06-02', ts: now },
+        { text: 'Andie to do 1:1 with IT Director to confirm implementation readiness', done: false, source: '2026-06-02', ts: now },
+        { text: 'Confirm kickoff date before summer recess', done: false, source: '2026-06-02', ts: now },
+      ],
+      'Apex Biotech Sciences': [
+        { text: 'Deliver finalized proposal before June 15 Q2 budget deadline', done: false, source: '2026-05-09', ts: now },
+        { text: 'Provide redlined SOW template to compress legal review cycle', done: false, source: '2026-05-09', ts: now },
+        { text: 'Paulo to contact COO directly if legal review extends past May 25', done: false, source: '2026-05-09', ts: now },
+      ],
+      'Coastal Community Bank': [
+        { text: 'Deliver proposal scoped to FDIC examination timeline by May 30', done: false, source: '2026-05-15', ts: now },
+        { text: 'Confirm whether VP of Operations is final signer or board approval needed', done: false, source: '2026-05-15', ts: now },
+        { text: 'Michael to include vendor risk assessment preview in proposal', done: false, source: '2026-05-15', ts: now },
+      ],
+      'Summit Property Holdings': [
+        { text: 'Michael to prepare MSP oversight gap brief for CFO review', done: false, source: '2026-06-04', ts: now },
+        { text: 'Andie to position OneAxiom as client-side advisor before demo scheduling', done: false, source: '2026-06-04', ts: now },
+        { text: 'Schedule demo for week of June 16 pending CFO confirmation', done: false, source: '2026-06-04', ts: now },
+      ],
+      'Tri-State Transit Authority': [
+        { text: 'Prepare one-page board cybersecurity risk summary for Executive Director', done: false, source: '2026-06-02', ts: now },
+        { text: 'Andie to request expedited procurement review citing CISA compliance urgency', done: false, source: '2026-06-02', ts: now },
+        { text: 'Confirm July board meeting date for formal engagement vote', done: false, source: '2026-06-02', ts: now },
+      ],
+    };
+
+    // Participant scores for supporting reps (SE, CRO, CFO) keyed by record id
+    const participantMap = {
+      'demo-mfg-3': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-mfg-4': [{ name: 'Paulo Veloso',   score: 74 }],
+      'demo-mfg-5': [{ name: 'Paulo Veloso',   score: 84 }],
+      'demo-nhs-3': [{ name: 'Michael Darlan', score: 65 }],
+      'demo-nhs-4': [{ name: 'Michael Darlan', score: 84 }],
+      'demo-nhs-5': [{ name: 'Camilo Garces',  score: 78 }],
+      'demo-nhs-6': [{ name: 'Paulo Veloso',   score: 88 }],
+      'demo-cmc-3': [{ name: 'Michael Darlan', score: 77 }],
+      'demo-cmc-4': [{ name: 'Paulo Veloso',   score: 90 }],
+      'demo-vl-3':  [{ name: 'Michael Darlan', score: 62 }],
+      'demo-vl-4':  [{ name: 'Michael Darlan', score: 65 }],
+      'demo-pcu-3': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-sds-3': [{ name: 'Michael Darlan', score: 74 }],
+      'demo-sds-4': [{ name: 'Michael Darlan', score: 83 }],
+      'demo-sds-5': [{ name: 'Camilo Garces',  score: 77 }],
+      'demo-sds-6': [{ name: 'Paulo Veloso',   score: 80 }],
+      'demo-sds-7': [{ name: 'Paulo Veloso',   score: 87 }],
+      'demo-kes-3': [{ name: 'Michael Darlan', score: 74 }],
+      'demo-kes-4': [{ name: 'Paulo Veloso',   score: 75 }],
+      'demo-kes-5': [{ name: 'Camilo Garces',  score: 82 }],
+      'demo-kes-6': [{ name: 'Paulo Veloso',   score: 85 }],
+      'demo-plg-2': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-abs-2': [{ name: 'Michael Darlan', score: 68 }],
+      'demo-abs-3': [{ name: 'Michael Darlan', score: 76 }],
+      'demo-abs-4': [{ name: 'Paulo Veloso',   score: 80 }],
+      'demo-abs-5': [{ name: 'Paulo Veloso',   score: 87 }],
+      'demo-ccb-3': [{ name: 'Michael Darlan', score: 74 }],
+      'demo-sph-2': [{ name: 'Michael Darlan', score: 75 }],
+      'demo-tta-2': [{ name: 'Michael Darlan', score: 68 }],
+      'demo-tta-3': [{ name: 'Michael Darlan', score: 75 }],
+      'demo-tta-4': [{ name: 'Camilo Garces',  score: 81 }],
+      'demo-tta-5': [{ name: 'Paulo Veloso',   score: 88 }],
+    };
+    demoHistory.forEach(h => {
+      if (typeof h.total === 'number') h.letter_grade = scoreToGrade(h.total);
+      if (participantMap[h.id]) h.participants = participantMap[h.id];
+    });
+    // Strip resultsHtml from existing records to minimize localStorage usage before appending 53 demo records
+    const existing = loadHistory().filter(h => !h.id?.startsWith('demo-')).map(h => { const c={...h}; delete c.resultsHtml; return c; });
+    saveHistoryData([...existing, ...demoHistory]);
+
+    // Merge pulse tasks — don't overwrite existing real tasks for a company
+    let existingTasks = {};
+    try { existingTasks = JSON.parse(localStorage.getItem('oa_pulse_tasks')||'{}'); } catch(e) {}
+    const mergedTasks = Object.assign({}, demoPulseTasks, existingTasks);
+    localStorage.setItem('oa_pulse_tasks', JSON.stringify(mergedTasks));
+
+    // ── Scope pre-population for demo accounts ─────────────────────────────
+    // field(s) helper — wraps text value for single or multi fields
+    const sv = v => ({ value: v, notes: '' });
+    const demoScope = {
+      'Meridian Financial Group': {
+        [slugField('Company Name')]:                            sv('Meridian Financial Group'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Financial Services / Fintech'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('SEC\nFINRA'),
+        [slugField('Primary products & services')]:            sv('Investment advisory\nRetirement account management\nWealth planning'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('148'),
+        [slugField('Number of in-house IT / security staff')]: sv('4'),
+        [slugField('Number of business locations / offices')]: sv('2'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('162'),
+        [slugField('Number of servers (physical + virtual)')]: sv('14'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure\nMicrosoft 365'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Microsoft Defender for Endpoint'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Email and admin accounts — remote access not enforced'),
+        [slugField('Email / collaboration platform (M365 / Google Workspace / etc.)')]: sv('Microsoft 365'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII\nFinancial records\nInvestment data'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~22,000 client accounts'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('SOC 2 Type II\nSEC Reg S-P\nState breach notification'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('SOC 2 Type II audit — targeting Q3 2026'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('Informal internal review ~2 years ago — no external assessment'),
+        [slugField('Number of personnel who will support this engagement')]: sv('3'),
+      },
+      'Northgate Healthcare Systems': {
+        [slugField('Company Name')]:                            sv('Northgate Healthcare Systems'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Healthcare / Multi-site Hospital Network'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Nonprofit Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('HHS-OCR\nCMS'),
+        [slugField('Primary products & services')]:            sv('Inpatient and outpatient acute care\nSpecialty clinics\nEmergency services'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('620'),
+        [slugField('Number of in-house IT / security staff')]: sv('8'),
+        [slugField('Number of business locations / offices')]: sv('5'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('840'),
+        [slugField('Number of servers (physical + virtual)')]: sv('42'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure\nMicrosoft 365'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('CrowdStrike Falcon (partial deployment — not all clinical workstations)'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Admin accounts and remote access only — clinical workstations not enforced'),
+        [slugField('Email / collaboration platform (M365 / Google Workspace / etc.)')]: sv('Microsoft 365'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PHI\nPII\nPayment data'),
+        [slugField('Do you store, process, or transmit payment card data (PCI scope)?')]: sv('Yes — patient billing processed internally'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~180,000 patient records'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('HIPAA Security Rule\nHIPAA Breach Notification Rule\nState health data breach laws'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial — self-assessed)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('HHS-OCR compliance review — Q3 2026 (hard deadline)'),
+        [slugField('Security incident in the past 24 months? Briefly describe.')]: sv('2023: breach notification filed with HHS-OCR — 1,200 records exposed via misconfigured email rule'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('HIPAA risk analysis performed internally in 2022 — not independently validated'),
+        [slugField('Number of personnel who will support this engagement')]: sv('5'),
+      },
+      'Cascade Manufacturing Co.': {
+        [slugField('Company Name')]:                            sv('Cascade Manufacturing Co.'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Precision Manufacturing / Defense Supply Chain'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('LLC'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('DoD / CMMC AB'),
+        [slugField('Primary products & services')]:            sv('Machined components\nAssemblies for DoD prime contractors\nQuality systems / ITAR-controlled parts'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('245'),
+        [slugField('Number of in-house IT / security staff')]: sv('3'),
+        [slugField('Number of business locations / offices')]: sv('1'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Primarily on-premises'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('87'),
+        [slugField('Number of servers (physical + virtual)')]: sv('9'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Microsoft SharePoint (CUI storage — not yet GCC compliant)'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Windows Defender — no EDR solution deployed'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 email only — no MFA on on-prem admin accounts'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('CUI (Controlled Unclassified Information)\nProduction specifications\nDoD contract data'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('CMMC Level 2\nDFARS 252.204-7012\nITAR (applicable to some part lines)'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('None — first formal assessment'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('CMMC Level 2 certification required by August 2026 for contract renewal'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('No external assessment ever conducted'),
+        [slugField('Number of personnel who will support this engagement')]: sv('2'),
+      },
+      'Vantara Logistics': {
+        [slugField('Company Name')]:                            sv('Vantara Logistics'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Logistics / Transportation Technology'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('310'),
+        [slugField('Number of in-house IT / security staff')]: sv('5'),
+        [slugField('Number of business locations / offices')]: sv('3'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('215'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('AWS\nMicrosoft 365'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Salesforce\nCustom TMS platform (hosted AWS)\nQuickBooks Online'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('SentinelOne — deployed by prior vendor, coverage gaps remain'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII (shipper and recipient data)\nFinancial records\nCustomer contracts'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('State breach notification laws\nCCPA-CPRA (California-based customers)\nCargo/shipper data protection requirements'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('Yes — engaged [prior vendor] approximately 18 months ago; engagement ended poorly. Vendor delivered incomplete report with no remediation guidance.'),
+        [slugField('Security incident in the past 24 months? Briefly describe.')]: sv('No confirmed breach — but prior vendor assessment was never completed, leaving gap visibility unknown'),
+        [slugField('Number of personnel who will support this engagement')]: sv('4'),
+      },
+      'Pinnacle Credit Union': {
+        [slugField('Company Name')]:                            sv('Pinnacle Credit Union'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Financial Services / Credit Union'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Federally chartered credit union'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('NCUA'),
+        [slugField('Primary products & services')]:            sv('Consumer deposit accounts\nMortgage and auto lending\nDigital banking platform'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('78'),
+        [slugField('Number of in-house IT / security staff')]: sv('2'),
+        [slugField('Number of business locations / offices')]: sv('4'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — core banking on-prem, digital services cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('92'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365\nFiserv cloud (core banking SaaS)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Fiserv (core banking)\nDocuSign\nOnBase (document management)'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Webroot — basic AV only'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 email only — online banking admin portal does not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII\nFinancial records\nPayment card data (member debit)'),
+        [slugField('Do you store, process, or transmit payment card data (PCI scope)?')]: sv('Yes — member debit card processing via FIS'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~14,200 member accounts'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('NCUA cybersecurity rules\nGLBA Safeguards Rule\nPCI-DSS'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial — self-assessed against examiner guidance)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('NCUA examination expected Q3 2026 — board cybersecurity report required'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('Last external assessment: 2022 — not independently validated since'),
+        [slugField('Number of personnel who will support this engagement')]: sv('3'),
+      },
+      'Strata Defense Solutions': {
+        [slugField('Company Name')]:                            sv('Strata Defense Solutions'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Defense / Government Contracting (DoD Prime)'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('DoD / CMMC AB\nState Department (ITAR)'),
+        [slugField('Primary products & services')]:            sv('Systems integration for DoD programs\nCybersecurity services\nISR platform development'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('1,200'),
+        [slugField('Number of in-house IT / security staff')]: sv('22'),
+        [slugField('Number of business locations / offices')]: sv('4'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — Azure Government Cloud and on-prem classified systems'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('1,340'),
+        [slugField('Number of servers (physical + virtual)')]: sv('118'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure Government Cloud\nMicrosoft 365 GCC High'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Microsoft Teams GCC High\nSharePoint GCC High\nSalesforce Government Cloud'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('CrowdStrike Falcon (full deployment)'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Yes — all users including remote access and admin'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('CUI (Controlled Unclassified Information)\nCTI / program data\nPII'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('CMMC Level 3\nDFARS 252.204-7012\nITAR\nNISP (National Industrial Security Program)'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST SP 800-171 (Rev 2)\nCMMC Level 2 certified — pursuing Level 3'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('CMMC Level 3 assessment required by December 2026 — contract renewal at risk'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('CMMC Level 2 C3PAO assessment completed 2024 — Level 3 is first formal attempt'),
+        [slugField('Number of personnel who will support this engagement')]: sv('8'),
+      },
+      'Keystone Energy Services': {
+        [slugField('Company Name')]:                            sv('Keystone Energy Services'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Energy / Electric Utilities (Critical Infrastructure)'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('LLC'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('FERC\nNERC\nState PUC'),
+        [slugField('Primary products & services')]:            sv('Electric power generation and distribution\nTransmission substation operations\nDemand response programs'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('890'),
+        [slugField('Number of in-house IT / security staff')]: sv('12'),
+        [slugField('Number of business locations / offices')]: sv('7 (corporate + 6 substations)'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Primarily on-premises — partial Azure migration underway'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('620'),
+        [slugField('Number of servers (physical + virtual)')]: sv('84'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure (partial)\nMicrosoft 365'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Microsoft Defender — IT network only. OT/ICS environment has limited endpoint visibility.'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 and corporate VPN — substation remote access does not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Critical infrastructure operational data\nEmployee PII\nGrid topology / BES Cyber System data'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('NERC CIP (CIP-002 through CIP-013)\nFERC Order 887\nState PUC cybersecurity reporting'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NERC CIP standards (partial — gap in CIP-013 supply chain)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('FERC compliance audit expected Q3 2026 — recent grid expansion triggered re-assessment requirement'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('NERC CIP self-audit 2023 — no third-party validation of OT/ICS environment'),
+        [slugField('Number of personnel who will support this engagement')]: sv('5'),
+      },
+      'Perimeter Law Group': {
+        [slugField('Company Name')]:                            sv('Perimeter Law Group'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Legal Services'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Professional Corporation (PC)'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('State Bar\nABA Model Rules'),
+        [slugField('Primary products & services')]:            sv('Corporate litigation\nIntellectual property\nMergers and acquisitions advisory'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('52 (22 attorneys, 30 staff)'),
+        [slugField('Number of in-house IT / security staff')]: sv('1 (part-time IT contractor)'),
+        [slugField('Number of business locations / offices')]: sv('1'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('58'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365\nNetDocuments (DMS)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('NetDocuments (client documents)\nClio (matter management)\nDocuSign'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('None — Windows Defender only'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 only — Clio and NetDocuments do not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Client PII\nPrivileged litigation documents\nConfidential financial records\nTrade secrets (IP cases)'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~3,800 active and former client records'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('State Bar cybersecurity rule (effective 2026)\nABA Model Rule 1.6 (confidentiality)\nState breach notification'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('None'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('State Bar compliance deadline — new cybersecurity rule takes effect Q4 2026'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('No formal assessment ever conducted'),
+        [slugField('Number of personnel who will support this engagement')]: sv('2'),
+      },
+      'Apex Biotech Sciences': {
+        [slugField('Company Name')]:                            sv('Apex Biotech Sciences'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Life Sciences / Biotechnology'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Corporation'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('FDA\nNIH (grant compliance)\nState biotech data privacy rules'),
+        [slugField('Primary products & services')]:            sv('R&D for oncology therapeutics\nPreclinical and clinical trial data management\nLicensing of proprietary compound libraries'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('210'),
+        [slugField('Number of in-house IT / security staff')]: sv('3 (IT only — no dedicated security staff; CISO role vacant)'),
+        [slugField('Number of business locations / offices')]: sv('2'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — lab systems on-prem, corporate on Microsoft 365 / Azure'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('187'),
+        [slugField('Number of servers (physical + virtual)')]: sv('18'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure\nMicrosoft 365\nAWS (R&D compute workloads)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Veeva Vault (clinical trial documents)\nBenchling (R&D data)\nDocuSign'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Windows Defender — no EDR on lab workstations or research endpoints'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 corporate accounts only — lab systems and R&D endpoints not covered'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Proprietary R&D data / compound libraries\nClinical trial participant data (limited PHI)\nIP / trade secrets'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('FDA 21 CFR Part 11 (electronic records)\nHIPAA (limited — clinical trial data)\nState breach notification\nNIH data security requirements'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('None formally adopted'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('FDA pre-IND meeting expected Q4 2026 — electronic records audit trail review anticipated'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('No external assessment ever conducted'),
+        [slugField('Number of personnel who will support this engagement')]: sv('3'),
+      },
+      'Coastal Community Bank': {
+        [slugField('Company Name')]:                            sv('Coastal Community Bank'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Financial Services / Community Banking'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('State-chartered bank (S-Corp)'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('FDIC\nState Banking Department'),
+        [slugField('Primary products & services')]:            sv('Consumer deposit accounts\nSmall business lending\nMortgage origination\nOnline and mobile banking'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('142'),
+        [slugField('Number of in-house IT / security staff')]: sv('2'),
+        [slugField('Number of business locations / offices')]: sv('6 branches'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — core banking on-prem via Fiserv, digital services cloud-hosted'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('168'),
+        [slugField('Number of servers (physical + virtual)')]: sv('12'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365\nFiserv cloud (core banking SaaS)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('Fiserv (core banking)\nJack Henry (item processing)\nDocuSign'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Symantec Endpoint Protection — basic AV, no EDR'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('M365 email only — online banking admin portal and VPN do not enforce MFA'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('PII\nFinancial records\nPayment card data\nAccount credentials'),
+        [slugField('Do you store, process, or transmit payment card data (PCI scope)?')]: sv('Yes — debit card issuing and ATM processing'),
+        [slugField('Approximate volume of customer PII / records held')]: sv('~18,500 account holders'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('FDIC cybersecurity guidelines\nGLBA Safeguards Rule\nPCI-DSS\nState breach notification'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('FFIEC CAT (partial — self-assessed)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('FDIC safety and soundness examination expected Q4 2026 — cybersecurity component included'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('No third-party vendor risk review on file — last internal review 3+ years ago'),
+        [slugField('Number of personnel who will support this engagement')]: sv('3'),
+      },
+      'Summit Property Holdings': {
+        [slugField('Company Name')]:                            sv('Summit Property Holdings'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Commercial Real Estate / Property Management'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('LLC'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('None (sector-specific) — state breach notification applicable'),
+        [slugField('Primary products & services')]:            sv('Commercial property acquisition and management\nTenant leasing and facilities services\nReal estate investment portfolio management'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('78'),
+        [slugField('Number of in-house IT / security staff')]: sv('0 — IT fully managed by external MSP'),
+        [slugField('Number of business locations / offices')]: sv('1 corporate office + 14 managed properties'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Cloud-hosted — MSP manages all infrastructure'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('84'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Microsoft 365\nAzure (MSP-managed)'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('AppFolio (property management)\nQuickBooks Online (accounting)\nDocuSign'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Unknown — managed entirely by MSP; no independent endpoint visibility'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('Unknown — MSP manages all accounts; no direct confirmation received'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Tenant PII (SSN for background checks, financial statements)\nLease agreements\nBank account data (rental payments)'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('State breach notification laws\nCCPA-CPRA (California tenant data)\nFair Credit Reporting Act (tenant screening)'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('MSP has never produced an independent security assessment or audit report in 4 years of engagement'),
+        [slugField('Number of personnel who will support this engagement')]: sv('2'),
+      },
+      'Tri-State Transit Authority': {
+        [slugField('Company Name')]:                            sv('Tri-State Transit Authority'),
+        [slugField('Industry Vertical (Fintech / Healthcare / Manufacturing…)')]:  sv('Public Sector / Transportation (Critical Infrastructure)'),
+        [slugField('Legal entity type (LLC / corporation / partnership / nonprofit / etc.)')]: sv('Public authority / government entity'),
+        [slugField('Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)')]: sv('FTA (Federal Transit Administration)\nDHS / CISA (critical infrastructure)\nState transit oversight board'),
+        [slugField('Primary products & services')]:            sv('Regional bus and rail transit operations\nFare collection systems (IT + OT)\nStation management and dispatch systems'),
+        [slugField('Total number of employees (full-time + part-time)')]: sv('1,480'),
+        [slugField('Number of in-house IT / security staff')]: sv('9 (IT only — IT and OT teams operate separately)'),
+        [slugField('Number of business locations / offices')]: sv('1 HQ + 12 stations / depot facilities'),
+        [slugField('System architecture (on-prem / cloud-hosted / hybrid)')]: sv('Hybrid — IT environment cloud-hosted (M365/Azure), OT/SCADA systems on-prem'),
+        [slugField('Number of endpoints (workstations + laptops)')]: sv('840'),
+        [slugField('Number of servers (physical + virtual)')]: sv('62'),
+        [slugField('Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)')]: sv('Azure\nMicrosoft 365'),
+        [slugField('Key SaaS / third-party apps handling regulated data')]: sv('SAP (HR/payroll)\nFare collection vendor platform (OT-integrated)\nSalesforce (public communications)'),
+        [slugField('Endpoint protection / EDR solution in use')]: sv('Microsoft Defender (IT environment only) — OT/SCADA environment has no endpoint protection'),
+        [slugField('Is MFA deployed (email / remote access / admin accounts)?')]: sv('IT environment: M365 and admin accounts only. OT environment: no MFA on any system.'),
+        [slugField('Types of sensitive data handled (PII / PHI / financial records / IP / card data / trade secrets)')]: sv('Employee PII\nPassenger payment card data (fare systems)\nOperational / grid topology data (BES equivalent for transit)'),
+        [slugField('Do you store, process, or transmit payment card data (PCI scope)?')]: sv('Yes — fare payment card processing via third-party gateway'),
+        [slugField('Regulatory / compliance drivers (HIPAA / PCI-DSS / SOX / CCPA-CPRA / GDPR / CMMC / state breach laws / sector-specific)')]: sv('CISA transit sector guidelines\nFTA cybersecurity requirements\nPCI-DSS (fare card processing)\nState public agency data breach notification'),
+        [slugField('Existing framework followed (NIST CSF / ISO 27001 / SOC 2 / CIS Controls)?')]: sv('NIST CSF (partial — IT environment only; OT not assessed)'),
+        [slugField('Preparing for a regulatory exam or audit? When?')]: sv('FTA safety and security review expected Q3 2026 — triggered by recent fleet expansion grant'),
+        [slugField('Has the organization had a prior risk / security assessment? When?')]: sv('IT environment assessed internally 2022 — OT/ICS environment has never been independently assessed'),
+        [slugField('Number of personnel who will support this engagement')]: sv('6'),
+      },
+    };
+
+    // Seed scope data — don't overwrite companies that already have real user data
+    let existingScope = {};
+    try { existingScope = JSON.parse(localStorage.getItem('oa_scope_v2')||'{}'); } catch(e) {}
+    // Start with existing data, then fill in demo entries for companies that have no data yet
+    const mergedScope = Object.assign({}, existingScope);
+    Object.entries(demoScope).forEach(([company, draft]) => {
+      if (!mergedScope[company]) {
+        mergedScope[company] = { draft, revisions: [] };
+      }
+    });
+    localStorage.setItem('oa_scope_v2', JSON.stringify(mergedScope));
+  }
+
+  // Version-gated demo seed — reseed when version changes OR demo data is absent
+  const DEMO_VERSION = 'v11-all-rep-trends';
+  const _demoAccounts = new Set(loadHistory().filter(h => String(h.id).startsWith('demo-')).map(h => h.prospect));
+  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || _demoAccounts.size < 12) {
+    saveHistoryData(loadHistory().filter(h => !String(h.id).startsWith('demo-')));
+    localStorage.removeItem('oa_demo_seeded');
+    seedDemoData();
+    localStorage.setItem('oa_demo_version', DEMO_VERSION);
+  }
+  navTo('pulse');
