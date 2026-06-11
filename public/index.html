@@ -1668,6 +1668,8 @@
       <select id="scopeAccountSelect" onchange="onScopeAccountChange()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;min-width:220px;font-family:inherit;outline:none;"></select>
       <button onclick="scopeAddAccountPrompt()" style="background:transparent;color:var(--siren-text-muted);border:1px dashed var(--siren-border-mid);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">+ New Account</button>
       <button onclick="exportScope()" style="background:var(--siren-cyan-12);color:var(--siren-cyan-90);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:12px;margin-left:auto;">Export</button>
+      <button onclick="scopeExportForProspect()" style="background:rgba(0,200,255,.18);color:var(--siren-cyan-90);border:1px solid rgba(0,200,255,.35);border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:12px;">Send to Prospect</button>
+      <label style="background:transparent;color:var(--siren-text-muted);border:1px dashed var(--siren-border-mid);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">Import Responses<input type="file" accept=".json" style="display:none;" onchange="scopeImportResponses(this)"></label>
     </div>
     <!-- New account inline form -->
     <div id="scopeNewAccountRow" style="display:none;margin-bottom:1rem;display:none;">
@@ -4298,7 +4300,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .sort((a,b) => { const da=a.callDate||a.ts.slice(0,10), db=b.callDate||b.ts.slice(0,10); return da>db?-1:da<db?1:0; });
     const picker = document.getElementById('forgeCallPickerWrap');
     const callSel = document.getElementById('forgeCallSelect');
-    if (_forgeHistory.length > 1) {
+    if (_forgeHistory.length > 0) {
       callSel.innerHTML = _forgeHistory.map((h,i) => {
         const ds = h.callDate || h.ts.slice(0,10);
         return `<option value="${i}">${escHtml(ds)} — ${escHtml(h.stage||'Call')} — ${escHtml(h.letter_grade)} ${h.total}</option>`;
@@ -5071,6 +5073,119 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
     renderScopePage();
     const sel=document.getElementById('scopeAccountSelect');
     if(sel){ sel.value=name; onScopeAccountChange(); }
+  }
+
+  function scopeExportForProspect(){
+    const sel=document.getElementById('scopeAccountSelect');
+    const company=sel&&sel.value;
+    if(!company){ alert('Select an account first.'); return; }
+    const s=loadScopeAll(company);
+    const draft=s.draft||{};
+
+    const fieldRows = SCOPE_SECTIONS.map(sec => {
+      const rows = sec.fields.map(field => {
+        const key = slugField(field);
+        const saved = draft[key]||{value:'',notes:''};
+        const existing = (saved.value||'').split('\n').filter(v=>v.trim());
+        const isMulti = existing.length > 1;
+        const displayVal = isMulti ? existing.join(', ') : (existing[0]||'');
+        const inputHtml = `<textarea name="${key}" rows="2" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;color:#111827;font-family:inherit;resize:vertical;">${displayVal.replace(/</g,'&lt;')}</textarea>`;
+        return `<div style="margin-bottom:16px;"><label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">${field.replace(/</g,'&lt;')}</label>${inputHtml}</div>`;
+      }).join('');
+      return `<div style="margin-bottom:28px;"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#6366f1;text-transform:uppercase;border-bottom:2px solid #e5e7eb;padding-bottom:6px;margin-bottom:16px;">${sec.title}</div>${rows}</div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scoping Questionnaire — ${company.replace(/</g,'&lt;')}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;color:#111827;padding:32px 16px;}
+  .card{max-width:780px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:40px 48px;}
+  h1{font-size:24px;font-weight:700;margin-bottom:4px;color:#111827;}
+  .sub{font-size:14px;color:#6b7280;margin-bottom:32px;}
+  textarea:focus{outline:2px solid #6366f1;border-color:#6366f1;background:#fff;}
+  .btn{display:inline-block;background:#6366f1;color:#fff;border:none;border-radius:8px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer;margin-top:24px;}
+  .btn:hover{background:#4f46e5;}
+  .note{font-size:12px;color:#9ca3af;margin-top:12px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Scoping Questionnaire</h1>
+  <p class="sub">Account: <strong>${company.replace(/</g,'&lt;')}</strong> &mdash; Please fill in as much as you can and click <em>Download My Responses</em> when done. Email the downloaded file back to us.</p>
+  <form id="scopeForm">
+    ${fieldRows}
+  </form>
+  <button class="btn" onclick="downloadResponses()">Download My Responses</button>
+  <p class="note">Your answers are never sent automatically &mdash; you control the file before sending it.</p>
+</div>
+<script>
+function downloadResponses(){
+  const form = document.getElementById('scopeForm');
+  const inputs = form.querySelectorAll('textarea');
+  const responses = {};
+  inputs.forEach(inp => {
+    if(inp.value.trim()) responses[inp.name] = { value: inp.value.trim(), notes: '' };
+  });
+  const payload = JSON.stringify({ company: ${JSON.stringify(company)}, exported: new Date().toISOString(), responses }, null, 2);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(payload);
+  a.download = 'scope-responses-${company.replace(/[^a-z0-9]/gi,'_').toLowerCase()}.json';
+  a.click();
+}
+<\/script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `scope-questionnaire-${company.replace(/[^a-z0-9]/gi,'_').toLowerCase()}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function scopeImportResponses(input){
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        const data = JSON.parse(e.target.result);
+        if(!data.company || !data.responses){ alert('Invalid responses file.'); return; }
+        const targetCompany = data.company;
+        // ensure company exists in selector
+        const sel = document.getElementById('scopeAccountSelect');
+        let found = false;
+        for(const opt of sel.options){ if(opt.value===targetCompany){ found=true; break; } }
+        if(!found){
+          const companies = JSON.parse(localStorage.getItem('oa_scope_companies')||'[]');
+          companies.push(targetCompany);
+          localStorage.setItem('oa_scope_companies', JSON.stringify(companies));
+          renderScopeAccountSelect();
+        }
+        sel.value = targetCompany;
+        onScopeAccountChange();
+        // merge responses into draft
+        const s = loadScopeAll(targetCompany);
+        for(const [key, val] of Object.entries(data.responses)){
+          if(!s.draft[key]) s.draft[key] = {value:'',notes:''};
+          s.draft[key].value = val.value||'';
+          if(val.notes) s.draft[key].notes = val.notes;
+        }
+        saveScopeAll(targetCompany, s);
+        _scopeViewingRevision = null;
+        renderScopeFormBody(targetCompany);
+        const st = document.getElementById('scopeSaveStatus');
+        if(st){ st.textContent='Responses imported'; setTimeout(()=>{st.textContent='';},2500); }
+      }catch(err){ alert('Could not parse file: '+err.message); }
+    };
+    reader.readAsText(file);
+    input.value='';
   }
 
   function exportScope(){
