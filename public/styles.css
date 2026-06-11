@@ -889,9 +889,19 @@
   @media (max-width: 900px) { .pulse-grid-2 { grid-template-columns: 1fr; } }
   .pulse-card {
     background: #061824; border: 1px solid rgba(0,200,255,0.1);
-    border-radius: 10px; padding: 20px 22px;
+    border-radius: 10px; padding: 20px 22px; height: 100%;
   }
   .pulse-card-title { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 16px; }
+
+  /* Draggable tiles */
+  .pulse-tile { transition: opacity .15s; }
+  .pulse-tile.dragging { opacity: 0.35; }
+  .pulse-tile.drag-over > .pulse-card { border-color: rgba(0,200,255,.55); box-shadow: 0 0 0 2px rgba(0,200,255,.18); }
+  .pulse-tile-drag { cursor: grab; color: rgba(255,255,255,.18); font-size: 14px; line-height:1; flex-shrink:0; user-select:none; transition: color .15s; }
+  .pulse-tile-drag:hover { color: rgba(255,255,255,.5); }
+  .pulse-tile-drag:active { cursor: grabbing; }
+  .pulse-tile-sz { background:none; border:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.3); border-radius:4px; padding:1px 5px; font-size:13px; cursor:pointer; line-height:1.4; transition:color .15s, border-color .15s; flex-shrink:0; }
+  .pulse-tile-sz:hover { color:rgba(255,255,255,.7); border-color:rgba(255,255,255,.35); }
 
   /* Score trend chart */
   .pulse-trend-svg { display: block; width: 100%; }

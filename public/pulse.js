@@ -1,4 +1,95 @@
-﻿  // ── PULSE Dashboard ────────────────────────────────────────
+﻿  // ── Pulse tile layout (drag-to-reorder + resize) ─────────────
+  const _TILE_DEFAULTS = {
+    order: ['pt-score-trend','pt-rep-trends','pt-industry','pt-recent','pt-leaderboard'],
+    spans: { 'pt-score-trend':1, 'pt-rep-trends':2, 'pt-industry':2, 'pt-recent':1, 'pt-leaderboard':1 },
+  };
+
+  function _getPulseLayout() {
+    try {
+      const s = JSON.parse(localStorage.getItem('oa_pulse_layout') || 'null');
+      if (!s) return JSON.parse(JSON.stringify(_TILE_DEFAULTS));
+      const order = s.order.filter(id => _TILE_DEFAULTS.order.includes(id));
+      _TILE_DEFAULTS.order.forEach(id => { if (!order.includes(id)) order.push(id); });
+      return { order, spans: { ..._TILE_DEFAULTS.spans, ...s.spans } };
+    } catch { return JSON.parse(JSON.stringify(_TILE_DEFAULTS)); }
+  }
+
+  function _savePulseLayout(l) { localStorage.setItem('oa_pulse_layout', JSON.stringify(l)); }
+
+  function applyPulseLayout() {
+    const grid = document.getElementById('pulseGrid');
+    if (!grid) return;
+    const layout = _getPulseLayout();
+    layout.order.forEach(id => { const el = document.getElementById(id); if (el) grid.appendChild(el); });
+    layout.order.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const span = layout.spans[id] || 1;
+      el.style.gridColumn = span === 2 ? '1 / -1' : '';
+      const btn = el.querySelector('.pulse-tile-sz');
+      if (btn) { btn.textContent = span === 2 ? '⊟' : '⊞'; btn.title = span === 2 ? 'Make half width' : 'Make full width'; }
+    });
+  }
+
+  window.pulseTileResize = function(id) {
+    const l = _getPulseLayout();
+    l.spans[id] = l.spans[id] === 2 ? 1 : 2;
+    _savePulseLayout(l);
+    applyPulseLayout();
+    setTimeout(_fixRepSparkNodes, 60); // re-correct oval nodes after layout shift
+  };
+
+  let _draggingId = null, _pulseLayoutInited = false;
+
+  function _initPulseLayout() {
+    if (_pulseLayoutInited) return;
+    _pulseLayoutInited = true;
+    const grid = document.getElementById('pulseGrid');
+    if (!grid) return;
+
+    grid.addEventListener('dragstart', e => {
+      const tile = e.target.closest('.pulse-tile');
+      if (!tile) return;
+      _draggingId = tile.id;
+      tile.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', tile.id);
+    });
+
+    grid.addEventListener('dragend', () => {
+      document.querySelectorAll('.pulse-tile').forEach(t => t.classList.remove('dragging','drag-over'));
+      _draggingId = null;
+    });
+
+    grid.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const tile = e.target.closest('.pulse-tile');
+      if (!tile || tile.id === _draggingId) return;
+      document.querySelectorAll('.pulse-tile').forEach(t => t.classList.remove('drag-over'));
+      tile.classList.add('drag-over');
+    });
+
+    grid.addEventListener('dragleave', e => {
+      if (!e.currentTarget.contains(e.relatedTarget)) {
+        document.querySelectorAll('.pulse-tile').forEach(t => t.classList.remove('drag-over'));
+      }
+    });
+
+    grid.addEventListener('drop', e => {
+      e.preventDefault();
+      const target = e.target.closest('.pulse-tile');
+      if (!target || !_draggingId || target.id === _draggingId) return;
+      const l = _getPulseLayout();
+      const fi = l.order.indexOf(_draggingId), ti = l.order.indexOf(target.id);
+      if (fi !== -1 && ti !== -1) { l.order.splice(fi, 1); l.order.splice(ti, 0, _draggingId); }
+      _savePulseLayout(l);
+      document.querySelectorAll('.pulse-tile').forEach(t => t.classList.remove('drag-over','dragging'));
+      applyPulseLayout();
+    });
+  }
+
+  // ── PULSE Dashboard ────────────────────────────────────────
   function renderPulse() {
     const history = loadHistory();
     const allTime = loadAllTime();
@@ -57,6 +148,10 @@
 
     // ── Industry Breakdown ──
     drawIndustryBreakdown(history);
+
+    // ── Apply tile layout (order + spans) ──
+    applyPulseLayout();
+    _initPulseLayout();
 
     // ── Recent Calls ──
     const recentEl = document.getElementById('pulseRecentCalls');
