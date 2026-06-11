@@ -1398,7 +1398,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       </div>
       <div class="hist-card-body" id="hist-body-${h.id}">
         ${bodyHtml}
-        <div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;gap:10px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--siren-text-faint);">Rep:</span>
+            <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${h.id})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
+            ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
+          </div>
           <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
         </div>
       </div>
@@ -1574,6 +1579,54 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       if (idx !== -1) { companies[idx] = newName; localStorage.setItem('oa_scope_companies', JSON.stringify(companies)); }
     } catch {}
 
+    renderHistory();
+  }
+
+  function startEditHistRep(id) {
+    const display = document.getElementById('hist-rep-display-' + id);
+    if (!display) return;
+    const team = loadTeam();
+    const hist = loadHistory(true);
+    const rec = hist.find(h => h.id === id);
+    const current = rec ? rec.rep || '' : '';
+
+    // Build datalist for team autocomplete
+    const listId = 'hist-rep-list-' + id;
+    let datalist = document.getElementById(listId);
+    if (!datalist) {
+      datalist = document.createElement('datalist');
+      datalist.id = listId;
+      document.body.appendChild(datalist);
+    }
+    datalist.innerHTML = team.map(m => `<option value="${escHtml(m.name)}">`).join('');
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = current;
+    inp.setAttribute('list', listId);
+    inp.style.cssText = 'font-size:12px;background:rgba(255,255,255,.06);border:1px solid rgba(0,200,255,.4);border-radius:4px;padding:2px 7px;color:var(--siren-cyan-90);outline:none;width:180px;';
+    display.replaceWith(inp);
+    inp.focus();
+    inp.select();
+
+    const commit = () => saveHistRep(id, inp.value.trim(), team);
+    inp.addEventListener('blur', commit);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+      if (e.key === 'Escape') { inp.value = current; inp.blur(); }
+    });
+  }
+
+  function saveHistRep(id, name, team) {
+    if (team === undefined) team = loadTeam();
+    const hist = loadHistory(true);
+    const idx = hist.findIndex(h => h.id === id);
+    if (idx === -1) { renderHistory(); return; }
+    // Try to match to team roster for role
+    const normalize = s => (s || '').toLowerCase().trim();
+    const match = team.find(m => normalize(m.name) === normalize(name));
+    hist[idx] = { ...hist[idx], rep: name, repRole: match ? match.role : hist[idx].repRole || '' };
+    saveHistoryData(hist);
     renderHistory();
   }
 
