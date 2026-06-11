@@ -669,7 +669,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
       if (inputTokens || outputTokens) updateUsageUI(inputTokens, outputTokens);
       let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate);
+      renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate, notes);
     } catch (err) {
       const msg = err.message || String(err);
       if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('networkerror')) {
@@ -713,7 +713,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     </div>`;
   }
 
-  function renderResults(r, prospect, contactTitle, rep, callDate) {
+  function renderResults(r, prospect, contactTitle, rep, callDate, notes) {
     const formattedDate = callDate ? new Date(callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     const overallMeta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage, formattedDate].filter(Boolean).join(' · ');
 
@@ -788,7 +788,8 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
     // Auto-detect rep from transcript if not manually set
     const detectedRep = rep || autoDetectRep(r.rep_scores || []);
-    saveToHistory(r, prospect, contactTitle, detectedRep, callDate, resultsHtml);
+    const savedRecord = saveToHistory(r, prospect, contactTitle, detectedRep, callDate, resultsHtml);
+    autoGenerateNextSteps(notes, prospect, callDate, savedRecord.id);
 
     // Update the rep selector UI to reflect the auto-detected rep
     if (!rep && detectedRep) {
@@ -1328,6 +1329,48 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _histCache.unshift(record);
     if (_histCache.length > 200) _histCache.splice(200);
     _dbSaveRecord(record);
+    return record;
+  }
+
+  async function autoGenerateNextSteps(notes, prospect, callDate, recordId) {
+    if (!notes || !prospect) return;
+    const callMs = callDate ? new Date(callDate + 'T12:00:00').getTime() : Date.now();
+    if (callMs < Date.now() - 5 * 86400000) return;
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          stream: false,
+          system: 'You are a sales follow-up assistant. Return ONLY a valid JSON array of strings — no markdown, no explanation.',
+          messages: [{
+            role: 'user',
+            content: `Based on this sales call transcript for ${prospect}, list 3–5 specific, actionable next steps for the rep. Each item must be a concrete action (e.g. "Send pricing comparison by EOW", "Schedule technical deep-dive with IT lead"). Return ONLY a JSON array of strings.\n\n${notes.slice(0, 4000)}`
+          }]
+        })
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const text = (data.content?.[0]?.text || '').trim();
+      const clean = text.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+      const steps = JSON.parse(clean);
+      if (!Array.isArray(steps) || !steps.length) return;
+
+      // Update the in-memory record
+      const rec = _histCache.find(h => h.id === String(recordId));
+      if (rec) rec.next_steps = steps;
+
+      // Seed VIGIL tasks for this prospect
+      pulseSeedTasks(prospect, [{ next_steps: steps, callDate, ts: new Date().toISOString() }]);
+
+      // Persist to DB
+      _dbPatchRecord(recordId, { next_steps: JSON.stringify(steps) });
+    } catch (e) {
+      console.warn('[next-steps] failed:', e.message);
+    }
   }
 
   // Sort state: 'company' | 'date' | 'score' | 'stage'  +  direction per key
