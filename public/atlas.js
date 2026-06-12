@@ -545,6 +545,8 @@
     loadEl.style.display = 'flex';
     bodyEl.style.display = 'none';
     bodyEl.innerHTML = '';
+    const dlBtn = document.getElementById('atlasReportDownloadBtn');
+    if (dlBtn) dlBtn.style.display = 'none';
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
 
@@ -638,6 +640,8 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
       loadEl.style.display = 'none';
       bodyEl.style.display = '';
       bodyEl.innerHTML = _mdToHtml(md);
+      const dlBtn = document.getElementById('atlasReportDownloadBtn');
+      if (dlBtn) dlBtn.style.display = '';
     } catch (e) {
       _atlasStopRadar();
       loadEl.style.display = 'none';
@@ -665,6 +669,39 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
     _atlasStopRadar();
     document.getElementById('atlasReportModal').classList.remove('open');
     document.body.style.overflow = '';
+  };
+
+  window.atlasDownloadReport = function() {
+    const title = document.getElementById('atlasReportModalTitle').textContent || 'Deal Report';
+    const bodyEl = document.getElementById('atlasReportModalBody');
+    if (!bodyEl || bodyEl.style.display === 'none') return;
+    const win = window.open('', '_blank', 'width=900,height=750');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8">
+      <title>${escHtml(title)}</title>
+      <style>
+        body { background:#fff; margin:0; padding:28px 36px; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; color:#0d1f2d; font-size:13px; line-height:1.65; }
+        h1.pdf-title { font-size:15px; font-weight:700; color:#0d1f2d; margin-bottom:20px; padding-bottom:10px; border-bottom:1px solid rgba(0,0,0,.15); }
+        h1,h2,h3 { color:#005580; }
+        h1 { font-size:17px; margin:20px 0 8px; }
+        h2 { font-size:15px; margin:18px 0 7px; }
+        h3 { font-size:14px; margin:16px 0 6px; }
+        p  { margin:8px 0; }
+        ul { padding-left:18px; margin:6px 0; }
+        li { margin-bottom:4px; }
+        strong { color:#003d55; }
+        @media print { body { padding:0; } @page { margin:16mm 14mm; } }
+      </style>
+    </head><body>
+      <h1 class="pdf-title">${escHtml(title)}</h1>
+      ${bodyEl.innerHTML}
+      <script>
+        window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 400); });
+        window.addEventListener('afterprint', function() { window.close(); });
+      <\/script>
+    </body></html>`);
+    win.document.close();
   };
   window.atlasSetDealStatus = atlasSetDealStatus;
   window.atlasGenerateDealReport = atlasGenerateDealReport;

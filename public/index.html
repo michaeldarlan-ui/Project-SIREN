@@ -79,7 +79,10 @@
   <div style="background:#0d1117;border:1px solid rgba(0,200,255,.18);border-radius:10px;width:min(780px,96vw);max-height:85vh;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
       <div id="atlasReportModalTitle" style="font-size:15px;font-weight:700;color:var(--siren-cyan-90);letter-spacing:.04em;"></div>
-      <button onclick="closeAtlasReportModal()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">&#215;</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="atlasReportDownloadBtn" onclick="atlasDownloadReport()" style="display:none;" class="pdf-btn pdf-btn-sm">&#8595; PDF</button>
+        <button onclick="closeAtlasReportModal()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">&#215;</button>
+      </div>
     </div>
     <!-- Loading HUD (shown while generating) -->
     <div id="atlasReportLoading" style="display:none;flex-direction:column;padding:0;overflow:hidden;border-radius:0 0 10px 10px;">
