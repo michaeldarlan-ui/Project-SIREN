@@ -1166,7 +1166,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       ${repViews}
       <div class="results-actions">
         <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
-        <button class="pdf-btn" onclick="exportReportPDF(${JSON.stringify(pdfTitle)})">&#8595; Export PDF</button>
+        <button class="pdf-btn" onclick="exportReportPDF(${escHtml(JSON.stringify(pdfTitle))})">&#8595; Export PDF</button>
       </div>`;
 
     document.getElementById('results').innerHTML = resultsHtml;
@@ -1835,9 +1835,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       });
     }
     if (t.rep) {
-      const team = loadTeam();
-      const idx = team.findIndex(m => m.name === t.rep);
-      if (idx !== -1) document.getElementById('repSelect').value = String(idx);
+      const repSel = document.getElementById('repSelect');
+      if (repSel) repSel.value = t.rep;
     }
     document.getElementById('callNotes').focus();
   }
@@ -1878,8 +1877,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(t.prospect || t.label || 'Untitled')}</div>
             <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;">${escHtml(meta)}</div>
           </div>
-          <button class="pdf-btn pdf-btn-sm" onclick="loadSavedTranscript(${JSON.stringify(t.id)})">&#8635; Load</button>
-          <button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${JSON.stringify(t.id)},this)">Delete</button>
+          <button class="pdf-btn pdf-btn-sm" onclick="loadSavedTranscript(${escHtml(JSON.stringify(t.id))})">&#8635; Load</button>
+          <button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${escHtml(JSON.stringify(t.id))},this)">Delete</button>
         </div>`;
       }).join('');
     } catch (e) {
