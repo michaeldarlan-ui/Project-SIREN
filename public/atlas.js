@@ -263,7 +263,7 @@
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;">${touched.map(t=>`<span class="lc-sb-tag lc-sb-strength">${escHtml(t)}</span>`).join('')}</div>
         </div>`;
       }
-      html += `<div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-primary" onclick="openLcModal(${JSON.stringify(String(h.id))})">View Full Report</button></div>`;
+      html += `<div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-primary" onclick="openLcModal(${h.id})">View Full Report</button></div>`;
 
     } else if (nd.type==='calls-summary' && nd.summaryData) {
       const { entries: es, avgScore, grades } = nd.summaryData;
