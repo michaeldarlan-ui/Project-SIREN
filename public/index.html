@@ -100,7 +100,7 @@
             <tr><td style="padding:6px 8px;">RANGE roleplay (per message + feedback)</td><td style="padding:6px 8px;">COACH</td><td style="padding:6px 8px;">Sonnet 4.6</td><td style="padding:6px 8px;text-align:right;">$0.01&ndash;0.03</td></tr>
           </tbody>
         </table>
-        <p style="margin:10px 0 0;color:rgba(255,255,255,.35);font-size:11.5px;">Note: the API Cost counter currently meters grading calls only. The other actions still bill the API key but are individually small.</p>
+        <p style="margin:10px 0 0;color:rgba(255,255,255,.35);font-size:11.5px;">Every action above is metered server-side as it runs. The PULSE API Cost tile shows the current month (matching the Claude console's &ldquo;spend this month&rdquo;) with the all-time total beneath it.</p>
       </div>
 
       <div>
@@ -288,7 +288,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           <div class="usage-metric" id="metric-cost-alltime">
             <div class="usage-metric-label">All-time total</div>
             <div class="usage-metric-value" id="val-cost-alltime">$0.00</div>
-            <div class="usage-metric-sub" id="sub-alltime">0 calls graded</div>
+            <div class="usage-metric-sub" id="sub-alltime">0 API calls</div>
             <button class="metric-toggle on" id="toggle-cost-alltime" onclick="toggleMetric('cost-alltime',event)"></button>
           </div>
         </div>

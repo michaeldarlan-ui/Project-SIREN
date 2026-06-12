@@ -163,27 +163,26 @@ async function _loadTeamFromDB() {
 }
 
 // ── Usage DB cache ────────────────────────────────────────────
-// Shared counter synced via Turso. Uses MAX merge so neither
-// machine can lower the other's accumulated total.
+// The server meters every /api/claude call directly into Turso
+// (all-time + per-month rows), so the server is the source of
+// truth. localStorage is an offline display fallback only.
 
-let _usageCache = { cost: 0, calls: 0 };
+let _usageCache = { cost: 0, calls: 0, month: { cost: 0, calls: 0 } };
 
 async function _loadUsageFromDB() {
   try {
     const res = await fetch('/api/usage');
     if (!res.ok) throw new Error('status ' + res.status);
     const remote = await res.json();
-    const local = (() => {
-      try { return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}'); } catch { return { cost: 0, calls: 0 }; }
-    })();
     _usageCache = {
-      cost:  Math.max(remote.cost  || 0, local.cost  || 0),
-      calls: Math.max(remote.calls || 0, local.calls || 0),
+      cost:  remote.cost  || 0,
+      calls: remote.calls || 0,
+      month: remote.month || { cost: 0, calls: 0 },
     };
     try { localStorage.setItem('oa_usage', JSON.stringify(_usageCache)); } catch {}
   } catch (e) {
     console.warn('[db] Failed to load usage, falling back to localStorage:', e.message);
-    try { _usageCache = JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}'); } catch {}
+    try { _usageCache = JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0,"month":{"cost":0,"calls":0}}'); } catch {}
   }
 }
 

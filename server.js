@@ -190,6 +190,68 @@ async function bulkUpsert(records) {
   })), 'write');
 }
 
+// ── API call metering ─────────────────────────────────────────
+// Every /api/claude proxy call is metered here (server-side), so all
+// modules — grading, pre-scan, FORGE, ATLAS, COACH — are counted.
+// Accumulates into the shared Turso `usage` table: an all-time row
+// ('global') and a per-month row ('mYYYY-MM') so the PULSE tile can
+// match the Claude console's "spend this month" window.
+
+function _usageMonthKey() { return 'm' + new Date().toISOString().slice(0, 7); }
+
+async function meterApiCall(model, usage) {
+  if (!usage) return;
+  const p = _ccPrice(model);
+  const cost = (
+    (usage.input_tokens || 0) * p.in +
+    (usage.cache_creation_input_tokens || 0) * p.in * 1.25 +
+    (usage.cache_read_input_tokens || 0) * p.in * 0.1 +
+    (usage.output_tokens || 0) * p.out
+  ) / 1_000_000;
+  const sql = `INSERT INTO usage (id, cost, calls) VALUES (?, ?, 1)
+               ON CONFLICT(id) DO UPDATE SET cost = usage.cost + excluded.cost, calls = usage.calls + 1`;
+  try {
+    await client.batch([
+      { sql, args: ['global', cost] },
+      { sql, args: [_usageMonthKey(), cost] },
+    ], 'write');
+  } catch (e) { console.error('[meter] write failed:', e.message); }
+}
+
+// Extract usage from a buffered Anthropic response (JSON or SSE stream)
+function meterFromResponse(reqModel, raw) {
+  try {
+    let model = reqModel, usage = null;
+    const trimmed = raw.trimStart();
+    if (trimmed.startsWith('{')) {
+      const data = JSON.parse(trimmed);
+      model = data.model || model;
+      usage = data.usage || null;
+    } else {
+      let inTok = 0, outTok = 0, cacheW = 0, cacheR = 0, seen = false;
+      for (const line of raw.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (!payload || payload === '[DONE]') continue;
+        let ev; try { ev = JSON.parse(payload); } catch { continue; }
+        if (ev.type === 'message_start') {
+          const u = ev.message?.usage || {};
+          inTok  = u.input_tokens || 0;
+          cacheW = u.cache_creation_input_tokens || 0;
+          cacheR = u.cache_read_input_tokens || 0;
+          model  = ev.message?.model || model;
+          seen = true;
+        } else if (ev.type === 'message_delta' && ev.usage) {
+          outTok = ev.usage.output_tokens || outTok;
+          seen = true;
+        }
+      }
+      if (seen) usage = { input_tokens: inTok, output_tokens: outTok, cache_creation_input_tokens: cacheW, cache_read_input_tokens: cacheR };
+    }
+    if (usage) meterApiCall(model, usage);
+  } catch (e) { console.error('[meter] parse failed:', e.message); }
+}
+
 // ── Claude Code usage scanner ─────────────────────────────────
 // Reads local Claude Code session transcripts (~/.claude/projects/**/*.jsonl)
 // and aggregates token usage + estimated cost by day. Per-file results are
@@ -307,6 +369,8 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
+      let reqModel = '';
+      try { reqModel = JSON.parse(body).model || ''; } catch {}
       const options = {
         hostname: 'api.anthropic.com',
         path: '/v1/messages',
@@ -323,7 +387,15 @@ const server = http.createServer(async (req, res) => {
           'Content-Type': proxyRes.headers['content-type'] || 'application/json',
           'Cache-Control': 'no-cache',
         });
-        proxyRes.pipe(res);
+        // Buffer while piping so the response usage can be metered
+        let respBuf = '';
+        proxyRes.on('data', chunk => { respBuf += chunk; res.write(chunk); });
+        proxyRes.on('end', () => {
+          res.end();
+          if (proxyRes.statusCode >= 200 && proxyRes.statusCode < 300) {
+            meterFromResponse(reqModel, respBuf);
+          }
+        });
       });
       proxyReq.on('error', err => {
         if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/json' });
@@ -505,9 +577,27 @@ const server = http.createServer(async (req, res) => {
   // ── Usage API ──────────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/usage') {
-    const row = (await client.execute("SELECT cost, calls FROM usage WHERE id = 'global'")).rows[0];
+    const monthKey = _usageMonthKey();
+    const rows = (await client.execute({
+      sql: "SELECT id, cost, calls FROM usage WHERE id IN ('global', ?)",
+      args: [monthKey],
+    })).rows;
+    const find = id => rows.find(r => r.id === id);
+    const g = find('global'), m = find(monthKey);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(row ? { cost: Number(row.cost), calls: Number(row.calls) } : { cost: 0, calls: 0 }));
+    res.end(JSON.stringify({
+      cost:  g ? Number(g.cost)  : 0,
+      calls: g ? Number(g.calls) : 0,
+      month: { key: monthKey.slice(1), cost: m ? Number(m.cost) : 0, calls: m ? Number(m.calls) : 0 },
+    }));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/usage/reset') {
+    try {
+      await client.execute('DELETE FROM usage');
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(500); res.end(e.message); }
     return;
   }
 

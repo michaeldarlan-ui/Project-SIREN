@@ -1534,20 +1534,19 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
   }
 
   function updateUsageUI(inputTokens, outputTokens) {
+    // Per-call and session figures are estimated locally for instant display.
+    // All-time / monthly totals are metered server-side on every proxied call.
     const callCost = inputTokens * PRICE_IN + outputTokens * PRICE_OUT;
     sessionCost += callCost;
-    const allTime = loadAllTime();
-    allTime.cost += callCost;
-    allTime.calls += 1;
-    saveAllTime(allTime);
 
     document.getElementById('val-tokens').textContent = (inputTokens + outputTokens).toLocaleString();
     document.getElementById('val-cost-call').textContent = '$' + callCost.toFixed(4);
     document.getElementById('val-cost-session').textContent = '$' + sessionCost.toFixed(4);
-    document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
-    document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
     document.getElementById('lastCallLabel').textContent = 'Last call: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.getElementById('usageDot').style.background = '#00c8ff';
+
+    // Server metering completes just after the stream ends — refresh shortly after
+    setTimeout(_refreshUsageDisplay, 800);
 
     const body = document.getElementById('usageBody');
     if (body.style.display === 'none') {
@@ -1556,17 +1555,28 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     }
   }
 
+  async function _refreshUsageDisplay() {
+    await _loadUsageFromDB();
+    const u = loadAllTime();
+    const allEl = document.getElementById('val-cost-alltime');
+    const subEl = document.getElementById('sub-alltime');
+    if (allEl) allEl.textContent = '$' + u.cost.toFixed(2);
+    if (subEl) subEl.textContent = u.calls + ' API call' + (u.calls !== 1 ? 's' : '');
+  }
+
   function resetAllTime() {
-    if (!confirm('Reset all-time totals? This cannot be undone.')) return;
-    saveAllTime({ cost: 0, calls: 0 });
+    if (!confirm('Reset all-time totals? This clears the server-side meter and cannot be undone.')) return;
+    fetch('/api/usage/reset', { method: 'POST' }).catch(() => {});
+    _usageCache = { cost: 0, calls: 0, month: { cost: 0, calls: 0 } };
+    try { localStorage.setItem('oa_usage', JSON.stringify(_usageCache)); } catch {}
     document.getElementById('val-cost-alltime').textContent = '$0.00';
-    document.getElementById('sub-alltime').textContent = '0 calls graded';
+    document.getElementById('sub-alltime').textContent = '0 API calls';
   }
 
   function initUsageBar() {
     const allTime = loadAllTime();
     document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
-    document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
+    document.getElementById('sub-alltime').textContent = allTime.calls + ' API call' + (allTime.calls !== 1 ? 's' : '');
     applyToggles();
     try {
       if (localStorage.getItem('oa_usage_open') !== 'false') {

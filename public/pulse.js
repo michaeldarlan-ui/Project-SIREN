@@ -124,8 +124,9 @@
     } else { avgSubEl.textContent = avgNow !== null ? 'no prior baseline' : 'no data yet'; avgSubEl.className='pulse-kpi-sub neutral'; }
     document.getElementById('pkv-grade').textContent = topGrade ? topGrade[0] : '—';
     document.getElementById('pks-grade').textContent = topGrade ? `${topGrade[1]} call${topGrade[1]!==1?'s':''} this month` : 'no calls this month';
-    document.getElementById('pkv-cost').textContent = allTime.cost > 0 ? '$' + allTime.cost.toFixed(2) : '$0.00';
-    document.getElementById('pks-cost').textContent = `all-time · ${allTime.calls} call${allTime.calls!==1?'s':''}`;
+    const monthUsage = allTime.month || { cost: 0, calls: 0 };
+    document.getElementById('pkv-cost').textContent = '$' + monthUsage.cost.toFixed(2);
+    document.getElementById('pks-cost').textContent = `this month · all-time $${allTime.cost.toFixed(2)} (${allTime.calls} call${allTime.calls!==1?'s':''})`;
 
     // Claude Code dev usage (async — fills in when the scan completes)
     fetch('/api/claude-usage').then(r => r.json()).then(u => {
