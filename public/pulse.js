@@ -570,7 +570,7 @@
     const scoreColor = s => s >= 80 ? '#22c55e' : s >= 65 ? '#00c8ff' : s >= 50 ? '#f59e0b' : '#ef4444';
     container.innerHTML = industries.map(ind => {
       const color  = scoreColor(ind.avg);
-      const qname  = JSON.stringify(ind.name);
+      const qname  = escHtml(JSON.stringify(ind.name));
       const unassigned = ind.name === 'Unassigned';
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;border-radius:4px;transition:background .12s;" onclick="industryDrillTo(${qname})" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
         <div style="width:130px;font-size:12px;font-weight:600;color:${unassigned?'rgba(255,255,255,.3)':'rgba(255,255,255,.85)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;">${escHtml(ind.name)}</div>
@@ -731,7 +731,7 @@
       const orgLbl   = p.org ? escHtml(p.org) : '';
       const roleLbl  = p.role ? escHtml(p.role) : '';
       const meta = [orgLbl, roleLbl].filter(Boolean).join(' · ');
-      return `<div class="pulse-call-row" style="cursor:pointer;" onclick="partnerDrillTo(${JSON.stringify(p.name)})">
+      return `<div class="pulse-call-row" style="cursor:pointer;" onclick="partnerDrillTo(${escHtml(JSON.stringify(p.name))})">
         <div class="pulse-call-badge" style="background:var(--clr-accent);color:#000;font-size:12px;font-weight:700;min-width:36px;text-align:center;">${escHtml(scoreStr)}</div>
         <div class="pulse-call-info">
           <div class="pulse-call-company">${escHtml(p.name)}</div>
