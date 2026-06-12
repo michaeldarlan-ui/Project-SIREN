@@ -895,7 +895,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 6000,
+          max_tokens: 8192,
           stream: true,
           system: systemPrompt,
           messages: [{ role: 'user', content: context + '\n\n' + notes }]
