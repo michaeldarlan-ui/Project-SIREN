@@ -775,6 +775,15 @@
 
     if (!notes) { showError('Please paste your call notes or transcript.'); return; }
 
+    // Warn before replacing an existing report
+    if (_loadedTranscriptId) {
+      const existing = loadHistory().find(h => String(h.id) === _loadedTranscriptId);
+      if (existing) {
+        const label = [existing.prospect, existing.stage, existing.callDate || existing.ts.slice(0,10)].filter(Boolean).join(' — ');
+        if (!confirm(`Re-grading this transcript will permanently delete the existing report:\n\n"${label}"\n\nA new report will be generated in its place. Continue?`)) return;
+      }
+    }
+
     clearError();
     document.getElementById('results').style.display = 'none';
     document.getElementById('submitBtn').disabled = true;
@@ -1169,6 +1178,18 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     const detectedRep = rep || autoDetectRep(r.rep_scores || []);
     const savedRecord = saveToHistory(r, prospect, contactTitle, detectedRep, callDate, resultsHtml);
     autoGenerateNextSteps(notes, prospect, callDate, savedRecord.id);
+
+    // If re-grading, remove the old record now that the new one is saved
+    if (_loadedTranscriptId && _loadedTranscriptId !== String(savedRecord.id)) {
+      const oldId = _loadedTranscriptId;
+      _loadedTranscriptId = null;
+      _histCache = _histCache.filter(h => String(h.id) !== oldId);
+      _dbDeleteRecord(oldId);
+      fetch('/api/transcripts/' + encodeURIComponent(oldId), { method: 'DELETE' }).catch(() => {});
+    } else {
+      _loadedTranscriptId = null;
+    }
+
     // Save transcript independently (survives history deletion)
     const tLabel = [prospect, selectedStage, callDate].filter(Boolean).join(' — ') || 'Untitled';
     fetch('/api/transcripts', {
@@ -1250,6 +1271,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
   }
 
   function resetForm() {
+    _loadedTranscriptId = null;
     document.getElementById('results').style.display = 'none';
     document.getElementById('inputCard').style.display = 'block';
     document.getElementById('callNotes').value = '';
@@ -1798,7 +1820,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   // ── Saved Transcripts panel ────────────────────────────────
 
+  let _loadedTranscriptId = null;
+
   async function _loadTranscriptIntoGrader(t) {
+    _loadedTranscriptId = t.id ? String(t.id) : null;
     navTo('grader');
     document.getElementById('callNotes').value = t.transcript || '';
     document.getElementById('prospectName').value = t.prospect || '';
