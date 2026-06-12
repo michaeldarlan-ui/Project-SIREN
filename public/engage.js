@@ -820,6 +820,8 @@ You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key 
 Use this grading scale when assigning letter_grade based on total score (0–100):
 A+: 97–100 | A: 93–96 | A-: 90–92 | B+: 87–89 | B: 83–86 | B-: 80–82 | C+: 77–79 | C: 73–76 | C-: 70–72 | D+: 67–69 | D: 63–66 | D-: 60–62 | F: 0–59
 
+Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
+
 Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble:
 
 {
@@ -872,7 +874,7 @@ call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.
-rep_scores: identify every named sales rep who speaks in the transcript. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no individual reps can be identified, return an empty array.
+rep_scores: identify every sales rep who speaks in the transcript, resolving any generic speaker labels (Speaker 1, etc.) to real names using the Participants section and context clues as instructed above. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no reps can be identified even after resolution, return an empty array.
 spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.${thirdPartyContext}`;
 
     const team = loadTeam();
