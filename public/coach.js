@@ -187,6 +187,7 @@
     document.querySelectorAll('.coach-module').forEach(m => m.classList.remove('active'));
     document.getElementById('ctab-' + tab).classList.add('active');
     document.getElementById('cmod-' + tab).classList.add('active');
+    if (tab === 'arena') _arenaApplyRoleFilter();
   }
   window.coachSwitchTab = coachSwitchTab;
 
@@ -245,6 +246,7 @@
     coachIntelClear();
     _coachRenderDashboard();
     _coachIntelUpdateState();
+    _arenaApplyRoleFilter();
   }
   window.coachOnRepChange = coachOnRepChange;
 
@@ -838,6 +840,62 @@ Be genuine and specific — not generic cheerleading or boilerplate advice. Refe
   }
   window.coachGenerateRecognition = coachGenerateRecognition;
 
+  // ── Arena role-based scenario filter ─────────────────────────────────────────
+
+  function _arenaRoleScenarios(roleStr) {
+    const r = (roleStr || '').toLowerCase();
+    // Executive / leadership — strategic, no cold calling
+    if (/\b(cro|cso|ceo|coo|cmo|cto|chief|president|svp|evp|vp\b|vice\s*pres|director|head\s+of|sales\s*manager|revenue\s*officer)\b/.test(r)) {
+      return { allowed: ['objection','closing','proposal','followup'], note: 'Cold Outreach and Discovery filtered — not typical for this role.' };
+    }
+    // Solutions / Sales Engineer — technical support role, no cold outreach
+    if (/\b(se\b|solutions\s*(engineer|architect|consult)|sales\s*engineer|technical\s*(advisor|sales)|pre[\s-]?sales|presales)\b/.test(r)) {
+      return { allowed: ['objection','discovery','proposal','followup'], note: 'Cold Outreach and Closing filtered — SEs support, not initiate or close.' };
+    }
+    // Customer Success — post-sale, no cold outreach
+    if (/\b(csm|customer\s*success|cs\b|success\s*manager|renewal|retention)\b/.test(r)) {
+      return { allowed: ['objection','discovery','followup'], note: 'Cold Outreach, Closing, and Proposal Defense filtered for this role.' };
+    }
+    // Account Manager — existing accounts, no cold outreach
+    if (/\b(account\s*manager|am\b)\b/.test(r)) {
+      return { allowed: ['objection','closing','discovery','proposal','followup'], note: 'Cold Outreach filtered — Account Managers work existing accounts.' };
+    }
+    // SDR / BDR — top of funnel, no closing or proposal
+    if (/\b(sdr|bdr|sales\s*dev|business\s*dev|outbound|inbound|lead\s*gen|prospecting)\b/.test(r)) {
+      return { allowed: ['cold','objection','discovery','followup'], note: 'Closing and Proposal Defense filtered — typically handled by AEs.' };
+    }
+    // AE and default — all scenarios
+    return { allowed: ['objection','closing','discovery','cold','proposal','followup'], note: '' };
+  }
+
+  function _arenaApplyRoleFilter() {
+    const team = loadTeam();
+    const member = _coachCurrentRep ? team.find(m => m.name === _coachCurrentRep) : null;
+    const { allowed, note } = _arenaRoleScenarios(member ? member.role : '');
+
+    document.querySelectorAll('.arena-scenario-btn').forEach(btn => {
+      const scenario = btn.dataset.scenario;
+      const visible = allowed.includes(scenario);
+      btn.style.display = visible ? '' : 'none';
+      if (!visible && btn.classList.contains('active')) {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Ensure something is active
+    const activeBtn = document.querySelector('.arena-scenario-btn.active');
+    if (!activeBtn || activeBtn.style.display === 'none') {
+      const first = document.querySelector('.arena-scenario-btn:not([style*="display: none"]):not([style*="display:none"])');
+      if (first) { first.classList.add('active'); _arenaScenario = first.dataset.scenario; }
+    }
+
+    const noteEl = document.getElementById('arenaRoleNote');
+    if (noteEl) {
+      noteEl.textContent = note;
+      noteEl.style.display = note ? '' : 'none';
+    }
+  }
+
   // ── Arena ─────────────────────────────────────────────────────────────────────
 
   // Wire up scenario and difficulty buttons
@@ -1158,5 +1216,6 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
     coachRenderRepSel();
     if (!_coachCurrentRep) _coachRenderDashboard();
     _coachIntelUpdateState();
+    _arenaApplyRoleFilter();
   }
   window.coachInit = coachInit;
