@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "db:export": "node scripts/db-export.js",
+    "db:import": "node scripts/db-import.js"
   },
   "engines": {
     "node": ">=18.0.0"

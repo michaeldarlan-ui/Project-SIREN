@@ -1,6 +1,9 @@
 # Secret — never commit this
 .env
 
+# DB export (may contain customer data — transfer manually)
+data/
+
 # Dependencies
 node_modules/
 
