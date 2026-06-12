@@ -1,31 +1,54 @@
 # SIREN
 **Sales Intelligence, Review & Enablement Network**
 
-SIREN is a sales call grading and coaching platform powered by Claude AI. It analyzes call transcripts, scores rep performance across five coaching dimensions, and gives sales teams the feedback and practice tools they need to improve.
+SIREN is a sales call grading and coaching platform powered by Claude AI. It analyzes call transcripts, scores rep performance across five coaching dimensions, surfaces actionable feedback, and gives sales teams the tools to practice and improve.
 
 ---
 
-## Features
+## Modules
 
-| Module | Description |
-|--------|-------------|
-| **PULSE** | Team performance dashboard — rep scores, call history tiles, and activity overview |
-| **FORGE** | Grade a call — paste or upload a transcript and get AI-powered scoring and feedback |
-| **COACH** | Rep coaching hub — individual scorecards, RANGE role-play scenarios, and the INTEL query panel |
-| **ATLAS** | Deal and opportunity lifecycle tracking |
-| **VIGIL** | Live team call monitoring feed |
-| **SCOPE** | Sales methodology and process management |
+### PULSE
+Real-time analytics dashboard — calls graded, average scores, rep leaderboards, industry breakdowns, partner performance, API cost tracking, and a full recent call history feed.
 
-### Grading Rubric
-Calls are scored out of 100 across five dimensions:
+### ENGAGE
+The core call grader. Paste or upload a transcript, and SIREN analyzes it across five coaching dimensions, assigns a letter grade, identifies SPICED coverage, generates rep-level scores when multiple speakers are present, and outputs recommended next steps.
 
-| Dimension | Weight |
+### COACH
+Rep-specific coaching hub with two panels:
+- **Dashboard** — Score trends, stage distribution, call history, recognized strengths, and focus areas per rep.
+- **RANGE** — Live scenario practice engine. Reps select a scenario type (cold outreach, discovery, objection handling, etc.) and difficulty level, then run a multi-turn coaching conversation with Claude. Scenarios are filtered by the rep's role — a Solutions Engineer won't see cold outreach scenarios, for example.
+- **INTEL** — Freeform query panel. Ask any question about a rep's performance data and get a Claude-powered answer with context from their call history.
+
+### ATLAS
+Interactive deal lifecycle graph showing account nodes, graded calls, contacts, and asset relationships. Includes zoom, fit, and call-collapse controls.
+
+### VIGIL
+Account action feed — surfaces critical items, open tasks, and cleared accounts with risk and status tracking.
+
+### FORGE
+Report template engine. Generate Call Briefs, Follow-Up Emails, and Executive Summaries from graded call data, with audience toggle (internal vs. client-facing).
+
+### SCOPE
+Structured prospect environment questionnaire covering engagement overview, organization profile, environment sizing, security posture, and compliance drivers.
+
+---
+
+## Grading Rubric
+
+Calls are scored out of 100:
+
+| Dimension | Points |
 |-----------|--------|
-| Value Framing | 25 pts |
-| Tactical Empathy & Objection Handling | 25 pts |
-| Discovery | 20 pts |
-| Qualification | 15 pts |
-| Call Control | 15 pts |
+| Value Framing & Demo Delivery | 25 |
+| Tactical Empathy & Objection Handling | 25 |
+| Discovery & Needs Confirmation | 20 |
+| Qualification & Deal Mechanics | 15 |
+| Call Control & Next Steps | 15 |
+| **Total** | **100** |
+
+**Letter grades:** A+ (97–100) through F (0–59) with full +/− steps.
+
+SPICED framework coverage (Situation, Pain, Impact, Critical Event, Evolution, Decision) is evaluated separately and reported as touched/untouched flags with summaries.
 
 ---
 
@@ -43,8 +66,8 @@ Calls are scored out of 100 across five dimensions:
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/michaeldarlan-ui/siren.git
-cd siren
+git clone https://github.com/michaeldarlan-ui/Project-SIREN.git
+cd Project-SIREN
 npm install
 ```
 
@@ -58,6 +81,9 @@ ANTHROPIC_API_KEY=sk-ant-api03-...
 # Optional — omit to use a local siren.db file
 TURSO_DATABASE_URL=libsql://your-db.turso.io
 TURSO_AUTH_TOKEN=your-token
+
+# Optional — defaults to 3000
+PORT=3000
 ```
 
 Get your Anthropic API key at [console.anthropic.com](https://console.anthropic.com).
@@ -80,17 +106,17 @@ npm run dev
 
 ## Multi-Device Sync (Turso)
 
-By default SIREN stores data in a local `siren.db` file. To sync your database across machines, set up a free Turso database:
+By default SIREN stores data in a local `siren.db` file. To sync across machines, set up a free Turso database:
 
 1. Sign up at [turso.tech](https://turso.tech) and create a database named `siren`
-2. Copy the database URL and auth token into your `.env` on every machine
+2. Add the database URL and auth token to `.env` on every machine
 3. Push your local data to Turso once from the source machine:
 
 ```bash
 npm run db:push
 ```
 
-All machines pointing at the same `TURSO_DATABASE_URL` will share live data automatically.
+All machines pointing at the same `TURSO_DATABASE_URL` share live data automatically.
 
 ---
 
