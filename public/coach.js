@@ -318,6 +318,16 @@
     bodyEl.innerHTML = '';
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+    // Fetch transcript from DB (best-effort — coaching still works without it)
+    let transcriptText = '';
+    try {
+      const tResp = await fetch('/api/transcripts/' + h.id);
+      if (tResp.ok) {
+        const tData = await tResp.json();
+        transcriptText = (tData.transcript || '').trim();
+      }
+    } catch {}
+
     // Build rep-specific score data
     let repScoreData = '';
     if (h.rep_scores) {
@@ -343,6 +353,7 @@
       ? 'Prior calls: ' + priorCalls.map(e => `${e.stage||''} (${e.letter_grade} ${e.total})`).join(', ') + '.'
       : '';
 
+    const hasTranscript = transcriptText.length > 0;
     const prompt = `You are a sales coach at OneAxiom, a Houston-based MSSP. Write a personalized coaching report for ${_coachCurrentRep||'the rep'} based on this graded sales call.
 
 Call details:
@@ -354,11 +365,18 @@ Call details:
 - Top priority area: ${h.top_priority||'n/a'}
 - Overview: ${h.overview||'n/a'}
 ${priorCtx ? '- ' + priorCtx : ''}
+${hasTranscript ? `
+Full call transcript:
+"""
+${transcriptText}
+"""
+
+IMPORTANT: You have the full transcript above. Quote specific lines from ${_coachCurrentRep||'the rep'} verbatim when giving feedback. Point to exact moments — the actual words they used — rather than speaking in generalities. When identifying what worked or what to improve, always cite the specific exchange.` : ''}
 
 Write a coaching report with these sections:
 1. **Performance Summary** — 2–3 sentence summary of how this call went for ${_coachCurrentRep||'the rep'} specifically
-2. **What You Did Well** — 3–4 specific behaviors to reinforce (cite the actual call data)
-3. **Where to Focus** — the 2–3 highest-priority improvement areas with specific, actionable guidance
+2. **What You Did Well** — 3–4 specific behaviors to reinforce${hasTranscript ? ', each anchored to a direct quote from the transcript' : ' (cite the actual call data)'}
+3. **Where to Focus** — the 2–3 highest-priority improvement areas with specific, actionable guidance${hasTranscript ? '; for each, quote what was said and show what a better response would have looked like' : ''}
 4. **Drills & Exercises** — 2–3 concrete practice exercises or role-play scenarios to address the gaps
 5. **Next Call Objectives** — 3 specific things to execute on the very next call with this account
 
