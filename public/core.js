@@ -63,6 +63,18 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // ── Dev Sync modal ────────────────────────────────────────────
+  function openDevSyncModal() {
+    const m = document.getElementById('devSyncModal');
+    if (m) { m.style.display = 'flex'; }
+  }
+  function closeDevSyncModal() {
+    const m = document.getElementById('devSyncModal');
+    if (m) { m.style.display = 'none'; }
+  }
+  window.openDevSyncModal  = openDevSyncModal;
+  window.closeDevSyncModal = closeDevSyncModal;
+
   // ── Team manager ───────────────────────────────────────────
   function loadTeam() {
     try { return JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch { return []; }
