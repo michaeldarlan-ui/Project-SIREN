@@ -1823,13 +1823,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .replace(/background:#c03030/g, 'background:#5c1c1c')
       .replace(/color:#e8a020/g, 'color:#c47f1a')
       .replace(/color:#e05050/g, 'color:#a83535');
-    const qid = JSON.stringify(String(h.id));
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
     const metaParts = [showCompany ? null : null, h.rep, h.repRole, h.contactTitle].filter(Boolean);
     return `<div class="hist-card" id="hist-${h.id}">
-      <div class="hist-card-header" onclick="toggleHistCard(${qid})">
+      <div class="hist-card-header" onclick="toggleHistCard(${h.id})">
         <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
         <div class="hist-card-center">
           <div class="hist-card-title">${titleLine}</div>
@@ -1845,12 +1844,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;gap:10px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--siren-text-faint);">Rep:</span>
-            <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${qid})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
+            <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${h.id})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
           </div>
           <div style="display:flex;gap:6px;">
-            <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${qid});event.stopPropagation()">&#8595; PDF</button>
-            <button class="hist-delete-btn" onclick="deleteHistEntry(${qid},event)">Delete this entry</button>
+            <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${h.id});event.stopPropagation()">&#8595; PDF</button>
+            <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
           </div>
         </div>
       </div>
