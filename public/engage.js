@@ -595,6 +595,19 @@
         ? 'Known third-party participants (NOT sales team, NOT customer — always classify these as "unknown"): ' +
           storedTPs.map(p => `${p.name}${p.organization ? ' (' + p.organization + ')' : ''}`).join(', ')
         : '';
+
+      // Only the head of the transcript is sent to the scan (cost control).
+      // Sweep the remainder for speaker labels so participants who first
+      // speak late in the call still get classified.
+      const PRESCAN_CHAR_LIMIT = 5000;
+      const head = notes.slice(0, PRESCAN_CHAR_LIMIT);
+      const lateSpeakers = [...new Set(
+        [...notes.slice(PRESCAN_CHAR_LIMIT).matchAll(/^\*{0,2}([A-Z][A-Za-z .'-]{1,40}?)\*{0,2}\s*\(\d+:\d+\)/gm)]
+          .map(m => m[1].trim())
+      )].filter(n => !head.includes(n));
+      const lateCtx = lateSpeakers.length
+        ? `\n\nAdditional speakers whose labels appear later in the transcript (classify these too): ${lateSpeakers.join(', ')}`
+        : '';
       const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -604,7 +617,7 @@
           stream: false,
           system: 'You identify call participants. Return ONLY valid JSON, no markdown.',
           messages: [{ role: 'user', content:
-            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- "sales_team": name matches a known team member\n- "customer": clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc. Known third-party participants above must always be classified as "unknown".\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript:\n${notes.slice(0, 5000)}`
+            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- "sales_team": name matches a known team member\n- "customer": clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc. Known third-party participants above must always be classified as "unknown".\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript (excerpt):\n${head}${lateCtx}`
           }]
         })
       });
