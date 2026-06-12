@@ -403,15 +403,35 @@
     ctx.strokeStyle = 'rgba(0,200,255,0.8)'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
 
     // Dots
-    points.forEach((p,i) => {
+    const dotPositions = points.map((p, i) => {
+      const cx = xOf(i), cy = yOf(p.score);
       const color = p.score >= 80 ? '#4ade80' : p.score >= 65 ? '#00c8ff' : p.score >= 50 ? '#e8a020' : '#ef4444';
-      ctx.beginPath(); ctx.arc(xOf(i), yOf(p.score), 4, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2);
       ctx.fillStyle = color; ctx.fill();
-      ctx.beginPath(); ctx.arc(xOf(i), yOf(p.score), 4, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2);
       ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+      return { cx, cy, score: p.score, date: p.date };
     });
 
     if (hint) hint.textContent = points.length + ' call' + (points.length !== 1 ? 's' : '');
+
+    // Hover tooltip — reuse the same _repTip/_repTipHide from pulse.js
+    const fmtD = d => new Date(d + 'T12:00:00').toLocaleDateString([], {month:'short', day:'numeric'});
+    canvas.style.cursor = 'default';
+    canvas.onmousemove = e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const my = (e.clientY - rect.top)  * (canvas.height / rect.height);
+      const hit = dotPositions.find(p => Math.hypot(mx - p.cx, my - p.cy) <= 8);
+      if (hit) {
+        canvas.style.cursor = 'crosshair';
+        _repTip(e, hit.score + ' · ' + fmtD(hit.date));
+      } else {
+        canvas.style.cursor = 'default';
+        _repTipHide();
+      }
+    };
+    canvas.onmouseleave = _repTipHide;
   }
 
   // ── Stage distribution bars ───────────────────────────────────────────────────
