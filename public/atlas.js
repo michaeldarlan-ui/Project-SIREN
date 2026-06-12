@@ -399,18 +399,18 @@
 
       // ── Deal Status ──
       const dealStatus = prof.deal_status || 'active';
-      const cSafeQ = JSON.stringify(company);
+      const cSafe = escHtml(company);
       html += `<div class="lc-profile-divider"></div>
       <div class="lc-sb-section">
         <div class="lc-sb-section-label">Deal Status</div>
         <div style="display:flex;gap:6px;margin-top:6px;">
-          <button class="lc-deal-status-btn${dealStatus==='active'?' active':''}" onclick="atlasSetDealStatus(${cSafeQ},'active')">Active</button>
-          <button class="lc-deal-status-btn won${dealStatus==='won'?' active':''}" onclick="atlasSetDealStatus(${cSafeQ},'won')">Closed Won</button>
-          <button class="lc-deal-status-btn lost${dealStatus==='lost'?' active':''}" onclick="atlasSetDealStatus(${cSafeQ},'lost')">Closed Lost</button>
+          <button class="lc-deal-status-btn${dealStatus==='active'?' active':''}" onclick="atlasSetDealStatus('${cSafe}','active')">Active</button>
+          <button class="lc-deal-status-btn won${dealStatus==='won'?' active':''}" onclick="atlasSetDealStatus('${cSafe}','won')">Closed Won</button>
+          <button class="lc-deal-status-btn lost${dealStatus==='lost'?' active':''}" onclick="atlasSetDealStatus('${cSafe}','lost')">Closed Lost</button>
         </div>
         ${dealStatus==='won'||dealStatus==='lost' ? `
         <div style="margin-top:10px;">
-          <button class="lc-sb-btn lc-sb-btn-primary" style="width:100%;" onclick="atlasGenerateDealReport(${cSafeQ})">
+          <button class="lc-sb-btn lc-sb-btn-primary" style="width:100%;" onclick="atlasGenerateDealReport('${cSafe}')">
             ${dealStatus==='won'?'&#9733; Generate Success Report':'&#9888; Generate Post Mortem'}
           </button>
         </div>` : ''}
