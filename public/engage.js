@@ -1826,7 +1826,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _loadedTranscriptId = t.id ? String(t.id) : null;
     navTo('grader');
     document.getElementById('callNotes').value = t.transcript || '';
-    document.getElementById('prospectName').value = t.prospect || '';
+    document.getElementById('prospect').value = t.prospect || '';
     document.getElementById('contactTitle').value = '';
     if (t.call_date) document.getElementById('callDate').value = t.call_date;
     if (t.stage) {
