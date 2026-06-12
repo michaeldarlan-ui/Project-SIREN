@@ -816,7 +816,7 @@ Write an overview with these sections:
 2. **Standout Strengths** — 3–4 specific, observable behaviors they do consistently well (cite actual data)
 3. **Best Moment** — their highest-scoring call or most notable improvement, with specifics
 4. **Recommended Focus** — the 2–3 recurring improvement areas across their calls, with concrete guidance for each
-5. **Suggested Next Steps** — 2–3 specific actions: a Training Arena scenario to practice, a skill to drill, or a behavior to repeat
+5. **Suggested Next Steps** — 2–3 specific actions: a RANGE scenario to practice, a skill to drill, or a behavior to repeat
 
 Be genuine and specific — not generic cheerleading or boilerplate advice. Reference actual call stages, scores, strengths, and priority areas. Address ${repName} directly.`;
 
