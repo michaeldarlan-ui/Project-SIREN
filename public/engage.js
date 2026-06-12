@@ -1822,6 +1822,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .replace(/color:#e8a020/g, 'color:#c47f1a')
       .replace(/color:#e05050/g, 'color:#a83535');
     const scoreMatch = strippedReset.match(/([\s\S]*?)(<div class="(?:rep-toggle|score-view)[\s\S]*?)((?:<div class="section-head[^>]*>(?:Call highlights|Recommended|SPICED)[\s\S]*)?)$/);
+    const qid = JSON.stringify(String(h.id));
     let bodyHtml;
     if (scoreMatch) {
       const before = scoreMatch[1];   // banner
@@ -1841,7 +1842,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
     const metaParts = [showCompany ? null : null, h.rep, h.repRole, h.contactTitle].filter(Boolean);
-    const qid = JSON.stringify(String(h.id));
     return `<div class="hist-card" id="hist-${h.id}">
       <div class="hist-card-header" onclick="toggleHistCard(${qid})">
         <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
