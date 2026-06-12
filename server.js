@@ -54,6 +54,7 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS prospects (name TEXT PRIMARY KEY, industry TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS third_parties (name TEXT PRIMARY KEY, role TEXT, organization TEXT, notes TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS transcripts (id TEXT PRIMARY KEY, label TEXT NOT NULL, prospect TEXT, stage TEXT, rep TEXT, call_date TEXT, transcript TEXT NOT NULL, saved_at TEXT NOT NULL)` },
+  { sql: `CREATE TABLE IF NOT EXISTS team (name TEXT PRIMARY KEY, role TEXT, idx INTEGER DEFAULT 0)` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -402,6 +403,36 @@ const server = http.createServer(async (req, res) => {
     const name = decodeURIComponent(req.url.slice('/api/third-parties/'.length));
     await client.execute({ sql: 'DELETE FROM third_parties WHERE name = ?', args: [name] });
     res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── Team API ───────────────────────────────────────────────
+
+  if (req.method === 'GET' && req.url === '/api/team') {
+    const rows = (await client.execute('SELECT name, role, idx FROM team ORDER BY idx ASC, name ASC')).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows.map(r => ({
+      name: String(r.name),
+      role: r.role ? String(r.role) : '',
+    }))));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/team') {
+    try {
+      const members = await readBody(req);
+      if (!Array.isArray(members)) { res.writeHead(400); res.end('Expected array'); return; }
+      const ops = [{ sql: 'DELETE FROM team' }];
+      members.forEach((m, i) => {
+        if (!m.name) return;
+        ops.push({
+          sql:  'INSERT OR REPLACE INTO team (name, role, idx) VALUES (?, ?, ?)',
+          args: [String(m.name), m.role ? String(m.role) : '', i],
+        });
+      });
+      await client.batch(ops, 'write');
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
   }
 

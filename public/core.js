@@ -77,9 +77,11 @@
 
   // ── Team manager ───────────────────────────────────────────
   function loadTeam() {
-    try { return JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch { return []; }
+    return _teamCache.slice();
   }
   function saveTeam(t) {
-    try { localStorage.setItem('oa_team', JSON.stringify(t)); } catch {}
+    _teamCache = Array.isArray(t) ? t : [];
+    try { localStorage.setItem('oa_team', JSON.stringify(_teamCache)); } catch {}
+    _dbSaveTeam(_teamCache);
   }
 

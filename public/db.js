@@ -141,3 +141,33 @@ function _getKnownThirdParty(name) {
   }
   return null;
 }
+
+// ── Team DB cache ─────────────────────────────────────────────
+// Ordered array of { name, role } objects.
+// loadTeam() / saveTeam() are sync (read/write _teamCache);
+// writes also fire-and-forget to /api/team.
+
+let _teamCache = [];
+
+async function _loadTeamFromDB() {
+  try {
+    const res = await fetch('/api/team');
+    if (!res.ok) throw new Error('status ' + res.status);
+    _teamCache = await res.json();
+    // Keep localStorage in sync for fallback
+    try { localStorage.setItem('oa_team', JSON.stringify(_teamCache)); } catch {}
+  } catch (e) {
+    console.warn('[db] Failed to load team, falling back to localStorage:', e.message);
+    try { _teamCache = JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch {}
+  }
+}
+
+async function _dbSaveTeam(members) {
+  try {
+    await fetch('/api/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(members),
+    });
+  } catch (e) { console.error('[db] save team failed:', e.message); }
+}

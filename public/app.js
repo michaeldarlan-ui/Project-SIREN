@@ -41,14 +41,6 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Team manager ───────────────────────────────────────────
-  function loadTeam() {
-    try { return JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch { return []; }
-  }
-  function saveTeam(t) {
-    try { localStorage.setItem('oa_team', JSON.stringify(t)); } catch {}
-  }
-
   function renderMemberList() {
     const team = loadTeam();
     const el = document.getElementById('memberList');

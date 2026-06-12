@@ -23,10 +23,28 @@
     localStorage.setItem('oa_migrated_to_db', 'v1');
   }
 
+  // ── 1b. Migrate localStorage team to DB (one-time) ──────────
+  if (!localStorage.getItem('oa_team_migrated_to_db')) {
+    const localTeam = (() => {
+      try { return JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch { return []; }
+    })();
+    if (localTeam.length) {
+      try {
+        await fetch('/api/team', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(localTeam),
+        });
+      } catch (e) { console.warn('[init] team migration failed:', e.message); }
+    }
+    localStorage.setItem('oa_team_migrated_to_db', 'v1');
+  }
+
   // ── 2. Load history + prospects from DB into cache ───────────
   await _loadHistFromDB();
   await _loadProspectsFromDB();
   await _loadThirdPartiesFromDB();
+  await _loadTeamFromDB();
 
   // ── 3. Demo version check — reseed if stale or incomplete ────
   const demoCount = _histCache.filter(h => h.is_demo).length;

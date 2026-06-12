@@ -16,7 +16,7 @@ if (!fs.existsSync(dbPath)) {
 }
 
 const client = createClient({ url: 'file:' + dbPath });
-const TABLES = ['history_prod', 'history_demo', 'prospects', 'third_parties', 'transcripts'];
+const TABLES = ['history_prod', 'history_demo', 'prospects', 'third_parties', 'transcripts', 'team'];
 
 const exported = {};
 let totalRows = 0;
