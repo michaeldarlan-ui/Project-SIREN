@@ -689,7 +689,7 @@
         const entry = partnerMap[key];
         if (typeof p.total === 'number') entry.scores.push(p.total);
         if (typeof p.call_impact_delta === 'number') entry.deltas.push(p.call_impact_delta);
-        entry.calls.push({ date: h.callDate || h.ts, prospect: h.prospect, total: p.total, delta: p.call_impact_delta });
+        entry.calls.push({ date: h.callDate || h.ts, prospect: h.prospect, stage: h.stage || '', total: p.total, delta: p.call_impact_delta, strength: p.top_strength || '', priority: p.top_priority || '' });
       });
     });
 
@@ -747,22 +747,64 @@
   function _drawPartnerDetail(container, p) {
     if (!p.calls.length) { container.innerHTML = ''; return; }
 
-    const rows = p.calls.slice().sort((a,b) => new Date(b.date) - new Date(a.date)).map(c => {
-      const ds = c.date ? new Date(c.date+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'}) : '';
-      const scoreStr = typeof c.total === 'number' ? c.total.toFixed(0) : '—';
-      const deltaCls = typeof c.delta !== 'number' ? '' : c.delta > 0 ? 'partner-delta-pos' : c.delta < 0 ? 'partner-delta-neg' : 'partner-delta-neu';
-      const deltaStr = typeof c.delta !== 'number' ? '' : (c.delta > 0 ? '+' : '') + c.delta;
-      return `<div class="pulse-call-row">
-        <div class="pulse-call-badge" style="background:var(--clr-accent);color:#000;font-size:12px;font-weight:700;min-width:36px;text-align:center;">${escHtml(scoreStr)}</div>
-        <div class="pulse-call-info">
-          <div class="pulse-call-company">${escHtml(c.prospect || 'Unknown')}</div>
-          <div class="pulse-call-meta">${ds}</div>
-        </div>
-        ${deltaStr ? `<div class="partner-delta ${deltaCls}" style="font-size:12px;font-weight:700;min-width:40px;text-align:right;">${escHtml(deltaStr)}</div>` : ''}
-      </div>`;
+    // Group calls by prospect
+    const byProspect = {};
+    p.calls.forEach(c => {
+      const key = (c.prospect || 'Unknown').trim() || 'Unknown';
+      (byProspect[key] = byProspect[key] || []).push(c);
     });
 
-    container.innerHTML = rows.join('');
+    const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+    const deltaBits = d => d === null || typeof d !== 'number' ? ['',''] : [
+      d > 0 ? 'partner-delta-pos' : d < 0 ? 'partner-delta-neg' : 'partner-delta-neu',
+      (d > 0 ? '+' : '') + (Number.isInteger(d) ? d : d.toFixed(1)),
+    ];
+
+    const groups = Object.entries(byProspect)
+      .map(([prospect, calls]) => ({
+        prospect, calls,
+        avgScore: avg(calls.map(c=>c.total).filter(v=>typeof v==='number')),
+        avgDelta: avg(calls.map(c=>c.delta).filter(v=>typeof v==='number')),
+        latest: calls.reduce((m,c) => c.date > m ? c.date : m, ''),
+      }))
+      .sort((a,b) => (a.latest < b.latest ? 1 : -1));
+
+    container.innerHTML = groups.map(g => {
+      const [hdrDeltaCls, hdrDeltaStr] = deltaBits(g.avgDelta);
+      const scoreStr = g.avgScore !== null ? g.avgScore.toFixed(1) : '—';
+      const latestCall = g.calls.slice().sort((a,b) => (a.date < b.date ? 1 : -1))[0];
+
+      const callRows = g.calls.slice().sort((a,b) => (a.date < b.date ? 1 : -1)).map(c => {
+        const ds = c.date ? new Date(String(c.date).slice(0,10)+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'}) : '';
+        const [dCls, dStr] = deltaBits(typeof c.delta === 'number' ? c.delta : null);
+        return `<div class="pulse-call-row" style="padding-left:14px;">
+          <div class="pulse-call-badge" style="background:var(--clr-accent);color:#000;font-size:11px;font-weight:700;min-width:32px;text-align:center;">${typeof c.total==='number'?c.total.toFixed(0):'—'}</div>
+          <div class="pulse-call-info">
+            <div class="pulse-call-meta" style="color:rgba(255,255,255,.6);">${escHtml([c.stage, ds].filter(Boolean).join(' · '))}</div>
+          </div>
+          ${dStr ? `<div class="partner-delta ${dCls}" style="font-size:11px;font-weight:700;min-width:36px;text-align:right;">${escHtml(dStr)}</div>` : ''}
+        </div>`;
+      }).join('');
+
+      const coaching = latestCall && (latestCall.strength || latestCall.priority) ? `
+        <div style="padding:4px 14px 8px;font-size:11.5px;line-height:1.5;color:rgba(255,255,255,.45);">
+          ${latestCall.strength ? `<div><span style="color:#4ade80;font-weight:600;">Strength</span> ${escHtml(latestCall.strength)}</div>` : ''}
+          ${latestCall.priority ? `<div><span style="color:#e8a020;font-weight:600;">Priority</span> ${escHtml(latestCall.priority)}</div>` : ''}
+        </div>` : '';
+
+      return `<div style="margin-bottom:12px;">
+        <div class="pulse-call-row" style="background:rgba(0,200,255,.05);border-radius:6px;">
+          <div class="pulse-call-badge" style="background:var(--clr-accent);color:#000;font-size:12px;font-weight:700;min-width:36px;text-align:center;">${escHtml(scoreStr)}</div>
+          <div class="pulse-call-info">
+            <div class="pulse-call-company">${escHtml(g.prospect)}</div>
+            <div class="pulse-call-meta">${g.calls.length} call${g.calls.length!==1?'s':''} · avg impact</div>
+          </div>
+          ${hdrDeltaStr ? `<div class="partner-delta ${hdrDeltaCls}" style="font-size:12px;font-weight:700;min-width:40px;text-align:right;">${escHtml(hdrDeltaStr)}</div>` : ''}
+        </div>
+        ${callRows}
+        ${coaching}
+      </div>`;
+    }).join('');
   }
 
   window.partnerDrillTo   = function(name) { _partnerDrill = name; drawPartnerTile(loadHistory()); };
