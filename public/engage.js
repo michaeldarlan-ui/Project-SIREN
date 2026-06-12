@@ -584,28 +584,6 @@
     }
   }
 
-  function _levenshtein(a, b) {
-    const m = a.length, n = b.length;
-    const dp = Array.from({length: m + 1}, (_, i) => Array.from({length: n + 1}, (_, j) => j || i));
-    for (let i = 1; i <= m; i++)
-      for (let j = 1; j <= n; j++)
-        dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
-    return dp[m][n];
-  }
-
-  function _nameLikeTeamMember(name, teamNames) {
-    const n = name.toLowerCase().trim();
-    return teamNames.some(full => {
-      const parts = full.toLowerCase().trim().split(/\s+/);
-      // Check against full name and each name part (first, last)
-      return [full.toLowerCase(), ...parts].some(candidate => {
-        if (n === candidate) return true;
-        if (n.includes(candidate) || candidate.includes(n)) return true;
-        return _levenshtein(n, candidate) <= 2;
-      });
-    });
-  }
-
   async function detectUnknownParticipants(notes, prospect, contactTitle, rep) {
     try {
       const teamNames = loadTeam().map(t => t.name).filter(Boolean);
@@ -634,10 +612,7 @@
       const data = await resp.json();
       const text = (data.content?.[0]?.text || '').replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
       const parsed = JSON.parse(text);
-      const teamNames = loadTeam().map(t => t.name).filter(Boolean);
-      const unknowns = (parsed.participants || []).filter(p =>
-        p.type === 'unknown' && !_nameLikeTeamMember(p.name, teamNames)
-      );
+      const unknowns = (parsed.participants || []).filter(p => p.type === 'unknown');
 
       const newUnknowns = [], known = [];
       unknowns.forEach(u => {
