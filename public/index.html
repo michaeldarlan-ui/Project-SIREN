@@ -26,6 +26,7 @@
     <button class="nav-tab" onclick="navTo('grader')">ENGAGE</button>
     <button class="nav-tab" onclick="navTo('lifecycle')">ATLAS</button>
     <button class="nav-tab" onclick="navTo('scope')">SCOPE</button>
+    <button class="nav-tab" onclick="navTo('coach')">COACH</button>
   </nav>
   <div class="topbar-settings" id="settingsMenu">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
@@ -923,6 +924,254 @@
   </div>
 </div>
 
+<!-- ══ COACH PAGE ══ -->
+<div class="page" id="page-coach">
+  <div class="shell">
+
+    <!-- Header -->
+    <div class="page-heading" style="margin-bottom:20px;">
+      <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">COACH</h2>
+      <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Rep-specific coaching, recognition, and live sales training.</p>
+    </div>
+
+    <!-- Rep selector -->
+    <div class="card" style="padding:14px 18px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--siren-text-faint);">Rep</div>
+        <select id="coachRepSel" onchange="coachOnRepChange()" style="background:var(--siren-bg-card-raised);color:var(--siren-text-primary);border:1px solid var(--siren-border-mid);border-radius:6px;padding:7px 12px;font-size:13px;font-family:inherit;outline:none;min-width:200px;">
+          <option value="">— Select a rep —</option>
+        </select>
+        <div id="coachRepMeta" style="font-size:12px;color:var(--siren-text-faint);"></div>
+      </div>
+    </div>
+
+    <!-- Module tabs -->
+    <div class="coach-tabs">
+      <button class="coach-tab active" id="ctab-feedback"    onclick="coachSwitchTab('feedback')">Coaching Feedback</button>
+      <button class="coach-tab"        id="ctab-recognition" onclick="coachSwitchTab('recognition')">Recognition</button>
+      <button class="coach-tab"        id="ctab-arena"       onclick="coachSwitchTab('arena')">Training Arena</button>
+    </div>
+
+    <!-- ── FEEDBACK MODULE ── -->
+    <div class="coach-module active" id="cmod-feedback">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div class="section-label" style="margin:0;">Call History</div>
+        <div style="font-size:12px;color:var(--siren-text-faint);">Select a call to generate coaching feedback</div>
+      </div>
+      <div id="coachCallList" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="coach-empty-state">Select a rep to view their call history.</div>
+      </div>
+
+      <!-- Coaching report output -->
+      <div id="coachFeedbackPanel" style="display:none;margin-top:22px;">
+        <div class="coach-report-hdr">
+          <div id="coachFeedbackCallLabel" style="font-size:13px;font-weight:600;color:var(--siren-text-primary);"></div>
+          <button class="pdf-btn pdf-btn-sm" onclick="coachDownloadFeedback()">&#8595; PDF</button>
+        </div>
+        <!-- Loading HUD -->
+        <div id="coachFeedbackLoading" style="display:none;">
+          <div class="coach-hud-wrap">
+            <div class="load-stream-l"></div>
+            <div class="load-stream-r"></div>
+            <div class="load-hud-header">
+              <div class="load-hud-bracket tl"></div>
+              <div class="load-hud-center">
+                <div class="load-wordmark">S I R E N</div>
+                <div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>REP PERFORMANCE</span></div>
+              </div>
+              <div class="load-hud-bracket tr"></div>
+            </div>
+            <div class="load-body" style="padding:16px 24px;">
+              <div class="load-radar-wrap">
+                <canvas class="load-radar-canvas" id="coachFeedbackRadar" width="140" height="140"></canvas>
+              </div>
+              <div class="load-steps">
+                <div class="load-step" id="cfb-step-0"><div class="load-step-icon" id="cfb-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Reading call data</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-0"></div></div></div></div>
+                <div class="load-step" id="cfb-step-1"><div class="load-step-icon" id="cfb-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying skill gaps</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-1"></div></div></div></div>
+                <div class="load-step" id="cfb-step-2"><div class="load-step-icon" id="cfb-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Building coaching plan</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-2"></div></div></div></div>
+                <div class="load-step" id="cfb-step-3"><div class="load-step-icon" id="cfb-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Composing recommendations</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-3"></div></div></div></div>
+              </div>
+            </div>
+            <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
+          </div>
+        </div>
+        <!-- Report body -->
+        <div id="coachFeedbackBody" class="coach-report-body" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ── RECOGNITION MODULE ── -->
+    <div class="coach-module" id="cmod-recognition">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div class="section-label" style="margin:0;">Rep Recognition</div>
+        <button class="pdf-btn pdf-btn-sm" id="coachRecogRefreshBtn" onclick="coachGenerateRecognition()" style="display:none;">&#8635; Refresh</button>
+      </div>
+      <!-- Stats strip -->
+      <div id="coachRecogStats" style="display:none;margin-bottom:18px;">
+        <div class="coach-stat-strip">
+          <div class="coach-stat"><div class="coach-stat-val" id="crs-calls">—</div><div class="coach-stat-lbl">Total Calls</div></div>
+          <div class="coach-stat"><div class="coach-stat-val" id="crs-avg">—</div><div class="coach-stat-lbl">Avg Score</div></div>
+          <div class="coach-stat"><div class="coach-stat-val" id="crs-best">—</div><div class="coach-stat-lbl">Best Grade</div></div>
+          <div class="coach-stat"><div class="coach-stat-val" id="crs-trend" style="font-size:18px;">—</div><div class="coach-stat-lbl">Trend</div></div>
+        </div>
+      </div>
+      <!-- Loading -->
+      <div id="coachRecogLoading" style="display:none;">
+        <div class="coach-hud-wrap">
+          <div class="load-stream-l"></div>
+          <div class="load-stream-r"></div>
+          <div class="load-hud-header">
+            <div class="load-hud-bracket tl"></div>
+            <div class="load-hud-center">
+              <div class="load-wordmark">S I R E N</div>
+              <div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>STRENGTHS</span></div>
+            </div>
+            <div class="load-hud-bracket tr"></div>
+          </div>
+          <div class="load-body" style="padding:16px 24px;">
+            <div class="load-radar-wrap">
+              <canvas class="load-radar-canvas" id="coachRecogRadar" width="140" height="140"></canvas>
+            </div>
+            <div class="load-steps">
+              <div class="load-step" id="crc-step-0"><div class="load-step-icon" id="crc-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Scanning call history</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-0"></div></div></div></div>
+              <div class="load-step" id="crc-step-1"><div class="load-step-icon" id="crc-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying peak performances</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-1"></div></div></div></div>
+              <div class="load-step" id="crc-step-2"><div class="load-step-icon" id="crc-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Spotting strengths &amp; patterns</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-2"></div></div></div></div>
+              <div class="load-step" id="crc-step-3"><div class="load-step-icon" id="crc-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Writing recognition report</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-3"></div></div></div></div>
+            </div>
+          </div>
+          <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
+        </div>
+      </div>
+      <div id="coachRecogBody" class="coach-report-body" style="display:none;"></div>
+      <div id="coachRecogEmpty" class="coach-empty-state">Select a rep to generate their recognition report.</div>
+    </div>
+
+    <!-- ── ARENA MODULE ── -->
+    <div class="coach-module" id="cmod-arena">
+
+      <!-- Scenario config (shown when not in session) -->
+      <div id="arenaConfig">
+        <div class="section-label" style="margin-bottom:14px;">Configure Training Scenario</div>
+        <div class="arena-config-grid">
+
+          <div class="arena-config-block">
+            <div class="arena-config-label">Scenario Type</div>
+            <div class="arena-scenario-btns" id="arenaScenarioBtns">
+              <button class="arena-scenario-btn active" data-scenario="objection">Objection Handling</button>
+              <button class="arena-scenario-btn" data-scenario="closing">Closing</button>
+              <button class="arena-scenario-btn" data-scenario="discovery">Discovery</button>
+              <button class="arena-scenario-btn" data-scenario="cold">Cold Outreach</button>
+              <button class="arena-scenario-btn" data-scenario="proposal">Proposal Defense</button>
+              <button class="arena-scenario-btn" data-scenario="followup">Follow-up</button>
+            </div>
+          </div>
+
+          <div class="arena-config-block">
+            <div class="arena-config-label">Prospect Difficulty</div>
+            <div class="arena-diff-btns" id="arenaDiffBtns">
+              <button class="arena-diff-btn" data-diff="easy">Receptive</button>
+              <button class="arena-diff-btn active" data-diff="medium">Skeptical</button>
+              <button class="arena-diff-btn" data-diff="hard">Resistant</button>
+            </div>
+          </div>
+
+          <div class="arena-config-block">
+            <div class="arena-config-label">Prospect Persona</div>
+            <select id="arenaPersonaSel" style="background:var(--siren-bg-card-raised);color:var(--siren-text-primary);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;width:100%;">
+              <option value="ciso">CISO — large enterprise, budget-conscious</option>
+              <option value="it_director">IT Director — mid-market, evaluating vendors</option>
+              <option value="vp_ops">VP of Operations — focused on efficiency</option>
+              <option value="cfo">CFO — ROI-driven, cost skeptic</option>
+              <option value="sme_owner">SMB Owner — time-poor, wary of complexity</option>
+              <option value="it_manager">IT Manager — technical gatekeeper</option>
+            </select>
+          </div>
+
+          <div class="arena-config-block">
+            <div class="arena-config-label">Industry</div>
+            <select id="arenaIndustrySel" style="background:var(--siren-bg-card-raised);color:var(--siren-text-primary);border:1px solid var(--siren-border-mid);border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;width:100%;">
+              <option value="healthcare">Healthcare</option>
+              <option value="finance">Financial Services</option>
+              <option value="manufacturing">Manufacturing</option>
+              <option value="legal">Legal / Professional Services</option>
+              <option value="education">Education</option>
+              <option value="retail">Retail / eCommerce</option>
+              <option value="technology">Technology</option>
+              <option value="government">Government / Public Sector</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="submit-btn" style="width:auto;padding:10px 28px;font-size:13px;" onclick="arenaStart()">Start Session &#8594;</button>
+          <div style="font-size:12px;color:var(--siren-text-faint);">Claude will play the prospect. Type your responses as the rep.</div>
+        </div>
+      </div>
+
+      <!-- Active session -->
+      <div id="arenaSession" style="display:none;">
+        <div class="arena-session-hdr">
+          <div>
+            <div id="arenaSessionLabel" style="font-size:13px;font-weight:700;color:var(--siren-text-primary);"></div>
+            <div id="arenaSessionSub" style="font-size:11px;color:var(--siren-text-faint);margin-top:2px;"></div>
+          </div>
+          <button class="arena-end-btn" onclick="arenaEnd()">End Session &amp; Get Feedback</button>
+        </div>
+
+        <div class="arena-chat" id="arenaChat"></div>
+
+        <div class="arena-input-row">
+          <textarea id="arenaInput" class="arena-input" placeholder="Type your response as the sales rep…" rows="3" onkeydown="arenaInputKeydown(event)"></textarea>
+          <button class="arena-send-btn" onclick="arenaSend()" id="arenaSendBtn">Send</button>
+        </div>
+        <div style="font-size:11px;color:var(--siren-text-faint);margin-top:6px;text-align:right;">Shift+Enter for new line &nbsp;·&nbsp; Enter to send</div>
+      </div>
+
+      <!-- Feedback panel (shown after session ends) -->
+      <div id="arenaFeedback" style="display:none;">
+        <div class="coach-report-hdr">
+          <div style="font-size:13px;font-weight:600;color:var(--siren-text-primary);">Session Debrief</div>
+          <div style="display:flex;gap:8px;">
+            <button class="pdf-btn pdf-btn-sm" onclick="arenaDownloadFeedback()">&#8595; PDF</button>
+            <button class="pdf-btn pdf-btn-sm" onclick="arenaReset()">&#43; New Session</button>
+          </div>
+        </div>
+        <!-- Loading -->
+        <div id="arenaFeedbackLoading" style="display:none;">
+          <div class="coach-hud-wrap">
+            <div class="load-stream-l"></div>
+            <div class="load-stream-r"></div>
+            <div class="load-hud-header">
+              <div class="load-hud-bracket tl"></div>
+              <div class="load-hud-center">
+                <div class="load-wordmark">S I R E N</div>
+                <div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>SESSION</span></div>
+              </div>
+              <div class="load-hud-bracket tr"></div>
+            </div>
+            <div class="load-body" style="padding:16px 24px;">
+              <div class="load-radar-wrap">
+                <canvas class="load-radar-canvas" id="arenaFeedbackRadar" width="140" height="140"></canvas>
+              </div>
+              <div class="load-steps">
+                <div class="load-step" id="afb-step-0"><div class="load-step-icon" id="afb-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Reviewing conversation</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="afb-bar-0"></div></div></div></div>
+                <div class="load-step" id="afb-step-1"><div class="load-step-icon" id="afb-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Scoring technique</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="afb-bar-1"></div></div></div></div>
+                <div class="load-step" id="afb-step-2"><div class="load-step-icon" id="afb-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Identifying missed opportunities</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="afb-bar-2"></div></div></div></div>
+                <div class="load-step" id="afb-step-3"><div class="load-step-icon" id="afb-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Writing debrief</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="afb-bar-3"></div></div></div></div>
+              </div>
+            </div>
+            <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
+          </div>
+        </div>
+        <div id="arenaFeedbackBody" class="coach-report-body" style="display:none;"></div>
+      </div>
+
+    </div><!-- /cmod-arena -->
+
+  </div>
+</div>
+
 <!-- ══ HISTORY PAGE ══ -->
 <div class="page" id="page-history">
   <div class="shell">
@@ -953,6 +1202,7 @@
 <script src="atlas.js"></script>
 <script src="scope.js"></script>
 <script src="forge.js"></script>
+<script src="coach.js"></script>
 <script src="demo.js"></script>
 <script src="init.js"></script>
 </body>

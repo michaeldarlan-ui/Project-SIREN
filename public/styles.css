@@ -753,6 +753,150 @@
   .lc-sb-btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
   .lc-sb-btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
+  /* ── COACH ─────────────────────────────────────────────────────────────── */
+  .coach-tabs {
+    display: flex; gap: 4px; margin-bottom: 18px;
+    border-bottom: 1px solid var(--siren-border);
+    padding-bottom: 0;
+  }
+  .coach-tab {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--siren-text-faint); font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .07em;
+    padding: 8px 16px; cursor: pointer; margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+  }
+  .coach-tab:hover { color: var(--siren-text-body); }
+  .coach-tab.active { color: var(--siren-cyan); border-bottom-color: var(--siren-cyan); }
+
+  .coach-module { display: none; }
+  .coach-module.active { display: block; }
+
+  .coach-empty-state {
+    color: var(--siren-text-faint); font-size: 13px; padding: 28px 0;
+    text-align: center; width: 100%;
+  }
+
+  /* Call list cards */
+  .coach-call-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border);
+    border-radius: 8px; padding: 12px 16px; cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .coach-call-card:hover { border-color: var(--siren-border-mid); background: var(--siren-bg-card-raised); }
+  .coach-call-card.selected { border-color: rgba(0,200,255,.4); background: rgba(0,200,255,.05); }
+  .coach-call-grade { font-size: 15px; font-weight: 800; min-width: 32px; }
+  .coach-call-info { flex: 1; }
+  .coach-call-title { font-size: 13px; font-weight: 600; color: var(--siren-text-primary); }
+  .coach-call-sub { font-size: 11px; color: var(--siren-text-faint); margin-top: 2px; }
+  .coach-call-arrow { font-size: 18px; color: var(--siren-text-faint); }
+
+  /* Report panels */
+  .coach-report-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; background: var(--siren-bg-card);
+    border: 1px solid var(--siren-border); border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+  }
+  .coach-report-body {
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border);
+    border-top: none; border-radius: 0 0 8px 8px;
+    padding: 20px 24px; font-size: 13px; line-height: 1.65;
+    color: var(--siren-text-body);
+  }
+  .coach-report-h1 { font-size: 16px; font-weight: 700; color: var(--siren-cyan-90); margin: 18px 0 8px; }
+  .coach-report-h2 { font-size: 14px; font-weight: 700; color: var(--siren-cyan-90); margin: 16px 0 7px; }
+  .coach-report-h3 { font-size: 13px; font-weight: 700; color: var(--siren-cyan-70); margin: 14px 0 6px; }
+  .coach-report-p  { margin: 8px 0; }
+  .coach-report-ul { padding-left: 18px; margin: 6px 0; }
+  .coach-report-ul li { margin-bottom: 5px; }
+
+  /* Loading HUD wrapper (inside cards) */
+  .coach-hud-wrap {
+    position: relative; overflow: hidden;
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border);
+    border-top: none; border-radius: 0 0 8px 8px;
+  }
+
+  /* Recognition stats strip */
+  .coach-stat-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .coach-stat {
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border);
+    border-radius: 8px; padding: 14px 16px; text-align: center;
+  }
+  .coach-stat-val { font-size: 22px; font-weight: 800; color: var(--siren-text-primary); }
+  .coach-stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--siren-text-faint); margin-top: 4px; }
+
+  /* Arena config */
+  .arena-config-grid { display: flex; flex-direction: column; gap: 18px; }
+  .arena-config-block { display: flex; flex-direction: column; gap: 8px; }
+  .arena-config-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--siren-text-faint); }
+
+  .arena-scenario-btns, .arena-diff-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .arena-scenario-btn, .arena-diff-btn {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.5); font-size: 12px; font-weight: 600;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .arena-scenario-btn:hover, .arena-diff-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .arena-scenario-btn.active, .arena-diff-btn.active {
+    background: rgba(0,200,255,.15); border-color: rgba(0,200,255,.4); color: #00c8ff;
+  }
+
+  /* Arena session */
+  .arena-session-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+  }
+  .arena-end-btn {
+    background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.35);
+    color: #ef4444; font-size: 12px; font-weight: 700; padding: 7px 14px;
+    border-radius: 6px; cursor: pointer; transition: background .15s;
+  }
+  .arena-end-btn:hover { background: rgba(239,68,68,.25); }
+
+  .arena-chat {
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border);
+    border-radius: 8px; padding: 16px; min-height: 280px; max-height: 420px;
+    overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+    margin-bottom: 12px;
+  }
+  .arena-bubble { max-width: 78%; display: flex; flex-direction: column; gap: 3px; }
+  .arena-bubble-rep { align-self: flex-end; align-items: flex-end; }
+  .arena-bubble-prospect { align-self: flex-start; align-items: flex-start; }
+  .arena-bubble-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--siren-text-faint); }
+  .arena-bubble-text {
+    font-size: 13px; line-height: 1.55; padding: 10px 14px; border-radius: 10px;
+  }
+  .arena-bubble-rep .arena-bubble-text {
+    background: rgba(0,200,255,.15); border: 1px solid rgba(0,200,255,.25); color: var(--siren-text-primary);
+    border-radius: 10px 10px 2px 10px;
+  }
+  .arena-bubble-prospect .arena-bubble-text {
+    background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); color: var(--siren-text-body);
+    border-radius: 10px 10px 10px 2px;
+  }
+
+  .arena-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .arena-input {
+    flex: 1; background: var(--siren-bg-card); border: 1px solid var(--siren-border-mid);
+    border-radius: 8px; color: var(--siren-text-primary); font-size: 13px;
+    font-family: inherit; padding: 10px 14px; resize: none; outline: none;
+    transition: border-color .15s;
+  }
+  .arena-input:focus { border-color: rgba(0,200,255,.45); }
+  .arena-send-btn {
+    background: rgba(0,200,255,.18); border: 1px solid rgba(0,200,255,.35);
+    color: #00c8ff; font-size: 13px; font-weight: 700; padding: 10px 18px;
+    border-radius: 8px; cursor: pointer; transition: background .15s; white-space: nowrap;
+  }
+  .arena-send-btn:hover { background: rgba(0,200,255,.28); }
+  .arena-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
   /* Deal status buttons */
   .lc-deal-status-btn {
     flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 600; border-radius: 5px; cursor: pointer;

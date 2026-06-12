@@ -12,7 +12,8 @@
           (page === 'lifecycle' && t.textContent === 'ATLAS') ||
           (page === 'scope'     && t.textContent === 'SCOPE') ||
           (page === 'forge'     && t.textContent === 'FORGE') ||
-          (page === 'vigil'       && t.textContent === 'VIGIL')) {
+          (page === 'vigil'       && t.textContent === 'VIGIL') ||
+          (page === 'coach'       && t.textContent === 'COACH')) {
         t.classList.add('active');
       }
     });
@@ -25,6 +26,7 @@
     if (page === 'scope')     renderScopePage();
     if (page === 'forge')     forgeInit();
     if (page === 'vigil')       pulseRenderFeed();
+    if (page === 'coach')       coachInit();
   }
 
   // ── Demo mode ──────────────────────────────────────────────
