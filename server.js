@@ -1,7 +1,9 @@
 import http from 'http';
 import https from 'https';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { createClient } from '@libsql/client';
 
@@ -186,6 +188,99 @@ async function bulkUpsert(records) {
     sql:  `INSERT OR REPLACE INTO ${isDemo(r) ? 'history_demo' : 'history_prod'} (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   })), 'write');
+}
+
+// ── Claude Code usage scanner ─────────────────────────────────
+// Reads local Claude Code session transcripts (~/.claude/projects/**/*.jsonl)
+// and aggregates token usage + estimated cost by day. Per-file results are
+// cached by mtime+size so only changed files are re-parsed.
+
+const CLAUDE_PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const _ccFileCache = new Map(); // filePath -> { mtimeMs, size, days: { 'YYYY-MM-DD': cost } }
+
+// USD per million tokens; cache reads 0.1x input, 5m cache writes 1.25x, 1h writes 2x
+function _ccPrice(model) {
+  const m = String(model || '').toLowerCase();
+  if (m.includes('fable')) return { in: 10, out: 50 };
+  if (m.includes('opus'))  return { in: 5,  out: 25 };
+  if (m.includes('haiku')) return { in: 1,  out: 5  };
+  return { in: 3, out: 15 }; // sonnet (default)
+}
+
+function _ccLocalDate(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function _ccParseFile(filePath) {
+  const days = {};
+  const seenIds = new Set();
+  const rl = readline.createInterface({
+    input: fs.createReadStream(filePath, 'utf8'),
+    crlfDelay: Infinity,
+  });
+  for await (const line of rl) {
+    if (!line.includes('"usage"') || !line.includes('"assistant"')) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    const msg = o && o.message;
+    const u = msg && msg.usage;
+    if (o.type !== 'assistant' || !u || !o.timestamp) continue;
+    // Streaming writes the same message across multiple lines — count each id once
+    if (msg.id) {
+      if (seenIds.has(msg.id)) continue;
+      seenIds.add(msg.id);
+    }
+    const p = _ccPrice(msg.model);
+    const w5 = u.cache_creation?.ephemeral_5m_input_tokens ?? (u.cache_creation_input_tokens || 0);
+    const w1 = u.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+    const cost =
+      ((u.input_tokens || 0) * p.in +
+       (u.output_tokens || 0) * p.out +
+       (u.cache_read_input_tokens || 0) * p.in * 0.1 +
+       w5 * p.in * 1.25 +
+       w1 * p.in * 2) / 1e6;
+    const day = _ccLocalDate(o.timestamp);
+    days[day] = (days[day] || 0) + cost;
+  }
+  return days;
+}
+
+async function getClaudeUsage() {
+  const days = {}; // 'YYYY-MM-DD' -> cost
+  if (fs.existsSync(CLAUDE_PROJECTS_DIR)) {
+    const stack = [CLAUDE_PROJECTS_DIR];
+    const files = [];
+    while (stack.length) {
+      const dir = stack.pop();
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) stack.push(full);
+        else if (e.name.endsWith('.jsonl')) files.push(full);
+      }
+    }
+    for (const f of files) {
+      const st = fs.statSync(f);
+      let entry = _ccFileCache.get(f);
+      if (!entry || entry.mtimeMs !== st.mtimeMs || entry.size !== st.size) {
+        entry = { mtimeMs: st.mtimeMs, size: st.size, days: await _ccParseFile(f) };
+        _ccFileCache.set(f, entry);
+      }
+      for (const [day, cost] of Object.entries(entry.days)) {
+        days[day] = (days[day] || 0) + cost;
+      }
+    }
+  }
+  const todayStr = _ccLocalDate(new Date().toISOString());
+  const cutoff30 = new Date(); cutoff30.setDate(cutoff30.getDate() - 30);
+  const cutoff30Str = _ccLocalDate(cutoff30.toISOString());
+  let today = 0, last30 = 0, total = 0;
+  for (const [day, cost] of Object.entries(days)) {
+    total += cost;
+    if (day === todayStr) today += cost;
+    if (day >= cutoff30Str) last30 += cost;
+  }
+  return { today, last30, total };
 }
 
 // ── Utilities ─────────────────────────────────────────────────
@@ -428,6 +523,20 @@ const server = http.createServer(async (req, res) => {
       });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  // ── Claude Code usage API ──────────────────────────────────
+
+  if (req.method === 'GET' && req.url === '/api/claude-usage') {
+    try {
+      const usage = await getClaudeUsage();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(usage));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
     return;
   }
 

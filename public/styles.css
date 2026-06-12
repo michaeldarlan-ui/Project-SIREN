@@ -1366,7 +1366,8 @@
 
   /* KPI row */
   .pulse-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-  @media (max-width: 800px) { .pulse-kpi-row { grid-template-columns: repeat(2,1fr); } }
+  .pulse-kpi-row-5 { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 800px) { .pulse-kpi-row, .pulse-kpi-row-5 { grid-template-columns: repeat(2,1fr); } }
   .pulse-kpi-card {
     background: #061824; border: 1px solid rgba(0,200,255,0.12);
     border-radius: 10px; padding: 18px 20px;

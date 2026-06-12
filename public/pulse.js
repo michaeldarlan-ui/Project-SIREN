@@ -127,6 +127,14 @@
     document.getElementById('pkv-cost').textContent = allTime.cost > 0 ? '$' + allTime.cost.toFixed(2) : '$0.00';
     document.getElementById('pks-cost').textContent = `all-time · ${allTime.calls} call${allTime.calls!==1?'s':''}`;
 
+    // Claude Code dev usage (async — fills in when the scan completes)
+    fetch('/api/claude-usage').then(r => r.json()).then(u => {
+      const v = document.getElementById('pkv-claude'), s = document.getElementById('pks-claude');
+      if (!v || u.error) return;
+      v.textContent = '$' + (u.today || 0).toFixed(2);
+      if (s) s.textContent = `today · 30d $${(u.last30 || 0).toFixed(2)} · all $${(u.total || 0).toFixed(2)}`;
+    }).catch(() => {});
+
     // ── Score Trend (last 8 calls) ──
     const trendPeriod = parseInt(document.getElementById('trendPeriodSel')?.value ?? '10');
     let trendData;
