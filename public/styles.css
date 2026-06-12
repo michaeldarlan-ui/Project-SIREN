@@ -1339,6 +1339,8 @@
   .rep-toggle-btn.active { background: var(--siren-cyan-12); border-color: var(--siren-cyan-70); color: var(--siren-cyan-90); }
   .score-view { display: none; }
   .score-view.active { display: block; }
+  .summary-view { display: none; }
+  .summary-view.active { display: block; }
 
   /* ── SPICED section ── */
   .spiced-list { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); margin-bottom: 1rem; overflow: hidden; }

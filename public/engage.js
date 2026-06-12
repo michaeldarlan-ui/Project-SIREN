@@ -876,7 +876,12 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
       "letter_grade": "B",
       "grade_label": "short evocative phrase",
       "top_strength": "one specific sentence about this rep",
-      "top_priority": "single most important fix for this rep"
+      "top_priority": "single most important fix for this rep",
+      "call_summary": {
+        "positives": ["specific thing this rep personally did well"],
+        "missed": ["opportunity or technique this rep specifically missed"],
+        "improvements": ["concrete thing this rep should do differently next call"]
+      }
     }
   ],
   "spiced": {
@@ -894,6 +899,7 @@ call_summary.missed: 2-4 specific opportunities, techniques, or questions that w
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.
 rep_scores: identify every sales rep who speaks in the transcript, resolving any generic speaker labels (Speaker 1, etc.) to real names using the Participants section and context clues as instructed above. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no reps can be identified even after resolution, return an empty array.
+rep_scores[].call_summary: per-rep summary based solely on that rep's individual contributions. positives = specific things this rep personally did well. missed = opportunities or techniques this specific rep failed to attempt. improvements = concrete actions this rep should take differently next call. Do not repeat overall call observations — focus only on this rep's behavior.
 spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.${thirdPartyContext}`;
 
     const team = loadTeam();
@@ -987,6 +993,27 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     }).join('');
   }
 
+  function buildSummaryHtml(s, viewId, isActive, sectionLabel) {
+    if (!s || (!s.positives?.length && !s.missed?.length && !s.improvements?.length)) return '';
+    return `<div class="summary-view${isActive ? ' active' : ''}" id="summary-view-${viewId}">
+      <div class="section-head">${escHtml(sectionLabel || 'Call summary')}</div>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-card-head positives">Positives</div>
+          <ul class="summary-list positives">${(s.positives||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-head missed">Missed</div>
+          <ul class="summary-list missed">${(s.missed||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-head improvements">Improvements</div>
+          <ul class="summary-list improvements">${(s.improvements||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
+        </div>
+      </div>
+    </div>`;
+  }
+
   function buildScoreView(viewData, metaLine, viewId) {
     const bg = getBannerColor(viewData.letter_grade);
     return `<div class="score-view ${viewId === 'overall' ? 'active' : ''}" id="score-view-${viewId}">
@@ -1013,24 +1040,14 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     // Auto-save recommendations
     if (r.recommended_books?.length) autoSaveRecommendations(r.recommended_books);
 
-    // Call summary
-    const s = r.call_summary || {};
-    const summaryHtml = (s.positives?.length || s.missed?.length || s.improvements?.length) ? `
-      <div class="section-head">Call summary</div>
-      <div class="summary-grid">
-        <div class="summary-card">
-          <div class="summary-card-head positives">Positives</div>
-          <ul class="summary-list positives">${(s.positives||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-head missed">Missed</div>
-          <ul class="summary-list missed">${(s.missed||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-head improvements">Improvements</div>
-          <ul class="summary-list improvements">${(s.improvements||[]).map(x=>`<li>${escHtml(x)}</li>`).join('')}</ul>
-        </div>
-      </div>` : '';
+    // Call summary (switchable per rep)
+    const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
+    const showToggle = repScores.length >= 1;
+    const overallSummary = buildSummaryHtml(r.call_summary || {}, 'overall', true, 'Call summary');
+    const repSummaries = showToggle
+      ? repScores.map((rs, i) => buildSummaryHtml(rs.call_summary || {}, `rep-${i}`, false, `${rs.name}'s summary`)).join('')
+      : '';
+    const summaryHtml = overallSummary + repSummaries;
 
     // SPICED
     const spicedKeys = ['situation','pain','impact','critical_event','evolution','decision'];
@@ -1084,11 +1101,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
         </div>`;
       }).join('')}` : '';
 
-    // Toggle + score views
-    const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
-    // Only show toggle when 2+ reps are on the call — single rep = no meaningful distinction
-    const showToggle = repScores.length > 1;
-
+    // Toggle + score views (repScores + showToggle already computed above)
     const toggleHtml = showToggle ? `
       <div class="rep-toggle">
         <button class="rep-toggle-btn active" id="toggle-overall" onclick="switchScoreView('overall',event)">Overall Call</button>
@@ -1137,11 +1150,11 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       ${missingRecBanner}
       ${thirdPartyBanner}
       ${toggleHtml}
-      ${overallView}
-      ${repViews}
       ${summaryHtml}
       ${spicedHtml}
       ${partnerHtml}
+      ${overallView}
+      ${repViews}
       <div class="results-actions">
         <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
         <button class="pdf-btn" onclick="exportReportPDF(${JSON.stringify(pdfTitle)})">&#8595; Export PDF</button>
@@ -1212,11 +1225,14 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     // Scope to the nearest card container so duplicate IDs across history cards don't conflict
     const root = (e && e.target.closest('.hist-card-body, #results')) || document;
     root.querySelectorAll('.score-view').forEach(el => el.classList.remove('active'));
+    root.querySelectorAll('.summary-view').forEach(el => el.classList.remove('active'));
     root.querySelectorAll('.rep-toggle-btn').forEach(el => el.classList.remove('active'));
-    const view = root.querySelector('#score-view-' + viewId);
-    const btn  = root.querySelector('#toggle-' + viewId);
-    if (view) view.classList.add('active');
-    if (btn)  btn.classList.add('active');
+    const scoreView   = root.querySelector('#score-view-' + viewId);
+    const summaryView = root.querySelector('#summary-view-' + viewId);
+    const btn         = root.querySelector('#toggle-' + viewId);
+    if (scoreView)   scoreView.classList.add('active');
+    if (summaryView) summaryView.classList.add('active');
+    if (btn)         btn.classList.add('active');
   }
 
   function autoSaveRecommendations(books) {
@@ -1733,6 +1749,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     clone.querySelectorAll('.results-actions').forEach(el => el.remove());
     clone.querySelectorAll('.rep-toggle').forEach(el => el.remove());
     clone.querySelectorAll('.score-view').forEach(el => { el.style.display = 'block'; });
+    clone.querySelectorAll('.summary-view').forEach(el => { el.style.display = 'block'; });
 
     const win = window.open('', '_blank', 'width=900,height=750');
     if (!win) return;
@@ -1758,6 +1775,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         }
         body { background:#fff; margin:0; padding:28px 36px; font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif; }
         .score-view { display:block !important; }
+        .summary-view { display:block !important; }
         .rep-toggle { display:none !important; }
         .dim-feedback, .spiced-summary { color:#3a5060 !important; }
         .no-context-banner { background:rgba(0,111,166,.07) !important; border-color:rgba(0,111,166,.25) !important; color:#005580 !important; }
@@ -1944,6 +1962,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .replace(/<button[^>]*class="[^"]*reset-btn[^"]*"[\s\S]*?<\/button>/g, '')
       .replace(/<div class="rep-toggle">[\s\S]*?<\/div>\s*/, '')
       .replace(/class="score-view[^"]*"/g, 'class="score-view active"')
+      .replace(/class="summary-view[^"]*"/g, 'class="summary-view active"')
       .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"")
       .replace(/background:#00c8ff/g, 'background:#006a8a')
       .replace(/background:#00c896/g, 'background:#0a6b52')
