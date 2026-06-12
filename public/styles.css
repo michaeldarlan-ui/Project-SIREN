@@ -753,6 +753,20 @@
   .lc-sb-btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
   .lc-sb-btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
+  /* Deal status buttons */
+  .lc-deal-status-btn {
+    flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 600; border-radius: 5px; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.5);
+    transition: background 0.15s, color 0.15s;
+  }
+  .lc-deal-status-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .lc-deal-status-btn.active { background: rgba(0,200,255,0.15); border-color: rgba(0,200,255,0.4); color: #00c8ff; }
+  .lc-deal-status-btn.won.active { background: rgba(74,222,128,0.15); border-color: rgba(74,222,128,0.4); color: #4ade80; }
+  .lc-deal-status-btn.lost.active { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #ef4444; }
+
+  /* Atlas deal report modal */
+  #atlasReportModal.open { display: flex !important; }
+
   /* Account profile editor */
   .lc-profile-section { padding: 14px 16px 0; }
   .lc-profile-section-hdr {

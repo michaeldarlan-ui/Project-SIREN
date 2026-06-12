@@ -74,6 +74,17 @@
   </div>
 </div>
 
+<!-- Atlas Deal Report Modal -->
+<div id="atlasReportModal" onclick="if(event.target===this)closeAtlasReportModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
+  <div style="background:#0d1117;border:1px solid rgba(0,200,255,.18);border-radius:10px;width:min(780px,96vw);max-height:85vh;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
+      <div id="atlasReportModalTitle" style="font-size:15px;font-weight:700;color:var(--siren-cyan-90);letter-spacing:.04em;"></div>
+      <button onclick="closeAtlasReportModal()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">&#215;</button>
+    </div>
+    <div id="atlasReportModalBody" style="padding:20px 24px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.8);line-height:1.65;"></div>
+  </div>
+</div>
+
 <!-- ══ GRADER PAGE ══ -->
 <div class="page" id="page-grader">
   <div class="shell">

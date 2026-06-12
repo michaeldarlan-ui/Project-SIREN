@@ -397,6 +397,25 @@
         </div>
       </div>`;
 
+      // ── Deal Status ──
+      const dealStatus = prof.deal_status || 'active';
+      const cSafeQ = JSON.stringify(company);
+      html += `<div class="lc-profile-divider"></div>
+      <div class="lc-sb-section">
+        <div class="lc-sb-section-label">Deal Status</div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="lc-deal-status-btn${dealStatus==='active'?' active':''}" onclick="atlasSetDealStatus(${cSafeQ},'active')">Active</button>
+          <button class="lc-deal-status-btn won${dealStatus==='won'?' active':''}" onclick="atlasSetDealStatus(${cSafeQ},'won')">Closed Won</button>
+          <button class="lc-deal-status-btn lost${dealStatus==='lost'?' active':''}" onclick="atlasSetDealStatus(${cSafeQ},'lost')">Closed Lost</button>
+        </div>
+        ${dealStatus==='won'||dealStatus==='lost' ? `
+        <div style="margin-top:10px;">
+          <button class="lc-sb-btn lc-sb-btn-primary" style="width:100%;" onclick="atlasGenerateDealReport(${cSafeQ})">
+            ${dealStatus==='won'?'&#9733; Generate Success Report':'&#9888; Generate Post Mortem'}
+          </button>
+        </div>` : ''}
+      </div>`;
+
       html += `<div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-ghost" onclick="navTo('history')">View in History</button></div>`;
 
     } else {
@@ -414,6 +433,127 @@
     }
     inner.innerHTML = html;
   }
+
+  // ── Deal Status ──────────────────────────────────────────────
+  function atlasSetDealStatus(company, status) {
+    const prof = loadAccountProfile(company);
+    prof.deal_status = status;
+    saveAccountProfile(company, prof);
+    lcSelectNode('account'); // re-render sidebar
+  }
+
+  async function atlasGenerateDealReport(company) {
+    const prof = loadAccountProfile(company);
+    const status = prof.deal_status;
+    if (status !== 'won' && status !== 'lost') return;
+
+    const entries = loadHistory()
+      .filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase())
+      .sort((a,b) => { const da=a.callDate||a.ts.slice(0,10), db=b.callDate||b.ts.slice(0,10); return da<db?-1:da>db?1:0; });
+
+    const modal = document.getElementById('atlasReportModal');
+    const titleEl = document.getElementById('atlasReportModalTitle');
+    const bodyEl = document.getElementById('atlasReportModalBody');
+    if (!modal||!titleEl||!bodyEl) return;
+
+    const reportType = status === 'won' ? 'Closed Won Success Report' : 'Closed Lost Post Mortem';
+    titleEl.textContent = `${reportType} — ${company}`;
+    bodyEl.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px;padding:2rem 0;text-align:center;">Generating report…</div>';
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Build call history summary for the prompt
+    const callSummaries = entries.map((h,i) => {
+      const ds = h.callDate || h.ts.slice(0,10);
+      return `Call ${i+1} (${ds}, ${h.stage||'unknown stage'}): Grade ${h.letter_grade} ${h.total}/100. Strength: ${h.top_strength||'n/a'}. Priority: ${h.top_priority||'n/a'}.${h.overview ? ' Summary: ' + h.overview : ''}`;
+    }).join('\n');
+
+    const profileContext = [
+      prof.champion ? `Champion: ${prof.champion.name}${prof.champion.title?' ('+prof.champion.title+')':''}` : '',
+      (prof.contacts||[]).length ? `Key contacts: ${prof.contacts.map(c=>c.name+(c.title?' ('+c.title+')':'')).join(', ')}` : '',
+      (prof.competitors||[]).length ? `Competitors: ${prof.competitors.join(', ')}` : '',
+      (prof.techstack||[]).length ? `Tech stack: ${prof.techstack.join(', ')}` : '',
+      _getProspectIndustry(company) ? `Industry: ${_getProspectIndustry(company)}` : '',
+    ].filter(Boolean).join('\n');
+
+    const prompt = status === 'won'
+      ? `You are a sales excellence analyst for OneAxiom, a Houston-based MSSP. Write a Closed Won Success Report for the ${company} deal.
+
+Account context:
+${profileContext || 'No profile data available.'}
+
+Call history (${entries.length} calls):
+${callSummaries || 'No call history available.'}
+
+Write a structured success report with these sections:
+1. **Deal Summary** — what was sold, timeline, key metrics (avg score, number of calls)
+2. **What Worked** — 3–5 specific factors that drove the win (reference actual call data)
+3. **Champion & Stakeholder Dynamics** — how internal advocates were identified and leveraged
+4. **Competitive Positioning** — how OneAxiom differentiated against competitors
+5. **Replicable Playbook** — 3–5 concrete tactics this rep used that other reps should adopt
+6. **Coaching Notes** — any areas where execution could have been stronger even in a win
+
+Format in clean markdown. Be specific — cite call stages, grades, and actual strengths where available. Avoid generic sales advice.`
+      : `You are a sales excellence analyst for OneAxiom, a Houston-based MSSP. Write a Closed Lost Post Mortem for the ${company} deal.
+
+Account context:
+${profileContext || 'No profile data available.'}
+
+Call history (${entries.length} calls):
+${callSummaries || 'No call history available.'}
+
+Write a structured post mortem with these sections:
+1. **Deal Summary** — what was pursued, timeline, key metrics (avg score, number of calls)
+2. **Root Cause Analysis** — the 2–3 most likely reasons this deal was lost (reference call data)
+3. **Early Warning Signs** — signals from the call history that predicted the loss
+4. **Where the Rep Got Stuck** — specific execution gaps across the call progression
+5. **Competitive & Positioning Gaps** — where OneAxiom failed to differentiate
+6. **What to Do Differently** — 3–5 specific changes for similar deals in the future
+
+Format in clean markdown. Be specific — cite call stages, grades, and actual weaknesses where available. Do not soften the analysis.`;
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          temperature: 0,
+          stream: false,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!resp.ok) throw new Error('API error ' + resp.status);
+      const data = await resp.json();
+      const md = (data.content?.[0]?.text || '').trim();
+      bodyEl.innerHTML = _mdToHtml(md);
+    } catch (e) {
+      bodyEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Error generating report: ${escHtml(e.message)}</div>`;
+    }
+  }
+
+  // Minimal markdown → HTML for report display
+  function _mdToHtml(md) {
+    return md
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^### (.+)$/gm,'<h3 style="color:var(--siren-cyan-90);font-size:14px;margin:18px 0 6px;">$1</h3>')
+      .replace(/^## (.+)$/gm,'<h2 style="color:var(--siren-cyan-90);font-size:15px;margin:20px 0 8px;">$1</h2>')
+      .replace(/^# (.+)$/gm,'<h1 style="color:var(--siren-cyan-90);font-size:17px;margin:20px 0 8px;">$1</h1>')
+      .replace(/^[-*] (.+)$/gm,'<li style="margin-bottom:4px;">$1</li>')
+      .replace(/(<li[\s\S]*?<\/li>)/g,'<ul style="padding-left:18px;margin:6px 0;">$1</ul>')
+      .replace(/\n{2,}/g,'</p><p style="margin:8px 0;">')
+      .replace(/^(.)/,'<p style="margin:8px 0;">$1')
+      .replace(/(.)$/,'$1</p>');
+  }
+
+  window.closeAtlasReportModal = function() {
+    document.getElementById('atlasReportModal').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+  window.atlasSetDealStatus = atlasSetDealStatus;
+  window.atlasGenerateDealReport = atlasGenerateDealReport;
 
   // ── Account Profile storage ──
   function atlasRenameAccount(oldName) {
