@@ -215,7 +215,8 @@
     return loadHistory()
       .filter(h => {
         const rs = _parseRepScores(h.rep_scores);
-        if (rs.some(r => (r.name||'').toLowerCase() === lc)) return true;
+        const rsEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
+        if (rsEntry) return rsEntry.total > 0; // attended but scored 0 = didn't meaningfully participate
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
@@ -499,7 +500,9 @@
     const calls = loadHistory()
       .filter(h => {
         const lc = repName.toLowerCase();
-        if (_parseRepScores(h.rep_scores).some(r => (r.name||'').toLowerCase() === lc)) return true;
+        const rs = _parseRepScores(h.rep_scores);
+        const rsEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
+        if (rsEntry) return rsEntry.total > 0;
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => {
@@ -710,7 +713,9 @@
     const priorCalls = loadHistory()
       .filter(e => {
         const lc = (_coachCurrentRep||'').toLowerCase();
-        if (_parseRepScores(e.rep_scores).some(r=>(r.name||'').toLowerCase()===lc)) return true;
+        const rs = _parseRepScores(e.rep_scores);
+        const rsEntry = rs.find(r=>(r.name||'').toLowerCase()===lc);
+        if (rsEntry) return rsEntry.total > 0;
         return (e.rep||'').toLowerCase().trim() === lc.trim();
       })
       .filter(e => String(e.id) !== String(h.id))
