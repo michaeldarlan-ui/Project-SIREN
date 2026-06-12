@@ -1072,35 +1072,43 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
           <!-- Rep overview panel (shown when no call selected) -->
           <div id="cdOverviewPanel">
-            <!-- Rep Overview header + generate button -->
+            <!-- Coaching Report header + period selector + generate button -->
             <div class="cd-panel cd-overview-panel" id="cdOverviewCard">
-              <div class="cd-panel-hdr" style="margin-bottom:14px;">
-                <div class="cd-panel-title">Rep Overview</div>
-                <button class="pdf-btn pdf-btn-sm" id="cdOverviewGenBtn" onclick="coachGenerateRecognition()" style="display:none;">&#9733; Generate AI Overview</button>
+              <div class="cd-panel-hdr" style="margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+                <div class="cd-panel-title">Coaching Report</div>
+                <div class="cd-period-row" id="cdPeriodRow" style="display:none;">
+                  <div class="cd-period-selector">
+                    <button class="cd-period-btn" onclick="coachSetPeriod(30)">30d</button>
+                    <button class="cd-period-btn" onclick="coachSetPeriod(60)">60d</button>
+                    <button class="cd-period-btn cd-period-btn-active" onclick="coachSetPeriod(90)">90d</button>
+                    <button class="cd-period-btn" onclick="coachSetPeriod(null)">All</button>
+                  </div>
+                  <button class="pdf-btn pdf-btn-sm" id="cdOverviewGenBtn" onclick="coachGenerateRecognition()">&#9733; Generate</button>
+                </div>
               </div>
               <!-- Loading HUD -->
               <div id="coachRecogLoading" style="display:none;">
                 <div class="coach-hud-wrap" style="border:none;border-radius:6px;">
                   <div class="load-stream-l"></div><div class="load-stream-r"></div>
-                  <div class="load-hud-header"><div class="load-hud-bracket tl"></div><div class="load-hud-center"><div class="load-wordmark">S I R E N</div><div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>REP STRENGTHS</span></div></div><div class="load-hud-bracket tr"></div></div>
+                  <div class="load-hud-header"><div class="load-hud-bracket tl"></div><div class="load-hud-center"><div class="load-wordmark">S I R E N</div><div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>REP PATTERNS</span></div></div><div class="load-hud-bracket tr"></div></div>
                   <div class="load-body" style="padding:16px 24px;">
                     <div class="load-radar-wrap"><canvas class="load-radar-canvas" id="coachRecogRadar" width="140" height="140"></canvas></div>
                     <div class="load-steps">
                       <div class="load-step" id="crc-step-0"><div class="load-step-icon" id="crc-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Scanning call history</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-0"></div></div></div></div>
-                      <div class="load-step" id="crc-step-1"><div class="load-step-icon" id="crc-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying peak performances</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-1"></div></div></div></div>
-                      <div class="load-step" id="crc-step-2"><div class="load-step-icon" id="crc-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Spotting patterns &amp; strengths</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-2"></div></div></div></div>
-                      <div class="load-step" id="crc-step-3"><div class="load-step-icon" id="crc-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Writing overview</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-3"></div></div></div></div>
+                      <div class="load-step" id="crc-step-1"><div class="load-step-icon" id="crc-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying recurring patterns</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-1"></div></div></div></div>
+                      <div class="load-step" id="crc-step-2"><div class="load-step-icon" id="crc-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Checking recent progress</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-2"></div></div></div></div>
+                      <div class="load-step" id="crc-step-3"><div class="load-step-icon" id="crc-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Writing coaching report</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-3"></div></div></div></div>
                     </div>
                   </div>
                   <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
                 </div>
               </div>
-              <!-- Overview body / placeholder -->
+              <!-- Coaching body / placeholder -->
               <div id="coachRecogBody" style="display:none;font-size:13px;line-height:1.65;color:var(--siren-text-body);"></div>
               <div id="coachRecogEmpty" class="cd-overview-placeholder">
                 <div class="cd-overview-placeholder-icon">&#9670;</div>
-                <div class="cd-overview-placeholder-title">Rep Overview</div>
-                <div class="cd-overview-placeholder-sub">Select a rep, then generate an AI-powered overview of their performance, strengths, and areas for growth.</div>
+                <div class="cd-overview-placeholder-title">Coaching Report</div>
+                <div class="cd-overview-placeholder-sub">Select a rep, choose a time period, then generate a coaching report synthesized from all calls in that window.</div>
               </div>
             </div>
           </div>

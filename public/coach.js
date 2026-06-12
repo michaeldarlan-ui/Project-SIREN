@@ -5,6 +5,7 @@
   let _coachFeedbackRecord = null;
   let _coachFeedbackMd = '';
   let _coachRecogMd = '';
+  let _coachPeriodDays = 90;
   let _arenaScenario = 'objection';
   let _arenaDiff = 'medium';
   let _arenaMessages = []; // {role, content}
@@ -225,6 +226,26 @@
       .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
   }
 
+  function _coachGetPeriodCalls(name, days) {
+    const all = _coachGetRepCalls(name);
+    if (!days) return all;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    return all.filter(h => (h.callDate || h.ts.slice(0, 10)) >= cutoffStr);
+  }
+
+  window.coachSetPeriod = function(days) {
+    _coachPeriodDays = days;
+    document.querySelectorAll('.cd-period-btn').forEach(b => {
+      const match = days === null ? b.textContent === 'All' : b.textContent === days + 'd';
+      b.classList.toggle('cd-period-btn-active', match);
+    });
+    _coachRenderChips(_coachGetPeriodCalls(_coachCurrentRep, days));
+    _coachRecogMd = '';
+    _coachRenderOverviewPanel();
+  };
+
   function _coachRepScore(h, repName) {
     const rs = _parseRepScores(h.rep_scores);
     const r = rs.find(r => (r.name||'').toLowerCase() === repName.toLowerCase());
@@ -270,7 +291,7 @@
     _coachRenderKpis(calls);
     _coachRenderTrendChart(calls);
     _coachRenderStageBars(calls);
-    _coachRenderChips(calls);
+    _coachRenderChips(_coachGetPeriodCalls(_coachCurrentRep, _coachPeriodDays));
     coachRenderCallList();
     _coachRenderOverviewPanel();
   }
@@ -487,24 +508,28 @@
 
   // ── Overview panel (right side, no call selected) ────────────────────────────
   function _coachRenderOverviewPanel() {
-    const genBtn = document.getElementById('cdOverviewGenBtn');
+    const periodRow = document.getElementById('cdPeriodRow');
     const emptyEl = document.getElementById('coachRecogEmpty');
     const bodyEl  = document.getElementById('coachRecogBody');
 
     if (!_coachCurrentRep) {
-      if (genBtn) genBtn.style.display = 'none';
+      if (periodRow) periodRow.style.display = 'none';
       if (emptyEl) { emptyEl.style.display = ''; emptyEl.querySelector('.cd-overview-placeholder-sub').textContent = 'Select a rep to view their coaching dashboard.'; }
       if (bodyEl) { bodyEl.style.display = 'none'; bodyEl.innerHTML = ''; }
       _coachRecogMd = '';
       return;
     }
 
-    if (genBtn) genBtn.style.display = '';
+    if (periodRow) periodRow.style.display = '';
     if (_coachRecogMd) {
       if (emptyEl) emptyEl.style.display = 'none';
       if (bodyEl) { bodyEl.style.display = ''; bodyEl.innerHTML = _coachMd(_coachRecogMd); }
     } else {
-      if (emptyEl) emptyEl.style.display = '';
+      if (emptyEl) {
+        emptyEl.style.display = '';
+        const sub = emptyEl.querySelector('.cd-overview-placeholder-sub');
+        if (sub) sub.textContent = 'Choose a time period above, then click Generate to create a coaching report synthesized from all calls in that window.';
+      }
       if (bodyEl) { bodyEl.style.display = 'none'; }
     }
   }
@@ -800,27 +825,22 @@ Be direct, specific, and practical. Avoid generic sales advice. Address ${_coach
       document.getElementById('coachFeedbackBody').innerHTML);
   };
 
-  // ── Rep Overview generation (right panel) ─────────────────────────────────────
+  // ── Coaching Report generation (multi-call synthesis) ────────────────────────
   async function coachGenerateRecognition() {
     if (!_coachCurrentRep) return;
     const repName = _coachCurrentRep;
+    const days = _coachPeriodDays;
 
-    const calls = _coachGetRepCalls(repName);
+    const calls = _coachGetPeriodCalls(repName, days);
     if (!calls.length) {
       const emptyEl = document.getElementById('coachRecogEmpty');
       if (emptyEl) {
         emptyEl.style.display = '';
         const sub = emptyEl.querySelector('.cd-overview-placeholder-sub');
-        if (sub) sub.textContent = 'No graded calls found for this rep.';
+        if (sub) sub.textContent = days ? `No graded calls found in the last ${days} days.` : 'No graded calls found for this rep.';
       }
       return;
     }
-
-    const scores = calls.map(h => _coachRepScore(h, repName)).filter(s => s != null);
-    const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-    const trend = scores.length >= 2
-      ? (scores[scores.length-1] > scores[scores.length-2] ? '↑' : scores[scores.length-1] < scores[scores.length-2] ? '↓' : '→')
-      : '—';
 
     // Loading
     const loadEl = document.getElementById('coachRecogLoading');
@@ -830,27 +850,80 @@ Be direct, specific, and practical. Avoid generic sales advice. Address ${_coach
     bodyEl.style.display = 'none';
     bodyEl.innerHTML = '';
 
-    const callSummary = calls.slice(-10).map((h,i) => {
+    // --- Build aggregate context ---
+    const lc = repName.toLowerCase();
+
+    // Calls sorted oldest → newest (already sorted that way by _coachGetRepCalls)
+    const scores = calls.map(h => _coachRepScore(h, repName));
+    const avg = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+
+    // Dimension averages across all calls
+    const dimTotals = {}, dimCounts = {};
+    calls.forEach(h => {
+      const r = _parseRepScores(h.rep_scores).find(r=>(r.name||'').toLowerCase()===lc);
+      if (!r) return;
+      Object.entries(r).forEach(([k,v]) => {
+        if (k === 'name' || k === 'total' || typeof v !== 'number') return;
+        dimTotals[k] = (dimTotals[k]||0) + v;
+        dimCounts[k] = (dimCounts[k]||0) + 1;
+      });
+    });
+    const dimAvgs = Object.keys(dimTotals).map(k => `${k}: ${Math.round(dimTotals[k]/dimCounts[k])}`).join(', ');
+
+    // Strength / focus frequency
+    const tallyField = field => {
+      const map = {};
+      calls.forEach(h => { const v=(h[field]||'').trim(); if(v) map[v]=(map[v]||0)+1; });
+      return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([l,c])=>`${l} (${c}x)`).join(', ');
+    };
+    const strengthFreq = tallyField('top_strength');
+    const priorityFreq = tallyField('top_priority');
+
+    // Per-call summary lines
+    const callLines = calls.map((h,i) => {
       const ds = h.callDate || h.ts.slice(0,10);
-      let sc = h.total;
-      { const r = _parseRepScores(h.rep_scores).find(r=>(r.name||'').toLowerCase()===repName.toLowerCase()); if (r) sc = r.total; }
-      return `Call ${i+1} (${ds}, ${h.stage||'?'}): Grade ${h.letter_grade} ${sc}/100. Strength: ${h.top_strength||'n/a'}. Priority: ${h.top_priority||'n/a'}.`;
+      const sc = _coachRepScore(h, repName);
+      return `  Call ${i+1} | ${ds} | ${h.stage||'?'} | ${sc}/100 (${h.letter_grade||'?'}) | Strength: ${h.top_strength||'n/a'} | Priority: ${h.top_priority||'n/a'}`;
     }).join('\n');
 
-    const prompt = `You are a sales coach at OneAxiom, a Houston-based MSSP. Write a performance overview for ${repName} that balances genuine recognition with clear development priorities.
+    // Progress split: older half vs newer half (need ≥4 calls)
+    let progressCtx = '';
+    if (calls.length >= 4) {
+      const mid = Math.ceil(calls.length / 2);
+      const older = calls.slice(0, mid);
+      const newer = calls.slice(mid);
+      const oldAvg = Math.round(older.map(h=>_coachRepScore(h,repName)).reduce((a,b)=>a+b,0)/older.length);
+      const newAvg = Math.round(newer.map(h=>_coachRepScore(h,repName)).reduce((a,b)=>a+b,0)/newer.length);
+      const oldPri = tallyFieldOn(older, 'top_priority');
+      const newStr = tallyFieldOn(newer, 'top_strength');
+      progressCtx = `
+PROGRESS SPLIT (older ${older.length} calls avg ${oldAvg} → newer ${newer.length} calls avg ${newAvg}):
+- Top priorities flagged in older calls: ${oldPri}
+- Top strengths showing in newer calls: ${newStr}
+Use this to determine whether the rep has started addressing previously flagged areas.`;
+    }
 
-Call history (most recent ${calls.slice(-10).length} of ${calls.length} calls):
-${callSummary}
-Average score: ${avg || 'n/a'}. Score trend: ${trend}.
+    const periodLabel = days ? `last ${days} days` : 'all time';
+    const prompt = `You are a sales coach. Write a coaching report for ${repName} synthesized from ${calls.length} graded calls over the ${periodLabel}.
 
-Write an overview with these sections:
-1. **Overall Performance** — an honest 2–3 sentence summary of their trajectory
-2. **Standout Strengths** — 3–4 specific, observable behaviors they do consistently well (cite actual data)
-3. **Best Moment** — their highest-scoring call or most notable improvement, with specifics
-4. **Recommended Focus** — the 2–3 recurring improvement areas across their calls, with concrete guidance for each
-5. **Suggested Next Steps** — 2–3 specific actions: a RANGE scenario to practice, a skill to drill, or a behavior to repeat
+CALL DATA (oldest to newest):
+${callLines}
 
-Be genuine and specific — not generic cheerleading or boilerplate advice. Reference actual call stages, scores, strengths, and priority areas. Address ${repName} directly.`;
+AGGREGATE METRICS:
+- Average score: ${avg}/100
+- Dimension averages: ${dimAvgs || 'n/a'}
+- Most frequent strengths: ${strengthFreq || 'n/a'}
+- Most frequent focus areas: ${priorityFreq || 'n/a'}
+${progressCtx}
+
+Write a coaching report with these sections:
+1. **Performance Summary** — 2–3 sentences on ${repName}'s overall trajectory in this period. Reference the score range and trend.
+2. **Consistent Strengths** — 3–4 behaviors that appear repeatedly across calls. Reference call stages, dates, or scores to anchor each point — do NOT quote transcripts verbatim.
+3. **Recurring Focus Areas** — the 2–3 issues that keep appearing across multiple calls, with specific and actionable guidance for each.
+${calls.length >= 4 ? `4. **Progress Check** — Based on the older vs newer call split, has ${repName} started implementing feedback on previously flagged areas? Be specific about what has improved and what still needs work.
+5. **Priority Actions** — 3 concrete things to focus on in the next calls.` : `4. **Priority Actions** — 3 concrete things to focus on in the next calls.`}
+
+Write in second person ("you"), be direct and specific, and base all feedback on patterns across multiple calls — not isolated incidents or direct quotes.`;
 
     try {
       const md = await _coachRunSteps('crc', 4, () => _coachAsk(prompt));
@@ -867,6 +940,12 @@ Be genuine and specific — not generic cheerleading or boilerplate advice. Refe
     }
   }
   window.coachGenerateRecognition = coachGenerateRecognition;
+
+  function tallyFieldOn(calls, field) {
+    const map = {};
+    calls.forEach(h => { const v=(h[field]||'').trim(); if(v) map[v]=(map[v]||0)+1; });
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([l,c])=>`${l} (${c}x)`).join(', ') || 'n/a';
+  }
 
   // ── Arena role-based scenario filter ─────────────────────────────────────────
 

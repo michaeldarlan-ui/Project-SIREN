@@ -962,6 +962,17 @@
 
   .cd-panel-calls #coachCallList { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
 
+  .cd-period-row { display: flex; align-items: center; gap: 8px; }
+  .cd-period-selector { display: flex; border: 1px solid var(--siren-cyan-20); border-radius: var(--siren-radius-sm); overflow: hidden; }
+  .cd-period-btn {
+    padding: 4px 10px; font-size: 11px; font-weight: 500; cursor: pointer;
+    background: transparent; color: var(--siren-text-faint); border: none; border-right: 1px solid var(--siren-cyan-20);
+    transition: background .15s, color .15s;
+  }
+  .cd-period-btn:last-child { border-right: none; }
+  .cd-period-btn:hover { background: var(--siren-cyan-08); color: var(--siren-cyan-70); }
+  .cd-period-btn-active { background: var(--siren-cyan-08); color: var(--siren-cyan-70); font-weight: 700; }
+
   .cd-overview-panel { min-height: 320px; }
   .cd-overview-placeholder {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
