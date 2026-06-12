@@ -650,9 +650,9 @@
     document.getElementById('lcModalTitle').textContent=(h.prospect||'Unknown company')+' — '+stageAbbrev(h.stage||'');
     document.getElementById('lcModalSub').textContent=subParts.join(' · ');
     const body=(h.resultsHtml||'')
-      .replace(/<button[^>]*reset-btn[^>]*>[\s\S]*?<\/button>/,'')
-      .replace(/<div class="rep-toggle">[\s\S]*?<\/div>/,'')
-      .replace(/<div class="score-view(?!.*active)[^"]*"[\s\S]*?(?=<div class="score-view active|$)/,'');
+      .replace(/<button[^>]*class="[^"]*reset-btn[^"]*"[\s\S]*?<\/button>/g,'')
+      .replace(/<div class="rep-toggle">[\s\S]*?<\/div>\s*/,'')
+      .replace(/class="score-view[^"]*"/g,'class="score-view active"');
     document.getElementById('lcModalBody').innerHTML=body||'<p style="color:var(--siren-text-faint);font-size:13px;">No detailed report available.</p>';
     const pdfBtn = document.getElementById('lcModalPdfBtn');
     if (pdfBtn) pdfBtn.style.display = h.resultsHtml ? '' : 'none';
