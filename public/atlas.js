@@ -399,7 +399,6 @@
 
       // ── Deal Status ──
       const dealStatus = prof.deal_status || 'active';
-      const cSafe = escHtml(company);
       html += `<div class="lc-profile-divider"></div>
       <div class="lc-sb-section">
         <div class="lc-sb-section-label">Deal Status</div>
