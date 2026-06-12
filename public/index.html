@@ -27,6 +27,7 @@
     <button class="nav-tab" onclick="navTo('lifecycle')">ATLAS</button>
     <button class="nav-tab" onclick="navTo('scope')">SCOPE</button>
     <button class="nav-tab" onclick="navTo('coach')">COACH</button>
+    <button class="nav-tab" onclick="navTo('usage')">USAGE</button>
   </nav>
   <div class="topbar-settings" id="settingsMenu">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
@@ -1394,6 +1395,56 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
   </div>
 </div>
 
+<!-- ── USAGE PAGE ── -->
+<div class="page" id="page-usage">
+  <div class="shell">
+
+    <!-- Header -->
+    <div class="page-heading" style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">USAGE</h2>
+        <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Claude API metrics — mirrors the Claude Console usage dashboard. Metered server-side on every call.</p>
+      </div>
+      <div class="cd-period-selector">
+        <button class="cd-period-btn" onclick="usageSetPeriod(7)">7d</button>
+        <button class="cd-period-btn cd-period-btn-active" onclick="usageSetPeriod(30)">30d</button>
+        <button class="cd-period-btn" onclick="usageSetPeriod(90)">90d</button>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div id="usageKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;"></div>
+
+    <!-- Spend per day -->
+    <div class="cd-panel" style="margin-bottom:18px;">
+      <div class="cd-panel-hdr" style="margin-bottom:12px;">
+        <div class="cd-panel-title">Spend per day</div>
+        <div class="cd-panel-hint" id="usageSpendHint"></div>
+      </div>
+      <div id="usageSpendChart"></div>
+    </div>
+
+    <!-- Tokens per day -->
+    <div class="cd-panel" style="margin-bottom:18px;">
+      <div class="cd-panel-hdr" style="margin-bottom:12px;">
+        <div class="cd-panel-title">Tokens per day</div>
+        <div class="cd-panel-hint"><span style="color:#00c8ff;">&#9632;</span> input &nbsp;<span style="color:#4ade80;">&#9632;</span> output</div>
+      </div>
+      <div id="usageTokenChart"></div>
+    </div>
+
+    <!-- By-model breakdown -->
+    <div class="cd-panel">
+      <div class="cd-panel-hdr" style="margin-bottom:12px;">
+        <div class="cd-panel-title">Breakdown by model</div>
+      </div>
+      <div id="usageModelTable"></div>
+    </div>
+
+    <div class="footer">Metrics accrue from the date server-side metering was enabled. Cache tokens are priced at 1.25&times; (write) and 0.1&times; (read) of input rate.</div>
+  </div>
+</div>
+
 <script src="db.js"></script>
 <script src="core.js"></script>
 <script src="engage.js"></script>
@@ -1402,6 +1453,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 <script src="scope.js"></script>
 <script src="forge.js"></script>
 <script src="coach.js"></script>
+<script src="usage.js"></script>
 <script src="demo.js"></script>
 <script src="init.js"></script>
 </body>

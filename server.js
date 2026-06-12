@@ -59,6 +59,13 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS team (name TEXT PRIMARY KEY, role TEXT, idx INTEGER DEFAULT 0)` },
   { sql: `CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, cost REAL DEFAULT 0, calls INTEGER DEFAULT 0)` },
   { sql: `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)` },
+  { sql: `CREATE TABLE IF NOT EXISTS usage_daily (
+      day TEXT, model TEXT,
+      cost REAL DEFAULT 0, calls INTEGER DEFAULT 0,
+      tokens_in INTEGER DEFAULT 0, tokens_out INTEGER DEFAULT 0,
+      cache_write INTEGER DEFAULT 0, cache_read INTEGER DEFAULT 0,
+      PRIMARY KEY (day, model)
+    )` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -203,18 +210,28 @@ function _usageMonthKey() { return 'm' + new Date().toISOString().slice(0, 7); }
 async function meterApiCall(model, usage) {
   if (!usage) return;
   const p = _ccPrice(model);
-  const cost = (
-    (usage.input_tokens || 0) * p.in +
-    (usage.cache_creation_input_tokens || 0) * p.in * 1.25 +
-    (usage.cache_read_input_tokens || 0) * p.in * 0.1 +
-    (usage.output_tokens || 0) * p.out
-  ) / 1_000_000;
+  const inTok  = usage.input_tokens || 0;
+  const outTok = usage.output_tokens || 0;
+  const cacheW = usage.cache_creation_input_tokens || 0;
+  const cacheR = usage.cache_read_input_tokens || 0;
+  const cost = (inTok * p.in + cacheW * p.in * 1.25 + cacheR * p.in * 0.1 + outTok * p.out) / 1_000_000;
   const sql = `INSERT INTO usage (id, cost, calls) VALUES (?, ?, 1)
                ON CONFLICT(id) DO UPDATE SET cost = usage.cost + excluded.cost, calls = usage.calls + 1`;
+  const sqlDaily = `INSERT INTO usage_daily (day, model, cost, calls, tokens_in, tokens_out, cache_write, cache_read)
+                    VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+                    ON CONFLICT(day, model) DO UPDATE SET
+                      cost        = usage_daily.cost + excluded.cost,
+                      calls       = usage_daily.calls + 1,
+                      tokens_in   = usage_daily.tokens_in + excluded.tokens_in,
+                      tokens_out  = usage_daily.tokens_out + excluded.tokens_out,
+                      cache_write = usage_daily.cache_write + excluded.cache_write,
+                      cache_read  = usage_daily.cache_read + excluded.cache_read`;
+  const day = new Date().toISOString().slice(0, 10);
   try {
     await client.batch([
       { sql, args: ['global', cost] },
       { sql, args: [_usageMonthKey(), cost] },
+      { sql: sqlDaily, args: [day, model || 'unknown', cost, inTok, outTok, cacheW, cacheR] },
     ], 'write');
   } catch (e) { console.error('[meter] write failed:', e.message); }
 }
@@ -646,9 +663,35 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Daily per-model metrics for the USAGE dashboard
+  if (req.method === 'GET' && req.url.startsWith('/api/usage-metrics')) {
+    try {
+      const days = Math.min(365, Math.max(1, parseInt(new URL(req.url, 'http://x').searchParams.get('days')) || 30));
+      const since = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+      const rows = (await client.execute({
+        sql: 'SELECT * FROM usage_daily WHERE day >= ? ORDER BY day ASC',
+        args: [since],
+      })).rows.map(r => ({
+        day: String(r.day), model: String(r.model),
+        cost: Number(r.cost), calls: Number(r.calls),
+        tokens_in: Number(r.tokens_in), tokens_out: Number(r.tokens_out),
+        cache_write: Number(r.cache_write), cache_read: Number(r.cache_read),
+      }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ days, since, rows }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/api/usage/reset') {
     try {
-      await client.execute('DELETE FROM usage');
+      await client.batch([
+        { sql: 'DELETE FROM usage' },
+        { sql: 'DELETE FROM usage_daily' },
+      ], 'write');
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(500); res.end(e.message); }
     return;

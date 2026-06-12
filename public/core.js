@@ -13,7 +13,8 @@
           (page === 'scope'     && t.textContent === 'SCOPE') ||
           (page === 'forge'     && t.textContent === 'FORGE') ||
           (page === 'vigil'       && t.textContent === 'VIGIL') ||
-          (page === 'coach'       && t.textContent === 'COACH')) {
+          (page === 'coach'       && t.textContent === 'COACH') ||
+          (page === 'usage'       && t.textContent === 'USAGE')) {
         t.classList.add('active');
       }
     });
@@ -27,6 +28,7 @@
     if (page === 'forge')     forgeInit();
     if (page === 'vigil')       pulseRenderFeed();
     if (page === 'coach')       coachInit();
+    if (page === 'usage')       renderUsagePage();
   }
 
   // ── Demo mode ──────────────────────────────────────────────
