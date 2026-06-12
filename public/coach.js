@@ -201,21 +201,29 @@
     if (prev && team.find(m => m.name === prev)) coachOnRepChange();
   }
 
+  // rep_scores arrives as a parsed array from the server; guard against raw string too
+  function _parseRepScores(rs) {
+    if (!rs) return [];
+    if (Array.isArray(rs)) return rs;
+    try { return JSON.parse(rs); } catch { return []; }
+  }
+
   function _coachGetRepCalls(name) {
     if (!name) return [];
     const lc = name.toLowerCase();
     return loadHistory()
       .filter(h => {
-        if (h.rep_scores) { try { if (JSON.parse(h.rep_scores).some(r => (r.name||'').toLowerCase() === lc)) return true; } catch {} }
-        return (h.rep||'').toLowerCase() === lc;
+        const rs = _parseRepScores(h.rep_scores);
+        if (rs.some(r => (r.name||'').toLowerCase() === lc)) return true;
+        return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
   }
 
   function _coachRepScore(h, repName) {
-    if (h.rep_scores) {
-      try { const r = JSON.parse(h.rep_scores).find(r => (r.name||'').toLowerCase() === repName.toLowerCase()); if (r) return r.total; } catch {}
-    }
+    const rs = _parseRepScores(h.rep_scores);
+    const r = rs.find(r => (r.name||'').toLowerCase() === repName.toLowerCase());
+    if (r) return r.total;
     return h.total;
   }
 
@@ -487,10 +495,8 @@
     const calls = loadHistory()
       .filter(h => {
         const lc = repName.toLowerCase();
-        if (h.rep_scores) {
-          try { if (JSON.parse(h.rep_scores).some(r => (r.name||'').toLowerCase() === lc)) return true; } catch {}
-        }
-        return (h.rep||'').toLowerCase() === lc;
+        if (_parseRepScores(h.rep_scores).some(r => (r.name||'').toLowerCase() === lc)) return true;
+        return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => {
         const da = a.callDate || a.ts.slice(0,10), db = b.callDate || b.ts.slice(0,10);
@@ -689,12 +695,10 @@
 
     // Build rep-specific score data
     let repScoreData = '';
-    if (h.rep_scores) {
-      try {
-        const rs = JSON.parse(h.rep_scores);
-        const r = rs.find(r => (r.name||'').toLowerCase() === (_coachCurrentRep||'').toLowerCase());
-        if (r) repScoreData = `Rep score: ${r.total}/100. Breakdown: ${Object.entries(r).filter(([k,v])=>k!=='name'&&k!=='total'&&typeof v==='number').map(([k,v])=>`${k}: ${v}`).join(', ')}.`;
-      } catch {}
+    {
+      const rs = _parseRepScores(h.rep_scores);
+      const r = rs.find(r => (r.name||'').toLowerCase() === (_coachCurrentRep||'').toLowerCase());
+      if (r) repScoreData = `Rep score: ${r.total}/100. Breakdown: ${Object.entries(r).filter(([k,v])=>k!=='name'&&k!=='total'&&typeof v==='number').map(([k,v])=>`${k}: ${v}`).join(', ')}.`;
     }
     if (!repScoreData && h.total) repScoreData = `Call score: ${h.total}/100 (${h.letter_grade}).`;
 
@@ -702,8 +706,8 @@
     const priorCalls = loadHistory()
       .filter(e => {
         const lc = (_coachCurrentRep||'').toLowerCase();
-        if (e.rep_scores) { try { if (JSON.parse(e.rep_scores).some(r=>(r.name||'').toLowerCase()===lc)) return true; } catch {} }
-        return (e.rep||'').toLowerCase() === lc;
+        if (_parseRepScores(e.rep_scores).some(r=>(r.name||'').toLowerCase()===lc)) return true;
+        return (e.rep||'').toLowerCase().trim() === lc.trim();
       })
       .filter(e => String(e.id) !== String(h.id))
       .sort((a,b) => (b.callDate||b.ts) > (a.callDate||a.ts) ? 1 : -1)
@@ -797,7 +801,7 @@ Be direct, specific, and practical. Avoid generic sales advice. Address ${_coach
     const callSummary = calls.slice(-10).map((h,i) => {
       const ds = h.callDate || h.ts.slice(0,10);
       let sc = h.total;
-      if (h.rep_scores) { try { const r = JSON.parse(h.rep_scores).find(r=>(r.name||'').toLowerCase()===repName.toLowerCase()); if (r) sc = r.total; } catch {} }
+      { const r = _parseRepScores(h.rep_scores).find(r=>(r.name||'').toLowerCase()===repName.toLowerCase()); if (r) sc = r.total; }
       return `Call ${i+1} (${ds}, ${h.stage||'?'}): Grade ${h.letter_grade} ${sc}/100. Strength: ${h.top_strength||'n/a'}. Priority: ${h.top_priority||'n/a'}.`;
     }).join('\n');
 
