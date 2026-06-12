@@ -299,13 +299,14 @@
 
     // Highlight selected card
     document.querySelectorAll('.coach-call-card').forEach(c => c.classList.remove('selected'));
-    const cards = document.querySelectorAll('.coach-call-card');
-    cards.forEach(c => { if (c.getAttribute('onclick') === `coachSelectCall(${id})`) c.classList.add('selected'); });
+    document.querySelectorAll('.coach-call-card').forEach(c => {
+      if (c.getAttribute('onclick') === `coachSelectCall(${id})`) c.classList.add('selected');
+    });
 
-    const panel = document.getElementById('coachFeedbackPanel');
+    const panel  = document.getElementById('coachFeedbackPanel');
     const labelEl = document.getElementById('coachFeedbackCallLabel');
-    const loadEl = document.getElementById('coachFeedbackLoading');
-    const bodyEl = document.getElementById('coachFeedbackBody');
+    const loadEl  = document.getElementById('coachFeedbackLoading');
+    const bodyEl  = document.getElementById('coachFeedbackBody');
 
     const ds = h.callDate
       ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
@@ -313,20 +314,138 @@
     labelEl.textContent = `Coaching Report — ${h.prospect||'Unknown'} (${h.stage||''}) · ${ds}`;
 
     panel.style.display = '';
-    loadEl.style.display = '';
-    bodyEl.style.display = 'none';
-    bodyEl.innerHTML = '';
+    loadEl.style.display = 'none';
+    bodyEl.style.display = '';
+    bodyEl.innerHTML = '<div class="coach-transcript-loading">Checking for transcript…</div>';
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // Fetch transcript from DB (best-effort — coaching still works without it)
+    // Try to auto-match transcript by history ID
     let transcriptText = '';
+    let transcriptLabel = '';
     try {
       const tResp = await fetch('/api/transcripts/' + h.id);
       if (tResp.ok) {
         const tData = await tResp.json();
         transcriptText = (tData.transcript || '').trim();
+        transcriptLabel = tData.label || '';
       }
     } catch {}
+
+    if (transcriptText) {
+      // Auto-matched — show confirmation badge and generate immediately
+      bodyEl.innerHTML = `<div class="coach-transcript-badge">
+        <span class="coach-transcript-badge-icon">&#10003;</span>
+        Transcript found: <strong>${escHtml(transcriptLabel||'Saved transcript')}</strong>
+        <button class="coach-transcript-swap-btn" onclick="coachSwapTranscript()">Use a different transcript</button>
+      </div>`;
+      await _coachGenerateFeedback(h, transcriptText, ds);
+    } else {
+      // No auto-match — show transcript picker
+      await _coachShowTranscriptPicker(h, ds);
+    }
+  };
+
+  async function _coachShowTranscriptPicker(h, ds) {
+    const bodyEl = document.getElementById('coachFeedbackBody');
+
+    // Fetch all saved transcripts for the picker
+    let allTranscripts = [];
+    try {
+      const resp = await fetch('/api/transcripts');
+      if (resp.ok) allTranscripts = await resp.json();
+    } catch {}
+
+    const optionsHtml = allTranscripts.length
+      ? allTranscripts.map(t => {
+          const date = t.call_date || t.saved_at?.slice(0,10) || '';
+          const label = [t.label, t.prospect, date].filter(Boolean).join(' · ');
+          return `<option value="${escHtml(String(t.id))}">${escHtml(label)}</option>`;
+        }).join('')
+      : '<option value="" disabled>No saved transcripts found</option>';
+
+    bodyEl.innerHTML = `
+      <div class="coach-transcript-picker">
+        <div class="coach-transcript-picker-icon">&#9741;</div>
+        <div class="coach-transcript-picker-title">No transcript on file for this call</div>
+        <div class="coach-transcript-picker-sub">Select a saved transcript to enable quote-level coaching, or generate using scores only.</div>
+        <div class="coach-transcript-picker-row">
+          <select id="coachTranscriptPickerSel" class="coach-transcript-picker-sel">
+            <option value="">— Select a transcript —</option>
+            ${optionsHtml}
+          </select>
+          <button class="coach-transcript-picker-btn" onclick="coachUseSelectedTranscript()">Use This Transcript</button>
+        </div>
+        <button class="coach-transcript-skip-btn" onclick="coachSkipTranscript()">Generate without transcript (scores only)</button>
+      </div>`;
+  }
+
+  window.coachUseSelectedTranscript = async function() {
+    const sel = document.getElementById('coachTranscriptPickerSel');
+    if (!sel || !sel.value) return;
+    const h = _coachFeedbackRecord;
+    if (!h) return;
+
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+
+    const bodyEl = document.getElementById('coachFeedbackBody');
+    bodyEl.innerHTML = '<div class="coach-transcript-loading">Loading transcript…</div>';
+
+    let transcriptText = '';
+    let transcriptLabel = '';
+    try {
+      const resp = await fetch('/api/transcripts/' + encodeURIComponent(sel.value));
+      if (resp.ok) {
+        const data = await resp.json();
+        transcriptText = (data.transcript || '').trim();
+        transcriptLabel = data.label || '';
+      }
+    } catch {}
+
+    if (!transcriptText) {
+      bodyEl.innerHTML = '<div style="color:#ef4444;font-size:13px;">Could not load transcript. Try another.</div>';
+      return;
+    }
+
+    bodyEl.innerHTML = `<div class="coach-transcript-badge">
+      <span class="coach-transcript-badge-icon">&#10003;</span>
+      Using: <strong>${escHtml(transcriptLabel||'Selected transcript')}</strong>
+      <button class="coach-transcript-swap-btn" onclick="coachSwapTranscript()">Change</button>
+    </div>`;
+    await _coachGenerateFeedback(h, transcriptText, ds);
+  };
+
+  window.coachSkipTranscript = async function() {
+    const h = _coachFeedbackRecord;
+    if (!h) return;
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    document.getElementById('coachFeedbackBody').innerHTML = '';
+    await _coachGenerateFeedback(h, '', ds);
+  };
+
+  window.coachSwapTranscript = async function() {
+    const h = _coachFeedbackRecord;
+    if (!h) return;
+    const ds = h.callDate
+      ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})
+      : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
+    _coachStopRadar();
+    document.getElementById('coachFeedbackLoading').style.display = 'none';
+    document.getElementById('coachFeedbackBody').style.display = '';
+    await _coachShowTranscriptPicker(h, ds);
+  };
+
+  async function _coachGenerateFeedback(h, transcriptText, ds) {
+    const loadEl = document.getElementById('coachFeedbackLoading');
+    const bodyEl = document.getElementById('coachFeedbackBody');
+
+    // Keep any badge already rendered, then show loading below it
+    const existingBadge = bodyEl.innerHTML;
+    loadEl.style.display = '';
+    bodyEl.style.display = 'none';
 
     // Build rep-specific score data
     let repScoreData = '';
@@ -388,17 +507,14 @@ Be direct, specific, and practical. Avoid generic sales advice. Address ${_coach
       _coachFeedbackMd = md;
       loadEl.style.display = 'none';
       bodyEl.style.display = '';
-      bodyEl.innerHTML = _coachMd(md);
+      bodyEl.innerHTML = existingBadge + _coachMd(md);
     } catch(e) {
       _coachStopRadar();
       loadEl.style.display = 'none';
       bodyEl.style.display = '';
       bodyEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Error: ${escHtml(e.message)}</div>`;
     }
-  };
-
-  // Start radar when loading shows
-  const _origRunSteps = _coachRunSteps;
+  }
 
   window.coachDownloadFeedback = function() {
     if (!_coachFeedbackMd || !_coachFeedbackRecord) return;
