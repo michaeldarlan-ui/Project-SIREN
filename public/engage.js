@@ -1159,11 +1159,11 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
       ${missingRecBanner}
       ${thirdPartyBanner}
       ${toggleHtml}
+      ${overallView}
+      ${repViews}
       ${summaryHtml}
       ${spicedHtml}
       ${partnerHtml}
-      ${overallView}
-      ${repViews}
       <div class="results-actions">
         <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
         <button class="pdf-btn" onclick="exportReportPDF(${escHtml(JSON.stringify(pdfTitle))})">&#8595; Export PDF</button>
