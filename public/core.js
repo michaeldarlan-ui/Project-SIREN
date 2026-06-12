@@ -18,6 +18,7 @@
     });
     currentPage = page;
     window.scrollTo(0, 0);
+    if (page === 'grader')    typeof renderSavedTranscripts === 'function' && renderSavedTranscripts();
     if (page === 'pulse')     renderPulse();
     if (page === 'history')   renderHistory();
     if (page === 'lifecycle') renderLifecyclePage();

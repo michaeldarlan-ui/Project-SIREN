@@ -1135,11 +1135,20 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     const detectedRep = rep || autoDetectRep(r.rep_scores || []);
     const savedRecord = saveToHistory(r, prospect, contactTitle, detectedRep, callDate, resultsHtml);
     autoGenerateNextSteps(notes, prospect, callDate, savedRecord.id);
-    // Save transcript for quick resubmission
+    // Save transcript independently (survives history deletion)
+    const tLabel = [prospect, selectedStage, callDate].filter(Boolean).join(' — ') || 'Untitled';
     fetch('/api/transcripts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ history_id: savedRecord.id, transcript: notes }),
+      body: JSON.stringify({
+        id: savedRecord.id,
+        label: tLabel,
+        prospect: prospect || null,
+        stage: selectedStage || null,
+        rep: detectedRep ? detectedRep.name : null,
+        call_date: callDate || null,
+        transcript: notes,
+      }),
     }).catch(() => {});
 
     // Update the rep selector UI to reflect the auto-detected rep
@@ -1746,6 +1755,27 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     win.document.close();
   }
 
+  // ── Saved Transcripts panel ────────────────────────────────
+
+  async function _loadTranscriptIntoGrader(t) {
+    navTo('grader');
+    document.getElementById('callNotes').value = t.transcript || '';
+    document.getElementById('prospectName').value = t.prospect || '';
+    document.getElementById('contactTitle').value = '';
+    if (t.call_date) document.getElementById('callDate').value = t.call_date;
+    if (t.stage) {
+      document.querySelectorAll('.stage-btn').forEach(b => {
+        if (b.textContent.trim() === t.stage) b.click();
+      });
+    }
+    if (t.rep) {
+      const team = loadTeam();
+      const idx = team.findIndex(m => m.name === t.rep);
+      if (idx !== -1) document.getElementById('repSelect').value = String(idx);
+    }
+    document.getElementById('callNotes').focus();
+  }
+
   async function resubmitTranscript(id, e) {
     e && e.stopPropagation();
     const btn = e && e.target.closest('button');
@@ -1754,32 +1784,59 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
       const res = await fetch('/api/transcripts/' + encodeURIComponent(String(id)));
       if (!res.ok) { alert('No saved transcript found for this entry.'); return; }
-      const { transcript } = await res.json();
-      const h = _histCache.find(r => String(r.id) === String(id));
-      // Pre-fill grader fields and navigate
-      navTo('grader');
-      document.getElementById('callNotes').value = transcript;
-      if (h) {
-        document.getElementById('prospectName').value = h.prospect || '';
-        document.getElementById('contactTitle').value = h.contactTitle || '';
-        if (h.callDate) document.getElementById('callDate').value = h.callDate;
-        // Set stage
-        const stageEl = document.querySelectorAll('.stage-btn');
-        stageEl.forEach(b => { if (b.textContent.trim() === h.stage) b.click(); });
-        // Set rep if on team
-        if (h.rep) {
-          const team = loadTeam();
-          const idx = team.findIndex(m => m.name === h.rep);
-          if (idx !== -1) document.getElementById('repSelect').value = String(idx);
-        }
-      }
-      document.getElementById('callNotes').focus();
+      await _loadTranscriptIntoGrader(await res.json());
     } catch (err) {
       alert('Could not load transcript: ' + err.message);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = origText; }
     }
   }
+
+  window.renderSavedTranscripts = async function() {
+    const el = document.getElementById('savedTranscriptsList');
+    if (!el) return;
+    el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;">Loading…</div>';
+    try {
+      const rows = await fetch('/api/transcripts').then(r => r.json());
+      if (!rows.length) {
+        el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:8px 0;">No saved transcripts yet. Transcripts are saved automatically after each grading.</div>';
+        return;
+      }
+      el.innerHTML = rows.map(t => {
+        const ds = t.call_date
+          ? new Date(t.call_date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+          : new Date(t.saved_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+        const meta = [t.stage, t.rep, ds].filter(Boolean).join(' · ');
+        return `<div class="saved-transcript-row" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.07);margin-bottom:6px;background:rgba(255,255,255,.03);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(t.prospect || t.label || 'Untitled')}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;">${escHtml(meta)}</div>
+          </div>
+          <button class="pdf-btn pdf-btn-sm" onclick="loadSavedTranscript(${JSON.stringify(t.id)})">&#8635; Load</button>
+          <button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${JSON.stringify(t.id)},this)">Delete</button>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      el.innerHTML = '<div style="color:#ef4444;font-size:13px;">Failed to load transcripts.</div>';
+    }
+  };
+
+  window.loadSavedTranscript = async function(id) {
+    try {
+      const res = await fetch('/api/transcripts/' + encodeURIComponent(String(id)));
+      if (!res.ok) { alert('Transcript not found.'); return; }
+      await _loadTranscriptIntoGrader(await res.json());
+    } catch (e) { alert('Error: ' + e.message); }
+  };
+
+  window.deleteSavedTranscript = async function(id, btn) {
+    if (!confirm('Delete this saved transcript? This cannot be undone.')) return;
+    try {
+      if (btn) btn.disabled = true;
+      await fetch('/api/transcripts/' + encodeURIComponent(String(id)), { method: 'DELETE' });
+      renderSavedTranscripts();
+    } catch (e) { alert('Error: ' + e.message); }
+  };
 
   function exportHistoryPDF(id) {
     const h = _histCache.find(r => String(r.id) === String(id));

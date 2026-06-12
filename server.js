@@ -68,7 +68,12 @@ db.exec(`
     notes        TEXT
   );
   CREATE TABLE IF NOT EXISTS transcripts (
-    history_id TEXT PRIMARY KEY,
+    id         TEXT PRIMARY KEY,
+    label      TEXT NOT NULL,
+    prospect   TEXT,
+    stage      TEXT,
+    rep        TEXT,
+    call_date  TEXT,
     transcript TEXT NOT NULL,
     saved_at   TEXT NOT NULL
   );
@@ -97,6 +102,28 @@ db.transaction(() => {
       console.log(`[db] Added rep_scores column to ${tbl}`);
     }
   });
+
+  // Migrate old transcripts table (history_id PK) to new standalone schema
+  if (tables.includes('transcripts')) {
+    const tCols = db.prepare('PRAGMA table_info(transcripts)').all().map(c => c.name);
+    if (!tCols.includes('label')) {
+      // Old schema — rebuild: copy rows, drop, recreate
+      const old = db.prepare('SELECT * FROM transcripts').all();
+      db.prepare('DROP TABLE transcripts').run();
+      db.prepare(`CREATE TABLE transcripts (
+        id TEXT PRIMARY KEY, label TEXT NOT NULL, prospect TEXT, stage TEXT,
+        rep TEXT, call_date TEXT, transcript TEXT NOT NULL, saved_at TEXT NOT NULL
+      )`).run();
+      const ins = db.prepare(`INSERT OR IGNORE INTO transcripts (id,label,prospect,stage,rep,call_date,transcript,saved_at)
+        VALUES (@id,@label,@prospect,@stage,@rep,@call_date,@transcript,@saved_at)`);
+      old.forEach(r => ins.run({
+        id: r.history_id, label: r.history_id,
+        prospect: null, stage: null, rep: null, call_date: null,
+        transcript: r.transcript, saved_at: r.saved_at,
+      }));
+      console.log(`[db] Migrated ${old.length} transcript rows to standalone schema`);
+    }
+  }
 
   // Move any demo rows that landed in history_prod into history_demo
   // (only if the old schema's is_demo column still exists on the table)
@@ -399,40 +426,49 @@ const server = http.createServer(async (req, res) => {
   // DELETE /api/history/:id — delete from whichever table holds it
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
-    db.prepare('DELETE FROM history_prod  WHERE id = ?').run(id);
-    db.prepare('DELETE FROM history_demo  WHERE id = ?').run(id);
-    db.prepare('DELETE FROM transcripts   WHERE history_id = ?').run(id);
+    db.prepare('DELETE FROM history_prod WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history_demo WHERE id = ?').run(id);
     res.writeHead(200); res.end();
     return;
   }
 
   // ── Transcripts API ────────────────────────────────────────
 
-  // POST /api/transcripts — save transcript for a history record
+  // GET /api/transcripts — list all saved transcripts (newest first)
+  if (req.method === 'GET' && req.url === '/api/transcripts') {
+    const rows = db.prepare('SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts ORDER BY saved_at DESC').all();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows));
+    return;
+  }
+
+  // POST /api/transcripts — save a standalone transcript
   if (req.method === 'POST' && req.url === '/api/transcripts') {
     try {
-      const { history_id, transcript } = await readBody(req);
-      db.prepare(`INSERT OR REPLACE INTO transcripts (history_id, transcript, saved_at)
-                  VALUES (?, ?, ?)`).run(String(history_id), transcript, new Date().toISOString());
+      const { id, label, prospect, stage, rep, call_date, transcript } = await readBody(req);
+      db.prepare(`INSERT OR REPLACE INTO transcripts (id,label,prospect,stage,rep,call_date,transcript,saved_at)
+                  VALUES (?,?,?,?,?,?,?,?)`).run(
+        String(id), label || prospect || 'Untitled', prospect||null, stage||null,
+        rep||null, call_date||null, transcript, new Date().toISOString());
       res.writeHead(201); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
   }
 
-  // GET /api/transcripts/:id — fetch transcript for a history record
+  // GET /api/transcripts/:id — fetch full transcript
   if (req.method === 'GET' && req.url.startsWith('/api/transcripts/')) {
     const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
-    const row = db.prepare('SELECT transcript FROM transcripts WHERE history_id = ?').get(id);
+    const row = db.prepare('SELECT * FROM transcripts WHERE id = ?').get(id);
     if (!row) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ transcript: row.transcript }));
+    res.end(JSON.stringify(row));
     return;
   }
 
-  // DELETE /api/transcripts/:id — remove transcript (cascades when history entry deleted)
+  // DELETE /api/transcripts/:id — permanently remove a transcript
   if (req.method === 'DELETE' && req.url.startsWith('/api/transcripts/')) {
     const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
-    db.prepare('DELETE FROM transcripts WHERE history_id = ?').run(id);
+    db.prepare('DELETE FROM transcripts WHERE id = ?').run(id);
     res.writeHead(200); res.end();
     return;
   }
