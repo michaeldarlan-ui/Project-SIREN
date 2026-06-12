@@ -878,10 +878,14 @@
             norm(m.name).split(' ').pop() === norm(rs.name).split(' ').pop());
           const key = rs.name;
           if (!repMap[key]) repMap[key] = { calls: [], role: member ? member.role : '' };
+          const isCold = /cold.outreach/i.test(h.stage || '');
+          if (isCold && !/\bISR\b|\bBDR\b/i.test(repMap[key].role)) return;
           repMap[key].calls.push({ ms, score: rs.total, stage: h.stage || '' });
         });
       } else if (h.rep && h.total) {
         if (!repMap[h.rep]) repMap[h.rep] = { calls: [], role: h.repRole || '' };
+        const isCold = /cold.outreach/i.test(h.stage || '');
+        if (isCold && !/\bISR\b|\bBDR\b/i.test(repMap[h.rep].role)) return;
         repMap[h.rep].calls.push({ ms, score: h.total, stage: h.stage || '' });
       }
     });

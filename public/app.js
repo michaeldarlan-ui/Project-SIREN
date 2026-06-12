@@ -2007,15 +2007,20 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const cutoff = (!isCallCount && trendVal > 0) ? Date.now() - trendVal * 86400000 : 0;
 
     const repMap = {};
+    const _teamForTrends = loadTeam();
+    const _repRole = name => (_teamForTrends.find(m => (m.name||'').toLowerCase() === (name||'').toLowerCase()) || {}).role || '';
     history.forEach(h => {
       const ms = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
       if (!isCallCount && cutoff > 0 && ms < cutoff) return;
+      const isCold = /cold.outreach/i.test(h.stage || '');
       if (h.rep && h.total) {
+        if (isCold && !/\bISR\b|\bBDR\b/i.test(_repRole(h.rep))) return;
         if (!repMap[h.rep]) repMap[h.rep] = [];
         repMap[h.rep].push({ ms, score: h.total, stage: h.stage || '' });
       }
       (h.participants || []).forEach(p => {
         if (!p.name || !p.score) return;
+        if (isCold && !/\bISR\b|\bBDR\b/i.test(_repRole(p.name))) return;
         if (!repMap[p.name]) repMap[p.name] = [];
         repMap[p.name].push({ ms, score: p.score, stage: h.stage || '' });
       });

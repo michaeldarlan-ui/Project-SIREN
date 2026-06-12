@@ -212,11 +212,14 @@
   function _coachGetRepCalls(name) {
     if (!name) return [];
     const lc = name.toLowerCase();
+    const role = (loadTeam().find(m => (m.name||'').toLowerCase() === lc) || {}).role || '';
+    const isIsrBdr = /\bISR\b|\bBDR\b/i.test(role);
     return loadHistory()
       .filter(h => {
+        if (!isIsrBdr && /cold.outreach/i.test(h.stage || '')) return false;
         const rs = _parseRepScores(h.rep_scores);
         const rsEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
-        if (rsEntry) return rsEntry.total > 0; // attended but scored 0 = didn't meaningfully participate
+        if (rsEntry) return rsEntry.total > 0;
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
