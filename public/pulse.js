@@ -865,22 +865,32 @@
     history.forEach(h => {
       const ms = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
       if (!isCallCount && cutoff > 0 && ms < cutoff) return;
-      if (h.rep && h.total) {
-        if (!repMap[h.rep]) repMap[h.rep] = [];
-        repMap[h.rep].push({ ms, score: h.total, stage: h.stage || '' });
+      // Use individual rep_scores when available (multi-rep calls); fall back to h.rep + h.total
+      const repEntries = h.rep_scores && h.rep_scores.length ? h.rep_scores : null;
+      if (repEntries) {
+        const team = loadTeam();
+        repEntries.forEach(rs => {
+          if (!rs.name || !rs.total) return;
+          // Resolve role from team roster
+          const norm = s => (s || '').toLowerCase().trim();
+          const member = team.find(m => norm(m.name) === norm(rs.name) ||
+            norm(m.name).split(' ')[0] === norm(rs.name).split(' ')[0] ||
+            norm(m.name).split(' ').pop() === norm(rs.name).split(' ').pop());
+          const key = rs.name;
+          if (!repMap[key]) repMap[key] = { calls: [], role: member ? member.role : '' };
+          repMap[key].calls.push({ ms, score: rs.total, stage: h.stage || '' });
+        });
+      } else if (h.rep && h.total) {
+        if (!repMap[h.rep]) repMap[h.rep] = { calls: [], role: h.repRole || '' };
+        repMap[h.rep].calls.push({ ms, score: h.total, stage: h.stage || '' });
       }
-      (h.participants || []).forEach(p => {
-        if (!p.name || !p.score) return;
-        if (!repMap[p.name]) repMap[p.name] = [];
-        repMap[p.name].push({ ms, score: p.score, stage: h.stage || '' });
-      });
     });
 
     const reps = Object.entries(repMap)
-      .map(([name, calls]) => {
+      .map(([name, { calls, role }]) => {
         let sorted = calls.sort((a,b) => a.ms - b.ms);
         if (isCallCount) sorted = sorted.slice(-trendVal); // last N per rep
-        return { name, calls: sorted };
+        return { name, role: role || '', calls: sorted };
       })
       .filter(r => r.calls.length > 0)
       .sort((a,b) => a.name.localeCompare(b.name));
@@ -962,7 +972,7 @@
       return `<div style="display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(255,255,255,.05);padding:10px 0;">
         <div style="width:130px;flex-shrink:0;padding-right:12px;">
           <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(rep.name)}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:3px;">${rep.calls.length} call${rep.calls.length!==1?'s':''}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;">${rep.role ? escHtml(rep.role) + ' · ' : ''}${rep.calls.length} call${rep.calls.length!==1?'s':''}</div>
         </div>
         <svg class="rep-sparkline" style="flex:1;min-width:0;height:${ROW_H}px;display:block;" viewBox="0 0 ${W} ${ROW_H}" preserveAspectRatio="none">${sparkContent}</svg>
         <div style="width:60px;flex-shrink:0;text-align:right;padding-left:14px;">

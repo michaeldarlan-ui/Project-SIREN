@@ -50,7 +50,8 @@ const HISTORY_COLS = `
     dimensions    TEXT,
     next_steps     TEXT,
     overview       TEXT,
-    partner_scores TEXT
+    partner_scores TEXT,
+    rep_scores     TEXT
 `;
 
 db.exec(`
@@ -86,6 +87,10 @@ db.transaction(() => {
       db.prepare(`ALTER TABLE ${tbl} ADD COLUMN partner_scores TEXT`).run();
       console.log(`[db] Added partner_scores column to ${tbl}`);
     }
+    if (!cols.includes('rep_scores')) {
+      db.prepare(`ALTER TABLE ${tbl} ADD COLUMN rep_scores TEXT`).run();
+      console.log(`[db] Added rep_scores column to ${tbl}`);
+    }
   });
 
   // Move any demo rows that landed in history_prod into history_demo
@@ -106,10 +111,10 @@ db.transaction(() => {
 
 const DB_COLS = `id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
      total, letter_grade, grade_label, top_strength, top_priority,
-     results_html, participants, dimensions, next_steps, overview, partner_scores`;
+     results_html, participants, dimensions, next_steps, overview, partner_scores, rep_scores`;
 const DB_VALS = `@id, @ts, @call_date, @prospect, @rep, @rep_role, @contact_title, @stage,
      @total, @letter_grade, @grade_label, @top_strength, @top_priority,
-     @results_html, @participants, @dimensions, @next_steps, @overview, @partner_scores`;
+     @results_html, @participants, @dimensions, @next_steps, @overview, @partner_scores, @rep_scores`;
 
 const stmtUpsertReal = db.prepare(`INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_VALS})`);
 const stmtUpsertDemo = db.prepare(`INSERT OR REPLACE INTO history_demo (${DB_COLS}) VALUES (${DB_VALS})`);
@@ -138,6 +143,7 @@ function dbRowToRecord(row, demoFlag) {
     next_steps:     row.next_steps     ? JSON.parse(row.next_steps)     : undefined,
     overview:       row.overview       || undefined,
     partner_scores: row.partner_scores ? JSON.parse(row.partner_scores) : undefined,
+    rep_scores:     row.rep_scores     ? JSON.parse(row.rep_scores)     : undefined,
   };
 }
 
@@ -162,6 +168,7 @@ function recordToDbRow(r) {
     next_steps:     r.next_steps     ? JSON.stringify(r.next_steps)     : null,
     overview:       r.overview       || null,
     partner_scores: r.partner_scores ? JSON.stringify(r.partner_scores) : null,
+    rep_scores:     r.rep_scores     ? JSON.stringify(r.rep_scores)     : null,
   };
 }
 

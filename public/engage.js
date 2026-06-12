@@ -1671,6 +1671,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       top_priority: r.top_priority || '',
       resultsHtml,
       partner_scores: (r.partner_scores && r.partner_scores.length) ? r.partner_scores : undefined,
+      rep_scores: (r.rep_scores && r.rep_scores.length) ? r.rep_scores : undefined,
       is_demo: false,
     };
     _histCache.unshift(record);
