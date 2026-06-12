@@ -75,6 +75,16 @@
   window.openDevSyncModal  = openDevSyncModal;
   window.closeDevSyncModal = closeDevSyncModal;
 
+  // ── Cost & Usage modal ────────────────────────────────────────
+  window.openCostUsageModal = function() {
+    const m = document.getElementById('costUsageModal');
+    if (m) m.style.display = 'flex';
+  };
+  window.closeCostUsageModal = function() {
+    const m = document.getElementById('costUsageModal');
+    if (m) m.style.display = 'none';
+  };
+
   // ── Team manager ───────────────────────────────────────────
   function loadTeam() {
     return _teamCache.slice();
