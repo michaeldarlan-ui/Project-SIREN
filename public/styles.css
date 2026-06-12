@@ -1236,9 +1236,9 @@
   .usage-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
   .usage-metric { background: var(--siren-bg-card-raised); border-radius: var(--siren-radius-sm); padding: 10px 12px; position: relative; }
   .usage-metric.disabled { opacity: 0.35; }
-  .usage-metric-label { font-size: 11px; color: var(--siren-text-faint); margin-bottom: 4px; }
-  .usage-metric-value { font-size: 18px; font-weight: 600; color: var(--siren-cyan-90); }
-  .usage-metric-sub { font-size: 11px; color: var(--siren-text-faint); margin-top: 2px; }
+  .usage-metric-label { font-size: 11px; color: #ffffff; margin-bottom: 4px; }
+  .usage-metric-value { font-size: 18px; font-weight: 600; color: #ffffff; }
+  .usage-metric-sub { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; }
   .metric-toggle { position: absolute; top: 8px; right: 8px; width: 28px; height: 16px; border-radius: 8px; background: var(--siren-bg-overlay); border: none; cursor: pointer; transition: background 0.2s; padding: 0; }
   .metric-toggle.on { background: var(--siren-cyan); }
   .metric-toggle::after { content: ''; display: block; width: 12px; height: 12px; border-radius: 50%; background: #fff; margin: 2px; transition: margin 0.2s; }
