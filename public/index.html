@@ -71,30 +71,43 @@
     </div>
     <div style="padding:22px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;">
 
-      <p style="margin:0;color:rgba(255,255,255,.5);">Transfer your database between machines using a JSON export. The <code style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-size:12px;">data/</code> folder is gitignored — transfer the file manually (AirDrop, scp, etc).</p>
+      <p style="margin:0;color:rgba(255,255,255,.5);">SIREN uses <strong style="color:rgba(255,255,255,.7);">Turso</strong> — a hosted SQLite database. Both machines point at the same cloud DB via <code style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-size:12px;">.env</code>. One-time setup below.</p>
 
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 1 — Export on source machine</div>
-        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;">npm run db:export</pre>
-        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px;">Creates <code style="font-size:11px;">data/export.json</code> — all tables, all rows.</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 1 — Create a Turso database (once)</div>
+        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;"># Install Turso CLI (Mac/Linux)
+brew install tursodatabase/tap/turso
+
+turso auth login
+turso db create siren
+
+# Get your credentials
+turso db show siren --url
+turso db tokens create siren</pre>
       </div>
 
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 2 — Transfer the file</div>
-        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;"># AirDrop, or via scp:
-scp data/export.json user@other-machine:~/Projects/oa-call-grader/data/</pre>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 2 — Add to .env on both machines</div>
+        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;">TURSO_DATABASE_URL=libsql://siren-yourname.turso.io
+TURSO_AUTH_TOKEN=your-token-here</pre>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px;">.env is gitignored — add these lines to the existing file on each machine.</div>
       </div>
 
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 3 — Import on target machine</div>
-        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;">npm run db:import
-npm start</pre>
-        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px;">Safe to run multiple times — uses INSERT OR REPLACE, no duplicates.</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 3 — Push existing data from this PC (once)</div>
+        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;">npm run db:push</pre>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px;">Copies all rows from the local <code style="font-size:11px;">siren.db</code> to Turso. Only needed once.</div>
+      </div>
+
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Step 4 — Start normally on any machine</div>
+        <pre style="background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:14px 16px;margin:0;font-size:12px;color:#e2e8f0;overflow-x:auto;">npm start</pre>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px;">Both machines read and write the same database. No syncing required.</div>
       </div>
 
       <div style="background:rgba(0,200,255,.05);border:1px solid rgba(0,200,255,.15);border-radius:7px;padding:12px 14px;">
-        <div style="font-size:11px;font-weight:700;color:rgba(0,200,255,.8);margin-bottom:4px;">What's included</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.5);">history_prod &nbsp;·&nbsp; history_demo &nbsp;·&nbsp; prospects &nbsp;·&nbsp; third_parties &nbsp;·&nbsp; transcripts</div>
+        <div style="font-size:11px;font-weight:700;color:rgba(0,200,255,.8);margin-bottom:4px;">Without Turso configured</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);">Falls back to <code style="font-size:12px;">file:siren.db</code> automatically — local development still works with no setup.</div>
       </div>
 
     </div>

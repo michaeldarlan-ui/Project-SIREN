@@ -1,35 +1,37 @@
 // db-export.js — dump all SIREN tables to data/export.json
 // Usage: npm run db:export
 
-import Database from 'better-sqlite3';
+import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath   = path.join(__dirname, '..', 'siren.db');
-const outPath  = path.join(__dirname, '..', 'data', 'export.json');
+const dbPath  = path.join(__dirname, '..', 'siren.db');
+const outPath = path.join(__dirname, '..', 'data', 'export.json');
 
 if (!fs.existsSync(dbPath)) {
   console.error('siren.db not found at', dbPath);
   process.exit(1);
 }
 
-const db = new Database(dbPath, { readonly: true });
-
+const client = createClient({ url: 'file:' + dbPath });
 const TABLES = ['history_prod', 'history_demo', 'prospects', 'third_parties', 'transcripts'];
 
 const exported = {};
 let totalRows = 0;
 
 for (const tbl of TABLES) {
-  const exists = db.prepare(
-    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"
-  ).get(tbl);
+  const exists = (await client.execute(
+    `SELECT 1 FROM sqlite_master WHERE type='table' AND name='${tbl}'`
+  )).rows.length > 0;
   if (!exists) { exported[tbl] = []; continue; }
 
-  const rows = db.prepare(`SELECT * FROM ${tbl}`).all();
-  exported[tbl] = rows;
+  const rows = (await client.execute(`SELECT * FROM ${tbl}`)).rows;
+  // Convert Row objects to plain objects
+  exported[tbl] = rows.map(r => Object.fromEntries(
+    Object.entries(r).filter(([k]) => isNaN(k))
+  ));
   totalRows += rows.length;
   console.log(`  ${tbl}: ${rows.length} rows`);
 }

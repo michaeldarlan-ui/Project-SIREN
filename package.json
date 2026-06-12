@@ -7,12 +7,13 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "db:export": "node scripts/db-export.js",
-    "db:import": "node scripts/db-import.js"
+    "db:import": "node scripts/db-import.js",
+    "db:push": "node scripts/db-turso-push.js"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.10.0"
+    "@libsql/client": "^0.17.3"
   }
 }
