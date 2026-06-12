@@ -1810,9 +1810,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
-    // Wrap score-view blocks in a collapsible section; keep everything else visible
-    const strippedReset = (h.resultsHtml || '')
-      .replace(/<button class="reset-btn"[\s\S]*?<\/button>/, '')
+    // Show full report: remove reset button and rep-toggle switcher, make all score-views visible
+    const bodyHtml = (h.resultsHtml || '')
+      .replace(/<button[^>]*class="[^"]*reset-btn[^"]*"[\s\S]*?<\/button>/g, '')
+      .replace(/<div class="rep-toggle">[\s\S]*?<\/div>\s*/, '')
+      .replace(/class="score-view[^"]*"/g, 'class="score-view active"')
       .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"")
       .replace(/background:#00c8ff/g, 'background:#006a8a')
       .replace(/background:#00c896/g, 'background:#0a6b52')
@@ -1821,23 +1823,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .replace(/background:#c03030/g, 'background:#5c1c1c')
       .replace(/color:#e8a020/g, 'color:#c47f1a')
       .replace(/color:#e05050/g, 'color:#a83535');
-    const scoreMatch = strippedReset.match(/([\s\S]*?)(<div class="(?:rep-toggle|score-view)[\s\S]*?)((?:<div class="section-head[^>]*>(?:Call highlights|Recommended|SPICED)[\s\S]*)?)$/);
     const qid = JSON.stringify(String(h.id));
-    let bodyHtml;
-    if (scoreMatch) {
-      const before = scoreMatch[1];   // banner
-      const scores = scoreMatch[2];   // rep-toggle + score-view blocks
-      const after  = scoreMatch[3] || ''; // highlights, books, spiced
-      bodyHtml = `${before}
-        <div class="hist-scores-toggle" onclick="toggleHistScores(${qid},event)">
-          <span class="hist-scores-toggle-label">Scoring Details</span>
-          <span class="hist-scores-toggle-chev" id="hist-sc-chev-${h.id}">&#9660;</span>
-        </div>
-        <div class="hist-scores-body" id="hist-sc-body-${h.id}">${scores}</div>
-        ${after}`;
-    } else {
-      bodyHtml = strippedReset;
-    }
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
