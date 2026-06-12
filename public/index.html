@@ -1082,6 +1082,33 @@
 
         </div><!-- /cd-right -->
       </div><!-- /cd-layout -->
+
+      <!-- ── Intel Query Panel ── -->
+      <div class="cd-intel-panel" id="cdIntelPanel">
+        <div class="cd-intel-hdr">
+          <span class="cd-intel-title">INTEL</span>
+          <span class="cd-intel-sub">Ask anything about this rep's performance</span>
+          <button class="cd-intel-clear-btn" onclick="coachIntelClear()" id="cdIntelClearBtn" style="display:none;">Clear</button>
+        </div>
+
+        <div class="cd-intel-chips" id="cdIntelChips">
+          <button class="cd-intel-chip" onclick="coachIntelAsk('What are this rep\'s biggest strengths based on their call history?')">Biggest strengths</button>
+          <button class="cd-intel-chip" onclick="coachIntelAsk('What patterns do you see in this rep\'s performance across different stages?')">Stage patterns</button>
+          <button class="cd-intel-chip" onclick="coachIntelAsk('What is the single most impactful thing this rep could improve to raise their scores?')">Top improvement</button>
+          <button class="cd-intel-chip" onclick="coachIntelAsk('How has this rep\'s performance trended over time? Are they improving?')">Performance trend</button>
+          <button class="cd-intel-chip" onclick="coachIntelAsk('Which RANGE scenario should this rep practice most and why?')">RANGE recommendation</button>
+          <button class="cd-intel-chip" onclick="coachIntelAsk('Summarize this rep\'s performance in 3 bullet points for a manager briefing.')">Manager briefing</button>
+        </div>
+
+        <div class="cd-intel-thread" id="cdIntelThread" style="display:none;"></div>
+
+        <div class="cd-intel-input-row">
+          <textarea id="cdIntelInput" class="cd-intel-input" placeholder="Ask a question about this rep's data…" rows="2" onkeydown="coachIntelKeydown(event)"></textarea>
+          <button class="cd-intel-send-btn" id="cdIntelSendBtn" onclick="coachIntelSend()">Ask</button>
+        </div>
+        <div class="cd-intel-no-rep" id="cdIntelNoRep">Select a rep above to enable the intel query.</div>
+      </div>
+
     </div><!-- /cmod-dashboard -->
 
     <!-- ── ARENA MODULE ── -->

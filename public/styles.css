@@ -1026,6 +1026,82 @@
   }
   .coach-transcript-skip-btn:hover { color: var(--siren-text-muted); }
 
+  /* ── Coach Intel Query Panel ─────────────────────────────────────────────── */
+  .cd-intel-panel {
+    margin-top: 20px;
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border);
+    border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .cd-intel-hdr { display: flex; align-items: baseline; gap: 10px; }
+  .cd-intel-title {
+    font-size: 11px; font-weight: 800; letter-spacing: .1em;
+    color: var(--siren-cyan-90); text-transform: uppercase;
+  }
+  .cd-intel-sub { font-size: 12px; color: var(--siren-text-faint); flex: 1; }
+  .cd-intel-clear-btn {
+    background: none; border: none; color: var(--siren-text-faint);
+    font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;
+  }
+  .cd-intel-clear-btn:hover { color: var(--siren-text-muted); }
+
+  .cd-intel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cd-intel-chip {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+    color: var(--siren-text-muted); font-size: 11px; font-weight: 600;
+    padding: 5px 11px; border-radius: 20px; cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+    font-family: inherit;
+  }
+  .cd-intel-chip:hover {
+    background: rgba(0,200,255,.1); border-color: rgba(0,200,255,.3); color: #00c8ff;
+  }
+
+  .cd-intel-thread {
+    display: flex; flex-direction: column; gap: 14px;
+    max-height: 420px; overflow-y: auto;
+    padding-right: 4px;
+  }
+  .cd-intel-msg { display: flex; flex-direction: column; gap: 4px; }
+  .cd-intel-msg-q {
+    font-size: 12px; font-weight: 700; color: var(--siren-text-primary);
+    background: rgba(0,200,255,.07); border-left: 3px solid rgba(0,200,255,.5);
+    padding: 7px 12px; border-radius: 0 6px 6px 0;
+  }
+  .cd-intel-msg-a {
+    font-size: 13px; color: var(--siren-text-muted); line-height: 1.6;
+    padding: 4px 12px 4px 14px;
+  }
+  .cd-intel-msg-a p { margin: 0 0 8px; }
+  .cd-intel-msg-a p:last-child { margin-bottom: 0; }
+  .cd-intel-msg-a ul { margin: 0 0 8px; padding-left: 18px; }
+  .cd-intel-msg-a li { margin-bottom: 4px; }
+  .cd-intel-msg-a strong { color: var(--siren-text-primary); }
+  .cd-intel-thinking {
+    font-size: 12px; color: var(--siren-text-faint); font-style: italic;
+    padding: 6px 14px; animation: cd-intel-blink 1.2s ease-in-out infinite;
+  }
+  @keyframes cd-intel-blink { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+
+  .cd-intel-input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .cd-intel-input {
+    flex: 1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12);
+    color: var(--siren-text-primary); border-radius: 8px; padding: 10px 14px;
+    font-size: 13px; font-family: inherit; resize: none; outline: none;
+    transition: border-color .15s;
+  }
+  .cd-intel-input:focus { border-color: rgba(0,200,255,.4); }
+  .cd-intel-send-btn {
+    background: rgba(0,200,255,.18); border: 1px solid rgba(0,200,255,.35);
+    color: #00c8ff; font-size: 12px; font-weight: 700; padding: 10px 18px;
+    border-radius: 8px; cursor: pointer; white-space: nowrap; font-family: inherit;
+    transition: background .15s;
+  }
+  .cd-intel-send-btn:hover { background: rgba(0,200,255,.28); }
+  .cd-intel-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .cd-intel-no-rep {
+    font-size: 12px; color: var(--siren-text-faint); text-align: center; padding: 8px 0;
+  }
+
   /* Deal status buttons */
   .lc-deal-status-btn {
     flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 600; border-radius: 5px; cursor: pointer;

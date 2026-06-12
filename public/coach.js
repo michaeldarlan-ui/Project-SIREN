@@ -242,7 +242,9 @@
     }
 
     coachClearCallSelection();
+    coachIntelClear();
     _coachRenderDashboard();
+    _coachIntelUpdateState();
   }
   window.coachOnRepChange = coachOnRepChange;
 
@@ -1044,9 +1046,117 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
       document.getElementById('arenaFeedbackBody').innerHTML);
   };
 
+  // ── Intel Query ───────────────────────────────────────────────────────────────
+  let _intelThread = []; // [{q, a}]
+
+  function _coachIntelUpdateState() {
+    const hasRep = !!_coachCurrentRep;
+    const input   = document.getElementById('cdIntelInput');
+    const sendBtn = document.getElementById('cdIntelSendBtn');
+    const noRep   = document.getElementById('cdIntelNoRep');
+    const chips   = document.getElementById('cdIntelChips');
+    if (!input) return;
+    input.disabled   = !hasRep;
+    sendBtn.disabled = !hasRep;
+    noRep.style.display  = hasRep ? 'none' : '';
+    chips.style.opacity  = hasRep ? '1' : '0.35';
+    chips.style.pointerEvents = hasRep ? '' : 'none';
+  }
+
+  function _coachBuildIntelContext() {
+    const calls = _coachGetRepCalls(_coachCurrentRep);
+    if (!calls.length) return `No call history found for ${_coachCurrentRep}.`;
+    const avg = calls.length ? Math.round(calls.reduce((s,h) => s + _coachRepScore(h,_coachCurrentRep), 0) / calls.length) : null;
+    const summary = calls.slice(-15).map(h => {
+      const sc = _coachRepScore(h, _coachCurrentRep);
+      const ds = h.callDate || h.ts.slice(0,10);
+      return `- ${ds} | ${h.stage||'Unknown stage'} | ${h.prospect||'Unknown'} | Grade: ${h.letter_grade||'?'} ${sc}/100 | Strength: ${h.top_strength||'n/a'} | Focus: ${h.top_priority||'n/a'}`;
+    }).join('\n');
+    return `Rep: ${_coachCurrentRep}\nTotal graded calls: ${calls.length}\nAverage score: ${avg}/100\n\nCall history (most recent ${Math.min(calls.length,15)}):\n${summary}`;
+  }
+
+  window.coachIntelAsk = async function(question) {
+    if (!_coachCurrentRep) return;
+    const input = document.getElementById('cdIntelInput');
+    if (input) input.value = '';
+    await _coachIntelSubmit(question);
+  };
+
+  window.coachIntelSend = async function() {
+    const input = document.getElementById('cdIntelInput');
+    if (!input) return;
+    const q = input.value.trim();
+    if (!q || !_coachCurrentRep) return;
+    input.value = '';
+    await _coachIntelSubmit(q);
+  };
+
+  window.coachIntelKeydown = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachIntelSend(); }
+  };
+
+  async function _coachIntelSubmit(question) {
+    const thread = document.getElementById('cdIntelThread');
+    const sendBtn = document.getElementById('cdIntelSendBtn');
+    const clearBtn = document.getElementById('cdIntelClearBtn');
+    if (!thread) return;
+
+    thread.style.display = '';
+    if (clearBtn) clearBtn.style.display = '';
+    if (sendBtn) sendBtn.disabled = true;
+
+    // Append question bubble
+    const msgEl = document.createElement('div');
+    msgEl.className = 'cd-intel-msg';
+    msgEl.innerHTML = `<div class="cd-intel-msg-q">${escHtml(question)}</div><div class="cd-intel-thinking">Analyzing…</div>`;
+    thread.appendChild(msgEl);
+    thread.scrollTop = thread.scrollHeight;
+
+    const context = _coachBuildIntelContext();
+    const history = _intelThread.slice(-4).flatMap(t => [
+      { role: 'user',      content: t.q },
+      { role: 'assistant', content: t.a },
+    ]);
+
+    const systemMsg = `You are SIREN INTEL, an embedded AI analyst for a sales coaching platform. You have access to a rep's graded call history. Answer the user's question concisely and specifically — cite call data (dates, stages, scores) where relevant. Use markdown (bold, bullets) for clarity. Keep answers under 200 words unless a detailed breakdown is requested.`;
+
+    try {
+      const res = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6', max_tokens: 1024, temperature: 0,
+          system: systemMsg,
+          messages: [
+            ...history,
+            { role: 'user', content: `Rep data:\n${context}\n\nQuestion: ${question}` },
+          ],
+        }),
+      });
+      const data = await res.json();
+      const answer = data.content?.[0]?.text || 'No response.';
+      _intelThread.push({ q: question, a: answer });
+      msgEl.querySelector('.cd-intel-thinking').outerHTML = `<div class="cd-intel-msg-a">${_coachMd(answer)}</div>`;
+    } catch (e) {
+      msgEl.querySelector('.cd-intel-thinking').outerHTML = `<div class="cd-intel-msg-a" style="color:#ef4444;">Error: ${escHtml(e.message)}</div>`;
+    }
+
+    if (sendBtn) sendBtn.disabled = false;
+    thread.scrollTop = thread.scrollHeight;
+  }
+
+  window.coachIntelClear = function() {
+    _intelThread = [];
+    const thread = document.getElementById('cdIntelThread');
+    const clearBtn = document.getElementById('cdIntelClearBtn');
+    if (thread) { thread.innerHTML = ''; thread.style.display = 'none'; }
+    if (clearBtn) clearBtn.style.display = 'none';
+  };
+
   // ── Init ──────────────────────────────────────────────────────────────────────
   function coachInit() {
     coachRenderRepSel();
     if (!_coachCurrentRep) _coachRenderDashboard();
+    _coachIntelUpdateState();
   }
   window.coachInit = coachInit;
