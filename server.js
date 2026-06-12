@@ -67,6 +67,11 @@ db.exec(`
     organization TEXT,
     notes        TEXT
   );
+  CREATE TABLE IF NOT EXISTS transcripts (
+    history_id TEXT PRIMARY KEY,
+    transcript TEXT NOT NULL,
+    saved_at   TEXT NOT NULL
+  );
 `);
 
 // One-time migrations
@@ -394,8 +399,40 @@ const server = http.createServer(async (req, res) => {
   // DELETE /api/history/:id — delete from whichever table holds it
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
-    db.prepare('DELETE FROM history_prod     WHERE id = ?').run(id);
-    db.prepare('DELETE FROM history_demo WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history_prod  WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history_demo  WHERE id = ?').run(id);
+    db.prepare('DELETE FROM transcripts   WHERE history_id = ?').run(id);
+    res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── Transcripts API ────────────────────────────────────────
+
+  // POST /api/transcripts — save transcript for a history record
+  if (req.method === 'POST' && req.url === '/api/transcripts') {
+    try {
+      const { history_id, transcript } = await readBody(req);
+      db.prepare(`INSERT OR REPLACE INTO transcripts (history_id, transcript, saved_at)
+                  VALUES (?, ?, ?)`).run(String(history_id), transcript, new Date().toISOString());
+      res.writeHead(201); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  // GET /api/transcripts/:id — fetch transcript for a history record
+  if (req.method === 'GET' && req.url.startsWith('/api/transcripts/')) {
+    const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
+    const row = db.prepare('SELECT transcript FROM transcripts WHERE history_id = ?').get(id);
+    if (!row) { res.writeHead(404); res.end('Not found'); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ transcript: row.transcript }));
+    return;
+  }
+
+  // DELETE /api/transcripts/:id — remove transcript (cascades when history entry deleted)
+  if (req.method === 'DELETE' && req.url.startsWith('/api/transcripts/')) {
+    const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
+    db.prepare('DELETE FROM transcripts WHERE history_id = ?').run(id);
     res.writeHead(200); res.end();
     return;
   }

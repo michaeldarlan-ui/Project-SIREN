@@ -1134,6 +1134,12 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     const detectedRep = rep || autoDetectRep(r.rep_scores || []);
     const savedRecord = saveToHistory(r, prospect, contactTitle, detectedRep, callDate, resultsHtml);
     autoGenerateNextSteps(notes, prospect, callDate, savedRecord.id);
+    // Save transcript for quick resubmission
+    fetch('/api/transcripts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ history_id: savedRecord.id, transcript: notes }),
+    }).catch(() => {});
 
     // Update the rep selector UI to reflect the auto-detected rep
     if (!rep && detectedRep) {
@@ -1739,6 +1745,41 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     win.document.close();
   }
 
+  async function resubmitTranscript(id, e) {
+    e && e.stopPropagation();
+    const btn = e && e.target.closest('button');
+    const origText = btn ? btn.textContent : '';
+    try {
+      if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+      const res = await fetch('/api/transcripts/' + encodeURIComponent(String(id)));
+      if (!res.ok) { alert('No saved transcript found for this entry.'); return; }
+      const { transcript } = await res.json();
+      const h = _histCache.find(r => String(r.id) === String(id));
+      // Pre-fill grader fields and navigate
+      navTo('grader');
+      document.getElementById('callNotes').value = transcript;
+      if (h) {
+        document.getElementById('prospectName').value = h.prospect || '';
+        document.getElementById('contactTitle').value = h.contactTitle || '';
+        if (h.callDate) document.getElementById('callDate').value = h.callDate;
+        // Set stage
+        const stageEl = document.querySelectorAll('.stage-btn');
+        stageEl.forEach(b => { if (b.textContent.trim() === h.stage) b.click(); });
+        // Set rep if on team
+        if (h.rep) {
+          const team = loadTeam();
+          const idx = team.findIndex(m => m.name === h.rep);
+          if (idx !== -1) document.getElementById('repSelect').value = String(idx);
+        }
+      }
+      document.getElementById('callNotes').focus();
+    } catch (err) {
+      alert('Could not load transcript: ' + err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+    }
+  }
+
   function exportHistoryPDF(id) {
     const h = _histCache.find(r => String(r.id) === String(id));
     if (!h) return;
@@ -1855,6 +1896,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
           </div>
           <div style="display:flex;gap:6px;">
+            <button class="pdf-btn pdf-btn-sm" onclick="resubmitTranscript(${h.id},event)" title="Re-grade using saved transcript">&#8635; Resubmit</button>
             <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${h.id});event.stopPropagation()">&#8595; PDF</button>
             <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
           </div>
