@@ -23,7 +23,24 @@
     localStorage.setItem('oa_migrated_to_db', 'v1');
   }
 
-  // ── 1b. Migrate localStorage team to DB (one-time) ──────────
+  // ── 1b. Migrate localStorage usage to DB (one-time) ─────────
+  if (!localStorage.getItem('oa_usage_migrated_to_db')) {
+    const localUsage = (() => {
+      try { return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}'); } catch { return { cost: 0, calls: 0 }; }
+    })();
+    if (localUsage.cost > 0 || localUsage.calls > 0) {
+      try {
+        await fetch('/api/usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(localUsage),
+        });
+      } catch (e) { console.warn('[init] usage migration failed:', e.message); }
+    }
+    localStorage.setItem('oa_usage_migrated_to_db', 'v1');
+  }
+
+  // ── 1c. Migrate localStorage team to DB (one-time) ─────────
   if (!localStorage.getItem('oa_team_migrated_to_db')) {
     const localTeam = (() => {
       try { return JSON.parse(localStorage.getItem('oa_team') || '[]'); } catch { return []; }
@@ -45,6 +62,7 @@
   await _loadProspectsFromDB();
   await _loadThirdPartiesFromDB();
   await _loadTeamFromDB();
+  await _loadUsageFromDB();
 
   // ── 3. Demo version check — reseed if stale or incomplete ────
   const demoCount = _histCache.filter(h => h.is_demo).length;

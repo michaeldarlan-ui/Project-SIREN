@@ -55,6 +55,7 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS third_parties (name TEXT PRIMARY KEY, role TEXT, organization TEXT, notes TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS transcripts (id TEXT PRIMARY KEY, label TEXT NOT NULL, prospect TEXT, stage TEXT, rep TEXT, call_date TEXT, transcript TEXT NOT NULL, saved_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS team (name TEXT PRIMARY KEY, role TEXT, idx INTEGER DEFAULT 0)` },
+  { sql: `CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, cost REAL DEFAULT 0, calls INTEGER DEFAULT 0)` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -403,6 +404,30 @@ const server = http.createServer(async (req, res) => {
     const name = decodeURIComponent(req.url.slice('/api/third-parties/'.length));
     await client.execute({ sql: 'DELETE FROM third_parties WHERE name = ?', args: [name] });
     res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── Usage API ──────────────────────────────────────────────
+
+  if (req.method === 'GET' && req.url === '/api/usage') {
+    const row = (await client.execute("SELECT cost, calls FROM usage WHERE id = 'global'")).rows[0];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(row ? { cost: Number(row.cost), calls: Number(row.calls) } : { cost: 0, calls: 0 }));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/usage') {
+    try {
+      const { cost, calls } = await readBody(req);
+      await client.execute({
+        sql: `INSERT INTO usage (id, cost, calls) VALUES ('global', ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                cost  = MAX(cost,  excluded.cost),
+                calls = MAX(calls, excluded.calls)`,
+        args: [cost || 0, calls || 0],
+      });
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
   }
 

@@ -1064,10 +1064,12 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
   const PRICE_IN = 3 / 1_000_000, PRICE_OUT = 15 / 1_000_000;
   let sessionCost = 0;
 
-  function loadAllTime() {
-    try { return JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0}'); } catch { return { cost: 0, calls: 0 }; }
+  function loadAllTime() { return { ..._usageCache }; }
+  function saveAllTime(d) {
+    _usageCache = d;
+    try { localStorage.setItem('oa_usage', JSON.stringify(d)); } catch {}
+    _dbSaveUsage(d);
   }
-  function saveAllTime(d) { try { localStorage.setItem('oa_usage', JSON.stringify(d)); } catch {} }
   function loadToggles() {
     try { return JSON.parse(localStorage.getItem('oa_toggles') || '{"tokens":true,"cost-call":true,"cost-session":true,"cost-alltime":true}'); }
     catch { return { tokens: true, 'cost-call': true, 'cost-session': true, 'cost-alltime': true }; }
