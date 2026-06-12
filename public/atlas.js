@@ -441,6 +441,86 @@
     lcSelectNode('account'); // re-render sidebar
   }
 
+  let _atlasRadarRaf = null;
+
+  function _atlasStartRadar() {
+    const canvas = document.getElementById('atlasRadarCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = 70, cy = 70, r = 64;
+    const G = 'rgba(0,200,255,';
+    let angle = 0;
+    const blips = [
+      { a: 1.1, d: 0.55, c: G },
+      { a: 3.4, d: 0.38, c: G },
+      { a: 5.2, d: 0.72, c: 'rgba(232,160,32,' },
+    ];
+    function draw() {
+      ctx.clearRect(0, 0, 140, 140);
+      for (let i = 1; i <= 4; i++) {
+        ctx.beginPath(); ctx.arc(cx, cy, r * i / 4, 0, Math.PI * 2);
+        ctx.strokeStyle = G + (0.07 + i * 0.04) + ')'; ctx.lineWidth = 1; ctx.stroke();
+      }
+      ctx.strokeStyle = G + '0.12)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+      const d = r * 0.707;
+      ctx.strokeStyle = G + '0.07)';
+      ctx.beginPath(); ctx.moveTo(cx - d, cy - d); ctx.lineTo(cx + d, cy + d); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + d, cy - d); ctx.lineTo(cx - d, cy + d); ctx.stroke();
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+      const sg = ctx.createLinearGradient(0, 0, r, 0);
+      sg.addColorStop(0, 'rgba(0,200,255,0)');
+      sg.addColorStop(0.5, 'rgba(0,200,255,0.18)');
+      sg.addColorStop(1, 'rgba(0,200,255,0.55)');
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, -0.55, 0); ctx.closePath();
+      ctx.fillStyle = sg; ctx.fill(); ctx.restore();
+      blips.forEach(b => {
+        const diff = ((b.a - angle) + Math.PI * 2) % (Math.PI * 2);
+        const alpha = diff < 1.2 ? Math.max(0, 1 - diff * 0.85) : 0;
+        if (alpha <= 0) return;
+        const bx = cx + Math.cos(b.a) * r * b.d, by = cy + Math.sin(b.a) * r * b.d;
+        ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2);
+        ctx.fillStyle = b.c + alpha * 0.85 + ')'; ctx.fill();
+        ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2);
+        ctx.strokeStyle = b.c + alpha * 0.3 + ')'; ctx.lineWidth = 1; ctx.stroke();
+      });
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 400);
+      ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,200,255,' + pulse + ')'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,200,255,' + (pulse * 0.35) + ')'; ctx.lineWidth = 1; ctx.stroke();
+      angle = (angle + 0.025) % (Math.PI * 2);
+      _atlasRadarRaf = requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  function _atlasStopRadar() {
+    if (_atlasRadarRaf) { cancelAnimationFrame(_atlasRadarRaf); _atlasRadarRaf = null; }
+  }
+
+  function _atlasSetStep(idx, state) {
+    const step = document.getElementById('ar-step-' + idx);
+    const icon = document.getElementById('ar-icon-' + idx);
+    const bar  = document.getElementById('ar-bar-'  + idx);
+    if (!step) return;
+    step.classList.remove('visible','active','done');
+    step.classList.add(state);
+    if (state === 'active') {
+      icon.textContent = '◉';
+      let pct = 0;
+      const tick = setInterval(() => {
+        pct = Math.min(pct + Math.random() * 6 + 2, 88);
+        if (bar) bar.style.width = pct + '%';
+        if (!step.classList.contains('active')) clearInterval(tick);
+      }, 120);
+    } else if (state === 'done') {
+      icon.textContent = '●';
+      if (bar) bar.style.width = '100%';
+    }
+  }
+
   async function atlasGenerateDealReport(company) {
     const prof = loadAccountProfile(company);
     const status = prof.deal_status;
@@ -450,16 +530,42 @@
       .filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase())
       .sort((a,b) => { const da=a.callDate||a.ts.slice(0,10), db=b.callDate||b.ts.slice(0,10); return da<db?-1:da>db?1:0; });
 
-    const modal = document.getElementById('atlasReportModal');
-    const titleEl = document.getElementById('atlasReportModalTitle');
-    const bodyEl = document.getElementById('atlasReportModalBody');
-    if (!modal||!titleEl||!bodyEl) return;
+    const modal    = document.getElementById('atlasReportModal');
+    const titleEl  = document.getElementById('atlasReportModalTitle');
+    const loadEl   = document.getElementById('atlasReportLoading');
+    const bodyEl   = document.getElementById('atlasReportModalBody');
+    const ctxLabel = document.getElementById('atlasLoadCtx');
+    if (!modal||!titleEl||!bodyEl||!loadEl) return;
 
     const reportType = status === 'won' ? 'Closed Won Success Report' : 'Closed Lost Post Mortem';
     titleEl.textContent = `${reportType} — ${company}`;
-    bodyEl.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px;padding:2rem 0;text-align:center;">Generating report…</div>';
+    if (ctxLabel) ctxLabel.textContent = status === 'won' ? 'WIN ANALYSIS' : 'LOSS ANALYSIS';
+
+    // Show loading, hide body
+    loadEl.style.display = 'flex';
+    bodyEl.style.display = 'none';
+    bodyEl.innerHTML = '';
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
+
+    // Init steps
+    [0,1,2,3].forEach(i => {
+      const s = document.getElementById('ar-step-' + i);
+      if (s) { s.classList.remove('active','done'); s.classList.add('visible'); }
+      const b = document.getElementById('ar-bar-' + i);
+      if (b) b.style.width = '0%';
+      const ic = document.getElementById('ar-icon-' + i);
+      if (ic) ic.textContent = '○';
+    });
+
+    _atlasStartRadar();
+    _atlasSetStep(0, 'active');
+    await new Promise(r => setTimeout(r, 600));
+    _atlasSetStep(0, 'done'); _atlasSetStep(1, 'active');
+    await new Promise(r => setTimeout(r, 700));
+    _atlasSetStep(1, 'done'); _atlasSetStep(2, 'active');
+    await new Promise(r => setTimeout(r, 800));
+    _atlasSetStep(2, 'done'); _atlasSetStep(3, 'active');
 
     // Build call history summary for the prompt
     const callSummaries = entries.map((h,i) => {
@@ -526,8 +632,16 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
       if (!resp.ok) throw new Error('API error ' + resp.status);
       const data = await resp.json();
       const md = (data.content?.[0]?.text || '').trim();
+      _atlasSetStep(3, 'done');
+      await new Promise(r => setTimeout(r, 400));
+      _atlasStopRadar();
+      loadEl.style.display = 'none';
+      bodyEl.style.display = '';
       bodyEl.innerHTML = _mdToHtml(md);
     } catch (e) {
+      _atlasStopRadar();
+      loadEl.style.display = 'none';
+      bodyEl.style.display = '';
       bodyEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Error generating report: ${escHtml(e.message)}</div>`;
     }
   }
@@ -548,6 +662,7 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   }
 
   window.closeAtlasReportModal = function() {
+    _atlasStopRadar();
     document.getElementById('atlasReportModal').classList.remove('open');
     document.body.style.overflow = '';
   };

@@ -81,7 +81,58 @@
       <div id="atlasReportModalTitle" style="font-size:15px;font-weight:700;color:var(--siren-cyan-90);letter-spacing:.04em;"></div>
       <button onclick="closeAtlasReportModal()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">&#215;</button>
     </div>
-    <div id="atlasReportModalBody" style="padding:20px 24px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.8);line-height:1.65;"></div>
+    <!-- Loading HUD (shown while generating) -->
+    <div id="atlasReportLoading" style="display:none;flex-direction:column;padding:0;overflow:hidden;border-radius:0 0 10px 10px;">
+      <div class="load-stream-l" style="position:absolute;"></div>
+      <div class="load-stream-r" style="position:absolute;"></div>
+      <div class="load-hud-header" style="padding:18px 24px 10px;">
+        <div class="load-hud-bracket tl"></div>
+        <div class="load-hud-center">
+          <div class="load-wordmark">S I R E N</div>
+          <div class="load-status"><span class="load-blink">●</span> ANALYZING — <span id="atlasLoadCtx">ACCOUNT</span></div>
+        </div>
+        <div class="load-hud-bracket tr"></div>
+      </div>
+      <div class="load-body" style="padding:16px 24px 20px;">
+        <div class="load-radar-wrap">
+          <canvas class="load-radar-canvas" id="atlasRadarCanvas" width="140" height="140"></canvas>
+        </div>
+        <div class="load-steps" id="atlasLoadSteps">
+          <div class="load-step" id="ar-step-0">
+            <div class="load-step-icon" id="ar-icon-0">○</div>
+            <div class="load-step-right">
+              <div class="load-step-label">Retrieving call history</div>
+              <div class="load-step-bar-track"><div class="load-step-bar-fill" id="ar-bar-0"></div></div>
+            </div>
+          </div>
+          <div class="load-step" id="ar-step-1">
+            <div class="load-step-icon" id="ar-icon-1">○</div>
+            <div class="load-step-right">
+              <div class="load-step-label">Correlating engagement patterns</div>
+              <div class="load-step-bar-track"><div class="load-step-bar-fill" id="ar-bar-1"></div></div>
+            </div>
+          </div>
+          <div class="load-step" id="ar-step-2">
+            <div class="load-step-icon" id="ar-icon-2">○</div>
+            <div class="load-step-right">
+              <div class="load-step-label">Identifying deal drivers</div>
+              <div class="load-step-bar-track"><div class="load-step-bar-fill" id="ar-bar-2"></div></div>
+            </div>
+          </div>
+          <div class="load-step" id="ar-step-3">
+            <div class="load-step-icon" id="ar-icon-3">○</div>
+            <div class="load-step-right">
+              <div class="load-step-label">Composing report</div>
+              <div class="load-step-bar-track"><div class="load-step-bar-fill" id="ar-bar-3"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="load-hud-footer" style="padding:10px 24px 16px;">
+        <div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div>
+      </div>
+    </div>
+    <div id="atlasReportModalBody" style="padding:20px 24px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.8);line-height:1.65;display:none;"></div>
   </div>
 </div>
 
