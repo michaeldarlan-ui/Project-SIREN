@@ -947,104 +947,142 @@
 
     <!-- Module tabs -->
     <div class="coach-tabs">
-      <button class="coach-tab active" id="ctab-feedback"    onclick="coachSwitchTab('feedback')">Coaching Feedback</button>
-      <button class="coach-tab"        id="ctab-recognition" onclick="coachSwitchTab('recognition')">Recognition</button>
-      <button class="coach-tab"        id="ctab-arena"       onclick="coachSwitchTab('arena')">Training Arena</button>
+      <button class="coach-tab active" id="ctab-dashboard" onclick="coachSwitchTab('dashboard')">Dashboard</button>
+      <button class="coach-tab"        id="ctab-arena"     onclick="coachSwitchTab('arena')">Training Arena</button>
     </div>
 
-    <!-- ── FEEDBACK MODULE ── -->
-    <div class="coach-module active" id="cmod-feedback">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-        <div class="section-label" style="margin:0;">Call History</div>
-        <div style="font-size:12px;color:var(--siren-text-faint);">Select a call to generate coaching feedback</div>
-      </div>
-      <div id="coachCallList" style="display:flex;flex-direction:column;gap:8px;">
-        <div class="coach-empty-state">Select a rep to view their call history.</div>
+    <!-- ── DASHBOARD MODULE ── -->
+    <div class="coach-module active" id="cmod-dashboard">
+
+      <!-- KPI strip -->
+      <div class="cd-kpi-strip" id="cdKpiStrip">
+        <div class="cd-kpi cd-kpi-placeholder"><div class="cd-kpi-val">—</div><div class="cd-kpi-lbl">Total Calls</div></div>
+        <div class="cd-kpi cd-kpi-placeholder"><div class="cd-kpi-val">—</div><div class="cd-kpi-lbl">Avg Score</div></div>
+        <div class="cd-kpi cd-kpi-placeholder"><div class="cd-kpi-val">—</div><div class="cd-kpi-lbl">Best Grade</div></div>
+        <div class="cd-kpi cd-kpi-placeholder"><div class="cd-kpi-val">—</div><div class="cd-kpi-lbl">Score Trend</div></div>
+        <div class="cd-kpi cd-kpi-placeholder"><div class="cd-kpi-val">—</div><div class="cd-kpi-lbl">Consistency</div></div>
       </div>
 
-      <!-- Coaching report output -->
-      <div id="coachFeedbackPanel" style="display:none;margin-top:22px;">
-        <div class="coach-report-hdr">
-          <div id="coachFeedbackCallLabel" style="font-size:13px;font-weight:600;color:var(--siren-text-primary);"></div>
-          <button class="pdf-btn pdf-btn-sm" onclick="coachDownloadFeedback()">&#8595; PDF</button>
-        </div>
-        <!-- Loading HUD -->
-        <div id="coachFeedbackLoading" style="display:none;">
-          <div class="coach-hud-wrap">
-            <div class="load-stream-l"></div>
-            <div class="load-stream-r"></div>
-            <div class="load-hud-header">
-              <div class="load-hud-bracket tl"></div>
-              <div class="load-hud-center">
-                <div class="load-wordmark">S I R E N</div>
-                <div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>REP PERFORMANCE</span></div>
-              </div>
-              <div class="load-hud-bracket tr"></div>
-            </div>
-            <div class="load-body" style="padding:16px 24px;">
-              <div class="load-radar-wrap">
-                <canvas class="load-radar-canvas" id="coachFeedbackRadar" width="140" height="140"></canvas>
-              </div>
-              <div class="load-steps">
-                <div class="load-step" id="cfb-step-0"><div class="load-step-icon" id="cfb-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Reading call data</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-0"></div></div></div></div>
-                <div class="load-step" id="cfb-step-1"><div class="load-step-icon" id="cfb-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying skill gaps</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-1"></div></div></div></div>
-                <div class="load-step" id="cfb-step-2"><div class="load-step-icon" id="cfb-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Building coaching plan</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-2"></div></div></div></div>
-                <div class="load-step" id="cfb-step-3"><div class="load-step-icon" id="cfb-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Composing recommendations</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-3"></div></div></div></div>
-              </div>
-            </div>
-            <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
-          </div>
-        </div>
-        <!-- Report body -->
-        <div id="coachFeedbackBody" class="coach-report-body" style="display:none;"></div>
-      </div>
-    </div>
+      <!-- Two-column layout -->
+      <div class="cd-layout">
 
-    <!-- ── RECOGNITION MODULE ── -->
-    <div class="coach-module" id="cmod-recognition">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-        <div class="section-label" style="margin:0;">Rep Recognition</div>
-        <button class="pdf-btn pdf-btn-sm" id="coachRecogRefreshBtn" onclick="coachGenerateRecognition()" style="display:none;">&#8635; Refresh</button>
-      </div>
-      <!-- Stats strip -->
-      <div id="coachRecogStats" style="display:none;margin-bottom:18px;">
-        <div class="coach-stat-strip">
-          <div class="coach-stat"><div class="coach-stat-val" id="crs-calls">—</div><div class="coach-stat-lbl">Total Calls</div></div>
-          <div class="coach-stat"><div class="coach-stat-val" id="crs-avg">—</div><div class="coach-stat-lbl">Avg Score</div></div>
-          <div class="coach-stat"><div class="coach-stat-val" id="crs-best">—</div><div class="coach-stat-lbl">Best Grade</div></div>
-          <div class="coach-stat"><div class="coach-stat-val" id="crs-trend" style="font-size:18px;">—</div><div class="coach-stat-lbl">Trend</div></div>
-        </div>
-      </div>
-      <!-- Loading -->
-      <div id="coachRecogLoading" style="display:none;">
-        <div class="coach-hud-wrap">
-          <div class="load-stream-l"></div>
-          <div class="load-stream-r"></div>
-          <div class="load-hud-header">
-            <div class="load-hud-bracket tl"></div>
-            <div class="load-hud-center">
-              <div class="load-wordmark">S I R E N</div>
-              <div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>STRENGTHS</span></div>
+        <!-- LEFT: metrics + call list -->
+        <div class="cd-left">
+
+          <!-- Score trend chart -->
+          <div class="cd-panel">
+            <div class="cd-panel-hdr">
+              <div class="cd-panel-title">Score Trend</div>
+              <div class="cd-panel-hint" id="cdTrendHint"></div>
             </div>
-            <div class="load-hud-bracket tr"></div>
-          </div>
-          <div class="load-body" style="padding:16px 24px;">
-            <div class="load-radar-wrap">
-              <canvas class="load-radar-canvas" id="coachRecogRadar" width="140" height="140"></canvas>
-            </div>
-            <div class="load-steps">
-              <div class="load-step" id="crc-step-0"><div class="load-step-icon" id="crc-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Scanning call history</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-0"></div></div></div></div>
-              <div class="load-step" id="crc-step-1"><div class="load-step-icon" id="crc-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying peak performances</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-1"></div></div></div></div>
-              <div class="load-step" id="crc-step-2"><div class="load-step-icon" id="crc-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Spotting strengths &amp; patterns</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-2"></div></div></div></div>
-              <div class="load-step" id="crc-step-3"><div class="load-step-icon" id="crc-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Writing recognition report</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-3"></div></div></div></div>
+            <div class="cd-chart-wrap">
+              <canvas id="cdTrendChart" height="90"></canvas>
+              <div class="cd-chart-empty" id="cdChartEmpty">Select a rep to see their score trend.</div>
             </div>
           </div>
-          <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
-        </div>
-      </div>
-      <div id="coachRecogBody" class="coach-report-body" style="display:none;"></div>
-      <div id="coachRecogEmpty" class="coach-empty-state">Select a rep to generate their recognition report.</div>
-    </div>
+
+          <!-- Stage distribution -->
+          <div class="cd-panel">
+            <div class="cd-panel-hdr"><div class="cd-panel-title">Stage Distribution</div></div>
+            <div id="cdStageBars"><div class="cd-inner-empty">—</div></div>
+          </div>
+
+          <!-- Strengths + Focus areas -->
+          <div class="cd-panel">
+            <div class="cd-panel-hdr"><div class="cd-panel-title">Recurring Strengths</div></div>
+            <div id="cdStrengthChips" class="cd-chips"><div class="cd-inner-empty">—</div></div>
+          </div>
+          <div class="cd-panel">
+            <div class="cd-panel-hdr"><div class="cd-panel-title">Priority Focus Areas</div></div>
+            <div id="cdFocusChips" class="cd-chips"><div class="cd-inner-empty">—</div></div>
+          </div>
+
+          <!-- Call list -->
+          <div class="cd-panel cd-panel-calls">
+            <div class="cd-panel-hdr">
+              <div class="cd-panel-title">Call History</div>
+              <div class="cd-panel-hint">Click for coaching</div>
+            </div>
+            <div id="coachCallList">
+              <div class="coach-empty-state">Select a rep to view their calls.</div>
+            </div>
+          </div>
+
+        </div><!-- /cd-left -->
+
+        <!-- RIGHT: overview / per-call coaching -->
+        <div class="cd-right">
+
+          <!-- Rep overview panel (shown when no call selected) -->
+          <div id="cdOverviewPanel">
+            <!-- Rep Overview header + generate button -->
+            <div class="cd-panel cd-overview-panel" id="cdOverviewCard">
+              <div class="cd-panel-hdr" style="margin-bottom:14px;">
+                <div class="cd-panel-title">Rep Overview</div>
+                <button class="pdf-btn pdf-btn-sm" id="cdOverviewGenBtn" onclick="coachGenerateRecognition()" style="display:none;">&#9733; Generate AI Overview</button>
+              </div>
+              <!-- Loading HUD -->
+              <div id="coachRecogLoading" style="display:none;">
+                <div class="coach-hud-wrap" style="border:none;border-radius:6px;">
+                  <div class="load-stream-l"></div><div class="load-stream-r"></div>
+                  <div class="load-hud-header"><div class="load-hud-bracket tl"></div><div class="load-hud-center"><div class="load-wordmark">S I R E N</div><div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>REP STRENGTHS</span></div></div><div class="load-hud-bracket tr"></div></div>
+                  <div class="load-body" style="padding:16px 24px;">
+                    <div class="load-radar-wrap"><canvas class="load-radar-canvas" id="coachRecogRadar" width="140" height="140"></canvas></div>
+                    <div class="load-steps">
+                      <div class="load-step" id="crc-step-0"><div class="load-step-icon" id="crc-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Scanning call history</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-0"></div></div></div></div>
+                      <div class="load-step" id="crc-step-1"><div class="load-step-icon" id="crc-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying peak performances</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-1"></div></div></div></div>
+                      <div class="load-step" id="crc-step-2"><div class="load-step-icon" id="crc-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Spotting patterns &amp; strengths</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-2"></div></div></div></div>
+                      <div class="load-step" id="crc-step-3"><div class="load-step-icon" id="crc-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Writing overview</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="crc-bar-3"></div></div></div></div>
+                    </div>
+                  </div>
+                  <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
+                </div>
+              </div>
+              <!-- Overview body / placeholder -->
+              <div id="coachRecogBody" style="display:none;font-size:13px;line-height:1.65;color:var(--siren-text-body);"></div>
+              <div id="coachRecogEmpty" class="cd-overview-placeholder">
+                <div class="cd-overview-placeholder-icon">&#9670;</div>
+                <div class="cd-overview-placeholder-title">Rep Overview</div>
+                <div class="cd-overview-placeholder-sub">Select a rep, then generate an AI-powered overview of their performance, strengths, and areas for growth.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-call coaching panel (shown when call selected) -->
+          <div id="coachFeedbackPanel" style="display:none;">
+            <div class="cd-panel-hdr" style="margin-bottom:10px;">
+              <button class="cd-back-btn" onclick="coachClearCallSelection()">&#8592; Overview</button>
+              <button class="pdf-btn pdf-btn-sm" onclick="coachDownloadFeedback()">&#8595; PDF</button>
+            </div>
+            <div class="cd-panel cd-coaching-panel">
+              <div class="cd-panel-hdr" style="margin-bottom:6px;">
+                <div id="coachFeedbackCallLabel" style="font-size:13px;font-weight:600;color:var(--siren-text-primary);"></div>
+              </div>
+              <!-- Loading HUD -->
+              <div id="coachFeedbackLoading" style="display:none;">
+                <div class="coach-hud-wrap" style="border:none;border-radius:6px;">
+                  <div class="load-stream-l"></div><div class="load-stream-r"></div>
+                  <div class="load-hud-header"><div class="load-hud-bracket tl"></div><div class="load-hud-center"><div class="load-wordmark">S I R E N</div><div class="load-status"><span class="load-blink">●</span> ANALYZING — <span>REP PERFORMANCE</span></div></div><div class="load-hud-bracket tr"></div></div>
+                  <div class="load-body" style="padding:16px 24px;">
+                    <div class="load-radar-wrap"><canvas class="load-radar-canvas" id="coachFeedbackRadar" width="140" height="140"></canvas></div>
+                    <div class="load-steps">
+                      <div class="load-step" id="cfb-step-0"><div class="load-step-icon" id="cfb-icon-0">○</div><div class="load-step-right"><div class="load-step-label">Reading call data</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-0"></div></div></div></div>
+                      <div class="load-step" id="cfb-step-1"><div class="load-step-icon" id="cfb-icon-1">○</div><div class="load-step-right"><div class="load-step-label">Identifying skill gaps</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-1"></div></div></div></div>
+                      <div class="load-step" id="cfb-step-2"><div class="load-step-icon" id="cfb-icon-2">○</div><div class="load-step-right"><div class="load-step-label">Building coaching plan</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-2"></div></div></div></div>
+                      <div class="load-step" id="cfb-step-3"><div class="load-step-icon" id="cfb-icon-3">○</div><div class="load-step-right"><div class="load-step-label">Composing recommendations</div><div class="load-step-bar-track"><div class="load-step-bar-fill" id="cfb-bar-3"></div></div></div></div>
+                    </div>
+                  </div>
+                  <div class="load-hud-footer"><div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div></div>
+                </div>
+              </div>
+              <!-- Coaching body -->
+              <div id="coachFeedbackBody" class="coach-report-body" style="display:none;border:none;padding:4px 0;border-radius:0;"></div>
+            </div>
+          </div>
+
+        </div><!-- /cd-right -->
+      </div><!-- /cd-layout -->
+    </div><!-- /cmod-dashboard -->
 
     <!-- ── ARENA MODULE ── -->
     <div class="coach-module" id="cmod-arena">

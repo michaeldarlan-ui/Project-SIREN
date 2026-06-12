@@ -102,7 +102,10 @@
     }
   }
 
+  const _COACH_RADAR_IDS = { cfb: 'coachFeedbackRadar', crc: 'coachRecogRadar', afb: 'arenaFeedbackRadar' };
+
   async function _coachRunSteps(prefix, count, apiCall) {
+    if (_COACH_RADAR_IDS[prefix]) _coachStartRadar(_COACH_RADAR_IDS[prefix]);
     _coachResetSteps(prefix, count);
     _coachStep(prefix, 0, 'active');
     await new Promise(r => setTimeout(r, 600));
@@ -176,15 +179,14 @@
     return (data.content?.[0]?.text || '').trim();
   }
 
-  // ── Tab switching ──────────────────────────────────────────────────────────────
+  let _cdTrendRaf = null;
+
+  // ── Tab switching ─────────────────────────────────────────────────────────────
   function coachSwitchTab(tab) {
     document.querySelectorAll('.coach-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.coach-module').forEach(m => m.classList.remove('active'));
     document.getElementById('ctab-' + tab).classList.add('active');
     document.getElementById('cmod-' + tab).classList.add('active');
-    if (tab === 'recognition' && _coachCurrentRep && !_coachRecogMd) {
-      coachGenerateRecognition();
-    }
   }
   window.coachSwitchTab = coachSwitchTab;
 
@@ -199,41 +201,277 @@
     if (prev && team.find(m => m.name === prev)) coachOnRepChange();
   }
 
+  function _coachGetRepCalls(name) {
+    if (!name) return [];
+    const lc = name.toLowerCase();
+    return loadHistory()
+      .filter(h => {
+        if (h.rep_scores) { try { if (JSON.parse(h.rep_scores).some(r => (r.name||'').toLowerCase() === lc)) return true; } catch {} }
+        return (h.rep||'').toLowerCase() === lc;
+      })
+      .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
+  }
+
+  function _coachRepScore(h, repName) {
+    if (h.rep_scores) {
+      try { const r = JSON.parse(h.rep_scores).find(r => (r.name||'').toLowerCase() === repName.toLowerCase()); if (r) return r.total; } catch {}
+    }
+    return h.total;
+  }
+
   function coachOnRepChange() {
     const name = document.getElementById('coachRepSel').value;
     _coachCurrentRep = name || null;
     _coachRecogMd = '';
-
-    // Update meta
-    const meta = document.getElementById('coachRepMeta');
-    if (meta) {
-      if (name) {
-        const calls = loadHistory().filter(h => {
-          if (!h.rep_scores) return (h.rep||'').toLowerCase() === name.toLowerCase();
-          try { return JSON.parse(h.rep_scores).some(r => r.name === name); } catch { return false; }
-        });
-        meta.textContent = calls.length + ' graded call' + (calls.length !== 1 ? 's' : '') + ' on record';
-      } else {
-        meta.textContent = '';
-      }
-    }
-
-    // Reset recognition
-    document.getElementById('coachRecogBody').style.display = 'none';
-    document.getElementById('coachRecogBody').innerHTML = '';
-    document.getElementById('coachRecogEmpty').style.display = '';
-    document.getElementById('coachRecogStats').style.display = 'none';
-    const btn = document.getElementById('coachRecogRefreshBtn');
-    if (btn) btn.style.display = name ? '' : 'none';
-
-    // Reset feedback panel
-    document.getElementById('coachFeedbackPanel').style.display = 'none';
     _coachFeedbackRecord = null;
     _coachFeedbackMd = '';
 
-    coachRenderCallList();
+    // Meta pill
+    const meta = document.getElementById('coachRepMeta');
+    if (meta) {
+      const calls = name ? _coachGetRepCalls(name) : [];
+      meta.textContent = name ? calls.length + ' graded call' + (calls.length !== 1 ? 's' : '') : '';
+    }
+
+    coachClearCallSelection();
+    _coachRenderDashboard();
   }
   window.coachOnRepChange = coachOnRepChange;
+
+  // ── Clear call selection → show overview panel ────────────────────────────────
+  window.coachClearCallSelection = function() {
+    _coachStopRadar();
+    _coachFeedbackRecord = null;
+    _coachFeedbackMd = '';
+    document.getElementById('coachFeedbackPanel').style.display = 'none';
+    document.getElementById('cdOverviewPanel').style.display = '';
+    document.querySelectorAll('.coach-call-card').forEach(c => c.classList.remove('selected'));
+  };
+
+  // ── Full dashboard render ─────────────────────────────────────────────────────
+  function _coachRenderDashboard() {
+    const calls = _coachGetRepCalls(_coachCurrentRep);
+    _coachRenderKpis(calls);
+    _coachRenderTrendChart(calls);
+    _coachRenderStageBars(calls);
+    _coachRenderChips(calls);
+    coachRenderCallList();
+    _coachRenderOverviewPanel();
+  }
+
+  // ── KPI strip ─────────────────────────────────────────────────────────────────
+  function _coachRenderKpis(calls) {
+    const strip = document.getElementById('cdKpiStrip');
+    if (!strip) return;
+
+    if (!calls.length || !_coachCurrentRep) {
+      strip.innerHTML = ['Total Calls','Avg Score','Best Grade','Score Trend','Consistency']
+        .map(lbl => `<div class="cd-kpi cd-kpi-placeholder"><div class="cd-kpi-val">—</div><div class="cd-kpi-lbl">${lbl}</div></div>`).join('');
+      return;
+    }
+
+    const repName = _coachCurrentRep;
+    const scores = calls.map(h => _coachRepScore(h, repName)).filter(s => s != null);
+    const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
+    const best = scores.length ? Math.max(...scores) : null;
+
+    // Trend: compare avg of last 3 vs prior 3
+    const recent = scores.slice(-3), prior = scores.slice(-6,-3);
+    const recentAvg = recent.length ? recent.reduce((a,b)=>a+b,0)/recent.length : null;
+    const priorAvg  = prior.length  ? prior.reduce((a,b)=>a+b,0)/prior.length   : null;
+    let trendLabel = '—', trendColor = 'var(--siren-text-muted)';
+    if (recentAvg != null && priorAvg != null) {
+      const delta = recentAvg - priorAvg;
+      if (delta > 2)       { trendLabel = '↑ Improving';  trendColor = 'var(--siren-signal-green)'; }
+      else if (delta < -2) { trendLabel = '↓ Declining';  trendColor = 'var(--siren-danger-red)'; }
+      else                  { trendLabel = '→ Stable';     trendColor = 'var(--siren-text-muted)'; }
+    } else if (scores.length >= 2) {
+      const delta = scores[scores.length-1] - scores[0];
+      if (delta > 3)       { trendLabel = '↑ Improving';  trendColor = 'var(--siren-signal-green)'; }
+      else if (delta < -3) { trendLabel = '↓ Declining';  trendColor = 'var(--siren-danger-red)'; }
+      else                  { trendLabel = '→ Stable';     trendColor = 'var(--siren-text-muted)'; }
+    }
+
+    // Consistency: coefficient of variation (lower = more consistent)
+    let consistency = '—', consistencyColor = 'var(--siren-text-muted)';
+    if (scores.length >= 3) {
+      const mean = scores.reduce((a,b)=>a+b,0)/scores.length;
+      const variance = scores.reduce((s,v)=>s+Math.pow(v-mean,2),0)/scores.length;
+      const cv = Math.sqrt(variance) / mean;
+      if (cv < 0.08)      { consistency = 'High';   consistencyColor = 'var(--siren-signal-green)'; }
+      else if (cv < 0.15) { consistency = 'Medium'; consistencyColor = 'var(--siren-alert-amber)'; }
+      else                { consistency = 'Low';    consistencyColor = 'var(--siren-danger-red)'; }
+    }
+
+    const avgColor = avg == null ? '' : avg >= 80 ? 'var(--siren-grade-a)' : avg >= 65 ? 'var(--siren-grade-b)' : avg >= 50 ? 'var(--siren-grade-c)' : 'var(--siren-grade-d)';
+    const bestGrade = calls.reduce((best, h) => {
+      const g = h.letter_grade || 'F';
+      const rank = ['A+','A','A-','B+','B','B-','C+','C','C-','D','F'];
+      return rank.indexOf(g) < rank.indexOf(best) ? g : best;
+    }, 'F');
+
+    strip.innerHTML = `
+      <div class="cd-kpi"><div class="cd-kpi-val">${calls.length}</div><div class="cd-kpi-lbl">Total Calls</div></div>
+      <div class="cd-kpi"><div class="cd-kpi-val" style="color:${avgColor};">${avg != null ? avg : '—'}</div><div class="cd-kpi-lbl">Avg Score</div></div>
+      <div class="cd-kpi"><div class="cd-kpi-val">${bestGrade}</div><div class="cd-kpi-lbl">Best Grade</div></div>
+      <div class="cd-kpi"><div class="cd-kpi-val" style="color:${trendColor};font-size:13px;">${trendLabel}</div><div class="cd-kpi-lbl">Score Trend</div></div>
+      <div class="cd-kpi"><div class="cd-kpi-val" style="color:${consistencyColor};font-size:15px;">${consistency}</div><div class="cd-kpi-lbl">Consistency</div></div>`;
+  }
+
+  // ── Score trend chart ─────────────────────────────────────────────────────────
+  function _coachRenderTrendChart(calls) {
+    const canvas = document.getElementById('cdTrendChart');
+    const empty  = document.getElementById('cdChartEmpty');
+    const hint   = document.getElementById('cdTrendHint');
+    if (!canvas) return;
+
+    if (!calls.length || !_coachCurrentRep) {
+      canvas.style.display = 'none';
+      if (empty) empty.style.display = '';
+      if (hint) hint.textContent = '';
+      return;
+    }
+
+    const repName = _coachCurrentRep;
+    const points = calls.map(h => ({ score: _coachRepScore(h, repName), date: h.callDate||h.ts.slice(0,10) }))
+      .filter(p => p.score != null);
+
+    if (points.length < 2) {
+      canvas.style.display = 'none';
+      if (empty) { empty.style.display = ''; empty.textContent = 'Not enough data for trend (need 2+ calls).'; }
+      if (hint) hint.textContent = '';
+      return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    canvas.style.display = 'block';
+    // Size canvas to container
+    const W = canvas.parentElement.clientWidth || 300;
+    canvas.width = W;
+    const H = 90;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+
+    const PAD = { l: 28, r: 12, t: 10, b: 18 };
+    const iW = W - PAD.l - PAD.r, iH = H - PAD.t - PAD.b;
+    const minS = Math.max(0, Math.min(...points.map(p=>p.score)) - 10);
+    const maxS = Math.min(100, Math.max(...points.map(p=>p.score)) + 10);
+    const xOf = i => PAD.l + (i / (points.length - 1)) * iW;
+    const yOf = s => PAD.t + iH - ((s - minS) / (maxS - minS)) * iH;
+
+    // Y gridlines
+    [0,50,100].forEach(v => {
+      if (v < minS || v > maxS) return;
+      const y = yOf(v);
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y);
+      ctx.strokeStyle = 'rgba(0,200,255,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = 'rgba(0,200,255,0.3)'; ctx.font = '9px sans-serif';
+      ctx.fillText(v, 2, y + 3);
+    });
+
+    // Area fill
+    const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + iH);
+    grad.addColorStop(0, 'rgba(0,200,255,0.18)');
+    grad.addColorStop(1, 'rgba(0,200,255,0)');
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(points[0].score));
+    points.forEach((p,i) => { if (i > 0) ctx.lineTo(xOf(i), yOf(p.score)); });
+    ctx.lineTo(xOf(points.length-1), PAD.t + iH);
+    ctx.lineTo(xOf(0), PAD.t + iH);
+    ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    points.forEach((p,i) => { i === 0 ? ctx.moveTo(xOf(0), yOf(p.score)) : ctx.lineTo(xOf(i), yOf(p.score)); });
+    ctx.strokeStyle = 'rgba(0,200,255,0.8)'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+
+    // Dots
+    points.forEach((p,i) => {
+      const color = p.score >= 80 ? '#4ade80' : p.score >= 65 ? '#00c8ff' : p.score >= 50 ? '#e8a020' : '#ef4444';
+      ctx.beginPath(); ctx.arc(xOf(i), yOf(p.score), 4, 0, Math.PI*2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.beginPath(); ctx.arc(xOf(i), yOf(p.score), 4, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+    });
+
+    if (hint) hint.textContent = points.length + ' call' + (points.length !== 1 ? 's' : '');
+  }
+
+  // ── Stage distribution bars ───────────────────────────────────────────────────
+  function _coachRenderStageBars(calls) {
+    const el = document.getElementById('cdStageBars');
+    if (!el) return;
+    if (!calls.length) { el.innerHTML = '<div class="cd-inner-empty">—</div>'; return; }
+
+    const counts = {};
+    const ABBREV = { 'Cold outreach':'Cold Outreach','Discovery':'Discovery','Demo / solution presentation':'Demo','Proposal / close':'Proposal','Touchpoint':'Touchpoint','Security Observability Scorecard':'Scorecard' };
+    calls.forEach(h => {
+      const s = ABBREV[h.stage] || h.stage || 'Unknown';
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    const max = Math.max(...Object.values(counts));
+    el.innerHTML = Object.entries(counts)
+      .sort((a,b) => b[1] - a[1])
+      .map(([stage, count]) => `
+        <div class="cd-stage-row">
+          <div class="cd-stage-label">${escHtml(stage)}</div>
+          <div class="cd-stage-bar-wrap">
+            <div class="cd-stage-bar" style="width:${Math.round(count/max*100)}%"></div>
+          </div>
+          <div class="cd-stage-count">${count}</div>
+        </div>`).join('');
+  }
+
+  // ── Strength & focus chips ────────────────────────────────────────────────────
+  function _coachRenderChips(calls) {
+    const sEl = document.getElementById('cdStrengthChips');
+    const fEl = document.getElementById('cdFocusChips');
+
+    const tally = (field) => {
+      const map = {};
+      calls.forEach(h => {
+        const v = (h[field] || '').trim();
+        if (v) map[v] = (map[v] || 0) + 1;
+      });
+      return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
+    };
+
+    const renderChips = (el, entries, colorClass) => {
+      if (!el) return;
+      if (!entries.length) { el.innerHTML = '<div class="cd-inner-empty">—</div>'; return; }
+      el.innerHTML = entries.map(([label, count]) =>
+        `<span class="cd-chip ${colorClass}">${escHtml(label)}<span class="cd-chip-count">${count}</span></span>`
+      ).join('');
+    };
+
+    renderChips(sEl, tally('top_strength'), 'cd-chip-strength');
+    renderChips(fEl, tally('top_priority'), 'cd-chip-focus');
+  }
+
+  // ── Overview panel (right side, no call selected) ────────────────────────────
+  function _coachRenderOverviewPanel() {
+    const genBtn = document.getElementById('cdOverviewGenBtn');
+    const emptyEl = document.getElementById('coachRecogEmpty');
+    const bodyEl  = document.getElementById('coachRecogBody');
+
+    if (!_coachCurrentRep) {
+      if (genBtn) genBtn.style.display = 'none';
+      if (emptyEl) { emptyEl.style.display = ''; emptyEl.querySelector('.cd-overview-placeholder-sub').textContent = 'Select a rep to view their coaching dashboard.'; }
+      if (bodyEl) { bodyEl.style.display = 'none'; bodyEl.innerHTML = ''; }
+      _coachRecogMd = '';
+      return;
+    }
+
+    if (genBtn) genBtn.style.display = '';
+    if (_coachRecogMd) {
+      if (emptyEl) emptyEl.style.display = 'none';
+      if (bodyEl) { bodyEl.style.display = ''; bodyEl.innerHTML = _coachMd(_coachRecogMd); }
+    } else {
+      if (emptyEl) emptyEl.style.display = '';
+      if (bodyEl) { bodyEl.style.display = 'none'; }
+    }
+  }
 
   // ── Call list (Feedback tab) ──────────────────────────────────────────────────
   function coachRenderCallList() {
@@ -313,11 +551,13 @@
       : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'});
     labelEl.textContent = `Coaching Report — ${h.prospect||'Unknown'} (${h.stage||''}) · ${ds}`;
 
+    // Swap panels: hide overview, show coaching
+    document.getElementById('cdOverviewPanel').style.display = 'none';
     panel.style.display = '';
     loadEl.style.display = 'none';
     bodyEl.style.display = '';
     bodyEl.innerHTML = '<div class="coach-transcript-loading">Checking for transcript…</div>';
-    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     // Try to auto-match transcript by history ID
     let transcriptText = '';
@@ -524,50 +764,32 @@ Be direct, specific, and practical. Avoid generic sales advice. Address ${_coach
       document.getElementById('coachFeedbackBody').innerHTML);
   };
 
-  // ── Recognition tab ───────────────────────────────────────────────────────────
+  // ── Rep Overview generation (right panel) ─────────────────────────────────────
   async function coachGenerateRecognition() {
     if (!_coachCurrentRep) return;
     const repName = _coachCurrentRep;
 
-    const calls = loadHistory()
-      .filter(h => {
-        const lc = repName.toLowerCase();
-        if (h.rep_scores) { try { if (JSON.parse(h.rep_scores).some(r=>(r.name||'').toLowerCase()===lc)) return true; } catch {} }
-        return (h.rep||'').toLowerCase() === lc;
-      })
-      .sort((a,b) => (a.callDate||a.ts) > (b.callDate||b.ts) ? 1 : -1);
-
+    const calls = _coachGetRepCalls(repName);
     if (!calls.length) {
-      document.getElementById('coachRecogEmpty').textContent = 'No graded calls found for this rep.';
+      const emptyEl = document.getElementById('coachRecogEmpty');
+      if (emptyEl) {
+        emptyEl.style.display = '';
+        const sub = emptyEl.querySelector('.cd-overview-placeholder-sub');
+        if (sub) sub.textContent = 'No graded calls found for this rep.';
+      }
       return;
     }
 
-    // Stats strip
-    const scores = calls.map(h => {
-      if (h.rep_scores) {
-        try { const r = JSON.parse(h.rep_scores).find(r=>(r.name||'').toLowerCase()===repName.toLowerCase()); if (r) return r.total; } catch {}
-      }
-      return h.total;
-    }).filter(s => s != null);
+    const scores = calls.map(h => _coachRepScore(h, repName)).filter(s => s != null);
     const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-    const best = scores.length ? Math.max(...scores) : null;
     const trend = scores.length >= 2
       ? (scores[scores.length-1] > scores[scores.length-2] ? '↑' : scores[scores.length-1] < scores[scores.length-2] ? '↓' : '→')
       : '—';
-    const trendColor = trend === '↑' ? 'var(--siren-signal-green)' : trend === '↓' ? 'var(--siren-danger-red)' : 'var(--siren-text-muted)';
-
-    document.getElementById('crs-calls').textContent = calls.length;
-    document.getElementById('crs-avg').textContent = avg != null ? avg : '—';
-    document.getElementById('crs-best').textContent = best != null ? best : '—';
-    const trendEl = document.getElementById('crs-trend');
-    trendEl.textContent = trend;
-    trendEl.style.color = trendColor;
-    document.getElementById('coachRecogStats').style.display = '';
-    document.getElementById('coachRecogEmpty').style.display = 'none';
 
     // Loading
     const loadEl = document.getElementById('coachRecogLoading');
     const bodyEl = document.getElementById('coachRecogBody');
+    document.getElementById('coachRecogEmpty').style.display = 'none';
     loadEl.style.display = '';
     bodyEl.style.display = 'none';
     bodyEl.innerHTML = '';
@@ -576,23 +798,23 @@ Be direct, specific, and practical. Avoid generic sales advice. Address ${_coach
       const ds = h.callDate || h.ts.slice(0,10);
       let sc = h.total;
       if (h.rep_scores) { try { const r = JSON.parse(h.rep_scores).find(r=>(r.name||'').toLowerCase()===repName.toLowerCase()); if (r) sc = r.total; } catch {} }
-      return `Call ${i+1} (${ds}, ${h.stage||'?'}): Grade ${h.letter_grade} ${sc}/100. Strength: ${h.top_strength||'n/a'}.`;
+      return `Call ${i+1} (${ds}, ${h.stage||'?'}): Grade ${h.letter_grade} ${sc}/100. Strength: ${h.top_strength||'n/a'}. Priority: ${h.top_priority||'n/a'}.`;
     }).join('\n');
 
-    const prompt = `You are a sales coach at OneAxiom, a Houston-based MSSP. Write a recognition report that genuinely celebrates the strengths and growth of ${repName}.
+    const prompt = `You are a sales coach at OneAxiom, a Houston-based MSSP. Write a performance overview for ${repName} that balances genuine recognition with clear development priorities.
 
 Call history (most recent ${calls.slice(-10).length} of ${calls.length} calls):
 ${callSummary}
 Average score: ${avg || 'n/a'}. Score trend: ${trend}.
 
-Write a recognition report with these sections:
-1. **Overall Performance** — an honest, encouraging 2–3 sentence summary of their trajectory
-2. **Standout Strengths** — 3–5 specific, observable behaviors they do consistently well (cite actual data)
-3. **Best Moment** — call out their highest-scoring call or a notable improvement, with specifics
-4. **Growth You've Shown** — any measurable improvement in scores or patterns over time
-5. **What Sets You Apart** — 2–3 qualities that make this rep valuable to the team
+Write an overview with these sections:
+1. **Overall Performance** — an honest 2–3 sentence summary of their trajectory
+2. **Standout Strengths** — 3–4 specific, observable behaviors they do consistently well (cite actual data)
+3. **Best Moment** — their highest-scoring call or most notable improvement, with specifics
+4. **Recommended Focus** — the 2–3 recurring improvement areas across their calls, with concrete guidance for each
+5. **Suggested Next Steps** — 2–3 specific actions: a Training Arena scenario to practice, a skill to drill, or a behavior to repeat
 
-Be genuine and specific — not generic cheerleading. Reference actual call stages, scores, and strengths. Address ${repName} directly.`;
+Be genuine and specific — not generic cheerleading or boilerplate advice. Reference actual call stages, scores, strengths, and priority areas. Address ${repName} directly.`;
 
     try {
       const md = await _coachRunSteps('crc', 4, () => _coachAsk(prompt));
@@ -821,5 +1043,6 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
   // ── Init ──────────────────────────────────────────────────────────────────────
   function coachInit() {
     coachRenderRepSel();
+    if (!_coachCurrentRep) _coachRenderDashboard();
   }
   window.coachInit = coachInit;
