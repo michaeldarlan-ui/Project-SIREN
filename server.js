@@ -58,6 +58,7 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS transcripts (id TEXT PRIMARY KEY, label TEXT NOT NULL, prospect TEXT, stage TEXT, rep TEXT, call_date TEXT, transcript TEXT NOT NULL, saved_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS team (name TEXT PRIMARY KEY, role TEXT, idx INTEGER DEFAULT 0)` },
   { sql: `CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, cost REAL DEFAULT 0, calls INTEGER DEFAULT 0)` },
+  { sql: `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -584,12 +585,64 @@ const server = http.createServer(async (req, res) => {
     })).rows;
     const find = id => rows.find(r => r.id === id);
     const g = find('global'), m = find(monthKey);
+    const globalCost = g ? Number(g.cost) : 0;
+    const monthCost  = m ? Number(m.cost) : 0;
+
+    // Console mirror: baseline values entered by the user, advanced by
+    // everything metered since the baseline was saved.
+    let consoleMirror = null;
+    try {
+      const bRow = (await client.execute("SELECT value FROM settings WHERE key = 'usage_baseline'")).rows[0];
+      if (bRow) {
+        const b = JSON.parse(String(bRow.value));
+        const spentSince = Math.max(0, globalCost - (b.offsetGlobalCost || 0));
+        const monthSpend = (monthKey === b.monthKey)
+          ? (b.monthSpend || 0) + Math.max(0, monthCost - (b.offsetMonthCost || 0))
+          : monthCost; // new month: console resets, meter is authoritative
+        consoleMirror = {
+          balance: (b.balance || 0) - spentSince,
+          monthSpend,
+          savedAt: b.savedAt || null,
+        };
+      }
+    } catch (e) { console.error('[usage] baseline read failed:', e.message); }
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      cost:  g ? Number(g.cost)  : 0,
+      cost:  globalCost,
       calls: g ? Number(g.calls) : 0,
-      month: { key: monthKey.slice(1), cost: m ? Number(m.cost) : 0, calls: m ? Number(m.calls) : 0 },
+      month: { key: monthKey.slice(1), cost: monthCost, calls: m ? Number(m.calls) : 0 },
+      console: consoleMirror,
     }));
+    return;
+  }
+
+  // Save console baseline: { balance, monthSpend } — offsets captured now
+  if (req.method === 'POST' && req.url === '/api/usage/baseline') {
+    try {
+      const { balance, monthSpend } = await readBody(req);
+      const monthKey = _usageMonthKey();
+      const rows = (await client.execute({
+        sql: "SELECT id, cost FROM usage WHERE id IN ('global', ?)",
+        args: [monthKey],
+      })).rows;
+      const find = id => rows.find(r => r.id === id);
+      const baseline = {
+        balance: Number(balance) || 0,
+        monthSpend: Number(monthSpend) || 0,
+        monthKey,
+        offsetGlobalCost: find('global') ? Number(find('global').cost) : 0,
+        offsetMonthCost:  find(monthKey) ? Number(find(monthKey).cost) : 0,
+        savedAt: new Date().toISOString(),
+      };
+      await client.execute({
+        sql: `INSERT INTO settings (key, value) VALUES ('usage_baseline', ?)
+              ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        args: [JSON.stringify(baseline)],
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(baseline));
+    } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
   }
 

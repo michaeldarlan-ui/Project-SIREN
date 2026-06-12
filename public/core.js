@@ -79,10 +79,50 @@
   window.openCostUsageModal = function() {
     const m = document.getElementById('costUsageModal');
     if (m) m.style.display = 'flex';
+    // Pre-fill the console-sync inputs with the current mirrored values
+    fetch('/api/usage').then(r => r.json()).then(u => {
+      const status = document.getElementById('cuBaselineStatus');
+      if (u.console) {
+        const balEl = document.getElementById('cuBaselineBalance');
+        const monEl = document.getElementById('cuBaselineMonth');
+        if (balEl) balEl.value = u.console.balance.toFixed(2);
+        if (monEl) monEl.value = u.console.monthSpend.toFixed(2);
+        if (status) status.textContent = u.console.savedAt
+          ? 'Baseline last synced ' + new Date(u.console.savedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' — values shown include metered spend since then.'
+          : '';
+      } else if (status) {
+        status.textContent = 'No baseline set yet — the PULSE tile shows metered spend only until you sync.';
+      }
+    }).catch(() => {});
   };
   window.closeCostUsageModal = function() {
     const m = document.getElementById('costUsageModal');
     if (m) m.style.display = 'none';
+  };
+  window.saveUsageBaseline = async function(btn) {
+    const balance    = parseFloat(document.getElementById('cuBaselineBalance')?.value);
+    const monthSpend = parseFloat(document.getElementById('cuBaselineMonth')?.value);
+    const status = document.getElementById('cuBaselineStatus');
+    if (isNaN(balance) && isNaN(monthSpend)) {
+      if (status) status.textContent = 'Enter at least one value before saving.';
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      const resp = await fetch('/api/usage/baseline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance: isNaN(balance) ? 0 : balance, monthSpend: isNaN(monthSpend) ? 0 : monthSpend }),
+      });
+      if (!resp.ok) throw new Error('status ' + resp.status);
+      await _loadUsageFromDB();
+      if (typeof renderPulse === 'function' && currentPage === 'pulse') renderPulse();
+      if (status) status.textContent = 'Baseline saved — the PULSE tile now mirrors the console from these values.';
+    } catch (e) {
+      if (status) status.textContent = 'Save failed: ' + e.message;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save baseline'; }
+    }
   };
 
   // ── Team manager ───────────────────────────────────────────

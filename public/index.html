@@ -104,6 +104,23 @@
       </div>
 
       <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Console Sync — credit balance &amp; monthly spend</div>
+        <p style="margin:0 0 12px;color:rgba(255,255,255,.5);">The Anthropic API doesn't expose your credit balance, so enter the current values from <a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:var(--siren-cyan-70);">console.anthropic.com</a> once. SIREN's meter advances both from there: spend counts up, balance counts down. Re-sync any time (e.g. after adding credits).</p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:10px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;">Credit balance ($)</label>
+            <input type="number" step="0.01" min="0" id="cuBaselineBalance" placeholder="e.g. 42.50" style="width:140px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:8px 10px;color:#e2e8f0;font-size:13px;outline:none;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:10px;font-weight:600;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;">Spend this month ($)</label>
+            <input type="number" step="0.01" min="0" id="cuBaselineMonth" placeholder="e.g. 1.85" style="width:140px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:8px 10px;color:#e2e8f0;font-size:13px;outline:none;">
+          </div>
+          <button class="pdf-btn pdf-btn-sm" onclick="saveUsageBaseline(this)" style="height:34px;">Save baseline</button>
+        </div>
+        <div id="cuBaselineStatus" style="margin-top:8px;font-size:11.5px;color:rgba(255,255,255,.35);"></div>
+      </div>
+
+      <div>
         <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:10px;">Claude Usage — development sessions</div>
         <p style="margin:0;color:rgba(255,255,255,.5);">Shown as the <strong>Claude Usage</strong> tile in PULSE. It scans local Claude Code session transcripts (<code style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-size:12px;">~/.claude/projects</code>) and prices the tokens at API-equivalent rates. This measures time spent <em>building</em> SIREN with Claude Code &mdash; it is covered by the Claude subscription, not the API key, and nothing you do inside the app adds to it. Each machine shows its own local sessions.</p>
       </div>

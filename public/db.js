@@ -167,7 +167,7 @@ async function _loadTeamFromDB() {
 // (all-time + per-month rows), so the server is the source of
 // truth. localStorage is an offline display fallback only.
 
-let _usageCache = { cost: 0, calls: 0, month: { cost: 0, calls: 0 } };
+let _usageCache = { cost: 0, calls: 0, month: { cost: 0, calls: 0 }, console: null };
 
 async function _loadUsageFromDB() {
   try {
@@ -178,11 +178,12 @@ async function _loadUsageFromDB() {
       cost:  remote.cost  || 0,
       calls: remote.calls || 0,
       month: remote.month || { cost: 0, calls: 0 },
+      console: remote.console || null,
     };
     try { localStorage.setItem('oa_usage', JSON.stringify(_usageCache)); } catch {}
   } catch (e) {
     console.warn('[db] Failed to load usage, falling back to localStorage:', e.message);
-    try { _usageCache = JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0,"month":{"cost":0,"calls":0}}'); } catch {}
+    try { _usageCache = JSON.parse(localStorage.getItem('oa_usage') || '{"cost":0,"calls":0,"month":{"cost":0,"calls":0},"console":null}'); } catch {}
   }
 }
 
