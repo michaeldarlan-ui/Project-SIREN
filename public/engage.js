@@ -875,8 +875,14 @@ recommended_books: only recommend resources from the approved list above. If no 
 rep_scores: identify every named sales rep who speaks in the transcript. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no individual reps can be identified, return an empty array.
 spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.${thirdPartyContext}`;
 
+    const team = loadTeam();
+    const teamContext = team.length
+      ? 'OneAxiom sales team on this call (include ALL who speak in rep_scores): ' +
+        team.map(m => `${m.name} (${m.role})`).join(', ')
+      : '';
     const context = [
-      rep ? 'Rep: ' + rep.name + ' (' + rep.role + ')' : '',
+      rep ? 'Primary rep: ' + rep.name + ' (' + rep.role + ')' : '',
+      teamContext,
       prospect ? 'Prospect: ' + prospect : '',
       contactTitle ? 'Contact title: ' + contactTitle : '',
       callDate ? 'Call date: ' + callDate : '',
