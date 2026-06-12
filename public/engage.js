@@ -612,7 +612,26 @@
       const data = await resp.json();
       const text = (data.content?.[0]?.text || '').replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
       const parsed = JSON.parse(text);
-      const unknowns = (parsed.participants || []).filter(p => p.type === 'unknown');
+      // Drop any "unknown" whose first name is within 2 edits of a known rep's first name.
+      // Guards: names must be within 2 chars of each other in length to avoid false positives.
+      // This catches transcription mishearings like "Brian" → "Ryan".
+      const _lev = (a, b) => {
+        const dp = Array.from({length: a.length + 1}, (_, i) =>
+          Array.from({length: b.length + 1}, (_, j) => j ? j : i));
+        for (let i = 1; i <= a.length; i++)
+          for (let j = 1; j <= b.length; j++)
+            dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1]
+              : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        return dp[a.length][b.length];
+      };
+      const teamFirstNames = teamNames.map(n => n.toLowerCase().split(/\s+/)[0]);
+      const unknowns = (parsed.participants || []).filter(p => {
+        if (p.type !== 'unknown') return false;
+        const uFirst = p.name.toLowerCase().trim().split(/\s+/)[0];
+        return !teamFirstNames.some(tf =>
+          Math.abs(uFirst.length - tf.length) <= 2 && _lev(uFirst, tf) <= 2
+        );
+      });
 
       const newUnknowns = [], known = [];
       unknowns.forEach(u => {
