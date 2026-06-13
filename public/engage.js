@@ -2036,6 +2036,15 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _dbBulkSave(records);
   }
 
+  // ── Audit log helper ──────────────────────────────────────
+  function logAudit(action, fields = {}) {
+    fetch('/api/audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...fields }),
+    }).catch(() => {}); // fire-and-forget
+  }
+
   function saveToHistory(r, prospect, contactTitle, rep, callDate, resultsHtml) {
     const record = {
       id: String(Date.now()),
@@ -2061,6 +2070,15 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     _histCache.unshift(record);
     if (_histCache.length > 200) _histCache.splice(200);
     _dbSaveRecord(record);
+    logAudit('grade', {
+      entity_id:    record.id,
+      entity_label: prospect || '',
+      rep:          rep ? rep.name : '',
+      stage:        selectedStage,
+      score:        String(record.normalized_score),
+      letter_grade: record.letter_grade,
+      details:      { grade_label: record.grade_label, top_priority: record.top_priority },
+    });
     return record;
   }
 
@@ -2273,6 +2291,16 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         body: JSON.stringify([updatedRecord]),
       });
 
+      logAudit('regrade', {
+        entity_id:    String(id),
+        entity_label: tProspect,
+        rep:          updatedRecord.rep,
+        stage:        tStage,
+        score:        String(updatedRecord.normalized_score),
+        letter_grade: updatedRecord.letter_grade,
+        details:      { grade_label: updatedRecord.grade_label, top_priority: updatedRecord.top_priority, triggered_from: 'history' },
+      });
+
       // 7. Update cache and re-render the history card
       const cacheIdx = _histCache.findIndex(h => String(h.id) === String(id));
       if (cacheIdx !== -1) Object.assign(_histCache[cacheIdx], updatedRecord);
@@ -2380,7 +2408,15 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     if (!confirm('Delete this saved transcript? This cannot be undone.')) return;
     try {
       if (btn) btn.disabled = true;
+      // Grab label before deleting
+      const tRow = _brgTranscripts.find(t => String(t.id) === String(id));
       await fetch('/api/transcripts/' + encodeURIComponent(String(id)), { method: 'DELETE' });
+      logAudit('transcript_delete', {
+        entity_id:    String(id),
+        entity_label: tRow?.prospect || tRow?.label || '',
+        rep:          tRow?.rep || '',
+        stage:        tRow?.stage || '',
+      });
       renderSavedTranscripts();
     } catch (e) { alert('Error: ' + e.message); }
   };
@@ -2770,13 +2806,23 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     e.stopPropagation();
     if (!confirm('Delete this history entry?')) return;
     const sid = String(id);
+    const h = _histCache.find(r => String(r.id) === sid);
     _histCache = _histCache.filter(h => String(h.id) !== sid);
     _dbDeleteRecord(sid);
+    logAudit('delete', {
+      entity_id:    sid,
+      entity_label: h?.prospect || '',
+      rep:          h?.rep || '',
+      stage:        h?.stage || '',
+      score:        h ? String(h.normalized_score) : '',
+      letter_grade: h?.letter_grade || '',
+    });
     renderHistory();
   }
 
   function clearHistory() {
     if (!confirm('Clear all call history? This cannot be undone.')) return;
+    logAudit('clear_history', { details: { count: _histCache.length } });
     _histCache = [];
     _dbBulkSave([]);
     renderHistory();
@@ -3055,6 +3101,16 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         // Update local cache
         const cacheIdx = _histCache.findIndex(h => String(h.id) === String(t.id));
         if (cacheIdx !== -1) Object.assign(_histCache[cacheIdx], updatedRecord);
+
+        logAudit('bulk_regrade', {
+          entity_id:    String(t.id),
+          entity_label: tProspect,
+          rep:          updatedRecord.rep,
+          stage:        tStage,
+          score:        String(updatedRecord.normalized_score),
+          letter_grade: updatedRecord.letter_grade,
+          details:      { grade_label: updatedRecord.grade_label, batch_total: total, batch_index: done + 1 },
+        });
 
         succeeded++;
         brgLog(`✓ ${label} — ${parsed.letter_grade} (${parsed.normalized_score ?? parsed.total})`, 'ok');

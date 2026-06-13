@@ -60,6 +60,7 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, cost REAL DEFAULT 0, calls INTEGER DEFAULT 0)` },
   { sql: `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS roadmap (id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'planned', created_at TEXT NOT NULL)` },
+  { sql: `CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY, action TEXT NOT NULL, entity_id TEXT, entity_label TEXT, rep TEXT, stage TEXT, score TEXT, letter_grade TEXT, details TEXT, created_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS usage_daily (
       day TEXT, model TEXT,
       cost REAL DEFAULT 0, calls INTEGER DEFAULT 0,
@@ -814,6 +815,56 @@ const server = http.createServer(async (req, res) => {
     try {
       const id = parseInt(req.url.slice('/api/roadmap/'.length));
       await client.execute({ sql: 'DELETE FROM roadmap WHERE id = ?', args: [id] });
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  // ── Audit Log API ──────────────────────────────────────────
+
+  if (req.method === 'GET' && req.url.startsWith('/api/audit')) {
+    const params = new URL(req.url, 'http://x').searchParams;
+    const limit  = Math.min(500, Math.max(1, parseInt(params.get('limit')) || 200));
+    const action = params.get('action') || null;
+    const sql    = action
+      ? 'SELECT * FROM audit_log WHERE action = ? ORDER BY id DESC LIMIT ?'
+      : 'SELECT * FROM audit_log ORDER BY id DESC LIMIT ?';
+    const args   = action ? [action, limit] : [limit];
+    const rows   = (await client.execute({ sql, args })).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows.map(r => ({
+      id:           Number(r.id),
+      action:       String(r.action),
+      entity_id:    r.entity_id   ? String(r.entity_id)   : null,
+      entity_label: r.entity_label ? String(r.entity_label) : null,
+      rep:          r.rep          ? String(r.rep)          : null,
+      stage:        r.stage        ? String(r.stage)        : null,
+      score:        r.score        ? String(r.score)        : null,
+      letter_grade: r.letter_grade ? String(r.letter_grade) : null,
+      details:      r.details      ? JSON.parse(String(r.details)) : null,
+      created_at:   String(r.created_at),
+    }))));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/audit') {
+    try {
+      const { action, entity_id, entity_label, rep, stage, score, letter_grade, details } = await readBody(req);
+      if (!action) { res.writeHead(400); res.end('action required'); return; }
+      await client.execute({
+        sql: 'INSERT INTO audit_log (action, entity_id, entity_label, rep, stage, score, letter_grade, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        args: [
+          String(action),
+          entity_id    ? String(entity_id)    : null,
+          entity_label ? String(entity_label) : null,
+          rep          ? String(rep)          : null,
+          stage        ? String(stage)        : null,
+          score        != null ? String(score) : null,
+          letter_grade ? String(letter_grade) : null,
+          details      ? JSON.stringify(details) : null,
+          new Date().toISOString(),
+        ],
+      });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;

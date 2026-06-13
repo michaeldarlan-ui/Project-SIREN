@@ -51,6 +51,9 @@
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Sales Team
       </button>
+      <button class="settings-item" onclick="navTo('audit');closeSettingsMenu()">
+        <span class="settings-item-icon">🗂</span>Audit Log
+      </button>
       <button class="settings-item" onclick="navTo('library');closeSettingsMenu()">
         <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         Resource Library
@@ -1813,6 +1816,31 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
   </div>
 </div>
 
+<!-- ══ AUDIT LOG PAGE ══ -->
+<div class="page" id="page-audit">
+  <div class="card" style="max-width:900px;margin:0 auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="section-label" style="margin:0 0 4px;">Audit Log</div>
+        <div style="font-size:12px;color:var(--siren-text-muted);">All grading activity — initial grades, re-grades, and deletions.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="auditFilterSel" onchange="auditRender()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:5px 10px;font-size:11px;font-family:inherit;outline:none;">
+          <option value="all">All actions</option>
+          <option value="grade">Initial grade</option>
+          <option value="regrade">Re-grade</option>
+          <option value="bulk_regrade">Bulk re-grade</option>
+          <option value="delete">History delete</option>
+          <option value="clear_history">History cleared</option>
+          <option value="transcript_delete">Transcript delete</option>
+        </select>
+        <button class="pdf-btn pdf-btn-sm" onclick="auditLoad()" style="font-size:11px;">&#8635; Refresh</button>
+      </div>
+    </div>
+    <div id="auditList"><div style="color:rgba(255,255,255,.2);font-size:13px;padding:12px 0;">Loading…</div></div>
+  </div>
+</div>
+
 <script src="db.js"></script>
 <script src="core.js"></script>
 <script src="engage.js"></script>
@@ -1823,6 +1851,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 <script src="coach.js"></script>
 <script src="usage.js"></script>
 <script src="roadmap.js"></script>
+<script src="audit.js"></script>
 <script src="demo.js"></script>
 <script src="init.js"></script>
 </body>

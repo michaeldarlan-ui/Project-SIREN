@@ -25,6 +25,7 @@
     if (page === 'scope')     renderScopePage();
     if (page === 'forge')     forgeInit();
     if (page === 'vigil')     pulseRenderFeed();
+    if (page === 'audit')     auditLoad();
   }
 
   // ── Settings menu ──────────────────────────────────────────
