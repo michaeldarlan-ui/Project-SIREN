@@ -764,11 +764,27 @@
 .sref-spiced-letter { flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,200,255,.12); border: 1px solid rgba(0,200,255,.25); display: flex; align-items: center; justify-content: center; font-family: var(--siren-font-hud); font-size: 14px; font-weight: 900; color: #00c8ff; }
 .sref-spiced-name { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.85); margin-bottom: 3px; }
 .sref-spiced-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
-/* Role */
+/* Role rows (inside old Rep Role Weighting card — kept for compat) */
 .sref-role-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
 .sref-role-row:last-child { border-bottom: none; }
-.sref-role-tag { flex-shrink: 0; background: rgba(0,200,255,.1); border: 1px solid rgba(0,200,255,.22); border-radius: 5px; font-family: var(--siren-font-hud); font-size: 10px; font-weight: 800; letter-spacing: .07em; color: #00c8ff; padding: 3px 8px; min-width: 54px; text-align: center; }
+.sref-role-tag { flex-shrink: 0; background: rgba(0,200,255,.1); border: 1px solid rgba(0,200,255,.22); border-radius: 5px; font-family: var(--siren-font-hud); font-size: 10px; font-weight: 800; letter-spacing: .07em; color: #00c8ff; padding: 3px 8px; min-width: 48px; text-align: center; }
 .sref-role-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
+/* Context note inside meeting-type cards */
+.sref-context-note { font-size: 12px; color: rgba(255,255,255,.6); line-height: 1.6; margin-bottom: 14px; padding: 10px 12px; background: rgba(0,200,255,.05); border-left: 3px solid rgba(0,200,255,.3); border-radius: 0 6px 6px 0; }
+/* Dimension matrix table */
+.sref-matrix { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+.sref-mx-row { display: grid; grid-template-columns: 2fr 80px 3fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); align-items: start; }
+.sref-mx-row:last-child { border-bottom: none; }
+.sref-mx-head { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.28); padding-bottom: 6px; }
+.sref-mx-active > div:first-child { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.85); }
+.sref-mx-active > div:last-child { font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.5; }
+.sref-mx-pts { font-family: var(--siren-font-hud); font-size: 12px; font-weight: 700; color: #00c8ff; }
+.sref-mx-reduced > div:first-child { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.3); }
+.sref-mx-reduced > div:last-child { font-size: 11px; color: rgba(255,255,255,.28); line-height: 1.5; }
+.sref-mx-dim { color: rgba(255,255,255,.2) !important; font-size: 11px !important; }
+/* Role notes at the bottom of meeting-type cards */
+.sref-role-note { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.05); margin-top: 2px; font-size: 11px; color: rgba(255,255,255,.4); line-height: 1.5; }
+.sref-role-note .sref-role-tag { margin-top: 1px; }
 
   /* Legend */
   .lc-legend {
