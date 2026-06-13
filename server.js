@@ -870,6 +870,58 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'POST' && req.url === '/api/audit/backfill') {
+    try {
+      // Fetch all history records from both tables
+      const [prodRows, demoRows] = await Promise.all([
+        client.execute('SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_prod ORDER BY ts ASC'),
+        client.execute('SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_demo ORDER BY ts ASC'),
+      ]);
+      const allRows = [...prodRows.rows, ...demoRows.rows]
+        .sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+
+      // Get entity_ids already in audit_log (action='grade') to avoid duplicates
+      const existingRes = await client.execute("SELECT entity_id FROM audit_log WHERE action = 'grade'");
+      const existingIds = new Set(existingRes.rows.map(r => String(r.entity_id)));
+
+      const toInsert = allRows.filter(r => !existingIds.has(String(r.id)));
+      if (!toInsert.length) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ inserted: 0, skipped: allRows.length }));
+        return;
+      }
+
+      // Batch insert — libSQL batch limit: insert in chunks of 50
+      const chunkSize = 50;
+      for (let i = 0; i < toInsert.length; i += chunkSize) {
+        const chunk = toInsert.slice(i, i + chunkSize);
+        await client.batch(chunk.map(r => ({
+          sql: 'INSERT INTO audit_log (action, entity_id, entity_label, rep, stage, score, letter_grade, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [
+            'grade',
+            String(r.id),
+            r.prospect  ? String(r.prospect)  : null,
+            r.rep       ? String(r.rep)       : null,
+            r.stage     ? String(r.stage)     : null,
+            r.normalized_score != null ? String(r.normalized_score) : null,
+            r.letter_grade ? String(r.letter_grade) : null,
+            JSON.stringify({
+              grade_label:  r.grade_label  ? String(r.grade_label)  : null,
+              top_priority: r.top_priority ? String(r.top_priority) : null,
+              rep_role:     r.rep_role     ? String(r.rep_role)     : null,
+              backfilled:   true,
+            }),
+            r.ts ? String(r.ts) : new Date().toISOString(),
+          ],
+        })), 'write');
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ inserted: toInsert.length, skipped: allRows.length - toInsert.length }));
+    } catch (e) { res.writeHead(500); res.end(e.message); }
+    return;
+  }
+
   // ── Transcripts API ────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/transcripts') {
