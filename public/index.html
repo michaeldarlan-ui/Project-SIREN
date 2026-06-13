@@ -34,6 +34,11 @@
       <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
     <div class="settings-dropdown" id="settingsDropdown">
+      <button class="settings-item" onclick="navTo('settings');closeSettingsMenu()">
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        Roadmap &amp; Requests
+      </button>
+      <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;"></div>
       <button class="settings-item" onclick="navTo('history');closeSettingsMenu()">
         <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 16 3.05 11 8 11"/></svg>
         Call History
@@ -666,55 +671,83 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           </div>
         </div>
 
-        <!-- Integration roadmap -->
-        <div class="forge-panel">
-          <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Integration Roadmap</span>
-          </div>
-          <div class="forge-panel-body" style="padding-bottom:16px;">
-            <div class="forge-integrations">
-              <div class="forge-int-card">
-                <div class="forge-int-top">
-                  <div class="forge-int-logo">🟠</div>
-                  <div>
-                    <div class="forge-int-name">HubSpot CRM</div>
-                    <div class="forge-int-sub">Deals · Contacts · Sequences</div>
-                  </div>
-                  <div class="forge-int-status pending">IN PROGRESS</div>
-                </div>
-                <div class="forge-int-desc">Sync deal stage, push call summaries to contact timeline, trigger email sequences on stage advance.</div>
-                <div class="forge-int-footer"><div class="forge-int-cta">Awaiting API credentials</div></div>
-              </div>
-              <div class="forge-int-card">
-                <div class="forge-int-top">
-                  <div class="forge-int-logo">📧</div>
-                  <div>
-                    <div class="forge-int-name">Email Draft</div>
-                    <div class="forge-int-sub">Follow-up · Recap · Intro</div>
-                  </div>
-                  <div class="forge-int-status planned">PLANNED</div>
-                </div>
-                <div class="forge-int-desc">Generate stage-aware follow-up emails from call scoring data. Copy-to-clipboard or push directly to HubSpot sequences.</div>
-                <div class="forge-int-footer"><div class="forge-int-cta">Available after HubSpot connect</div></div>
-              </div>
-              <div class="forge-int-card">
-                <div class="forge-int-top">
-                  <div class="forge-int-logo">📂</div>
-                  <div>
-                    <div class="forge-int-name">Content Library</div>
-                    <div class="forge-int-sub">Stage-matched assets</div>
-                  </div>
-                  <div class="forge-int-status planned">PLANNED</div>
-                </div>
-                <div class="forge-int-desc">Auto-suggest case studies, battle cards, and one-pagers from the Resource Library based on current deal stage and competitor flags.</div>
-                <div class="forge-int-footer"><div class="forge-int-cta">Planned — Q3 2026</div></div>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS PAGE ══ -->
+<div class="page" id="page-settings">
+  <div class="shell">
+    <div class="page-heading" style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">SETTINGS</h2>
+      <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Roadmap, feature requests, and developer tools.</p>
+    </div>
+
+    <!-- ── Integration Roadmap ── -->
+    <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Integration Roadmap</div>
+    <div class="forge-integrations" style="margin-bottom:28px;">
+      <div class="forge-int-card">
+        <div class="forge-int-top">
+          <div class="forge-int-logo">🟠</div>
+          <div><div class="forge-int-name">HubSpot CRM</div><div class="forge-int-sub">Deals · Contacts · Sequences</div></div>
+          <div class="forge-int-status pending">IN PROGRESS</div>
+        </div>
+        <div class="forge-int-desc">Sync deal stage, push call summaries to contact timeline, trigger email sequences on stage advance.</div>
+        <div class="forge-int-footer"><div class="forge-int-cta">Awaiting API credentials</div></div>
+      </div>
+      <div class="forge-int-card">
+        <div class="forge-int-top">
+          <div class="forge-int-logo">📧</div>
+          <div><div class="forge-int-name">Email Draft</div><div class="forge-int-sub">Follow-up · Recap · Intro</div></div>
+          <div class="forge-int-status planned">PLANNED</div>
+        </div>
+        <div class="forge-int-desc">Generate stage-aware follow-up emails from call scoring data. Copy-to-clipboard or push directly to HubSpot sequences.</div>
+        <div class="forge-int-footer"><div class="forge-int-cta">Available after HubSpot connect</div></div>
+      </div>
+      <div class="forge-int-card">
+        <div class="forge-int-top">
+          <div class="forge-int-logo">📂</div>
+          <div><div class="forge-int-name">Content Library</div><div class="forge-int-sub">Stage-matched assets</div></div>
+          <div class="forge-int-status planned">PLANNED</div>
+        </div>
+        <div class="forge-int-desc">Auto-suggest case studies, battle cards, and one-pagers from the Resource Library based on current deal stage and competitor flags.</div>
+        <div class="forge-int-footer"><div class="forge-int-cta">Planned — Q3 2026</div></div>
+      </div>
+    </div>
+
+    <!-- ── Feature Requests ── -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);">Feature Requests</div>
+      <div style="display:flex;gap:6px;">
+        <select id="rdmFilterSel" onchange="rdmRender()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:5px 10px;font-size:11px;font-family:inherit;outline:none;">
+          <option value="all">All</option>
+          <option value="planned">Planned</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Add form -->
+    <div class="cd-panel" style="margin-bottom:16px;padding:16px 18px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:start;flex-wrap:wrap;" class="rdm-add-grid">
+        <input id="rdmTitle" type="text" placeholder="Feature or request title…" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
+        <input id="rdmDesc" type="text" placeholder="Description (optional)…" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
+        <select id="rdmStatus" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
+          <option value="planned">Planned</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+        <button onclick="rdmAdd()" style="background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.3);color:#00c8ff;border-radius:6px;font-size:12px;font-weight:600;padding:7px 16px;cursor:pointer;white-space:nowrap;">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Items list -->
+    <div id="rdmList"></div>
+
+    <div class="footer">SIREN · Developer roadmap — internal use only</div>
   </div>
 </div>
 
@@ -1489,6 +1522,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 <script src="forge.js"></script>
 <script src="coach.js"></script>
 <script src="usage.js"></script>
+<script src="roadmap.js"></script>
 <script src="demo.js"></script>
 <script src="init.js"></script>
 </body>

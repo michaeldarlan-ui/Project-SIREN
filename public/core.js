@@ -29,6 +29,7 @@
     if (page === 'vigil')       pulseRenderFeed();
     if (page === 'coach')       coachInit();
     if (page === 'usage')       renderUsagePage();
+    if (page === 'settings')    rdmRender();
   }
 
   // ── Demo mode ──────────────────────────────────────────────
