@@ -9,7 +9,8 @@
   window.usageSetPeriod = function(days) {
     _usageDays = days;
     document.querySelectorAll('#page-usage .cd-period-btn').forEach(b =>
-      b.classList.toggle('cd-period-btn-active', b.textContent === days + 'd'));
+      b.classList.toggle('cd-period-btn-active',
+        b.textContent === (days === 1 ? 'Today' : days + 'd')));
     renderUsagePage();
   };
 
