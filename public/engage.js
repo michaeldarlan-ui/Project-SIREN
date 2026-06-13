@@ -2802,19 +2802,26 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       .map(cb => parseInt(cb.dataset.idx));
     if (!indices.length) return;
 
-    // Hide selector, show progress
+    // Hide selector + action bar; show loading screen in bulk mode
     document.getElementById('savedTranscriptsList').style.display = 'none';
     const brgActionBarEl = document.getElementById('brgActionBar');
     if (brgActionBarEl) brgActionBarEl.style.display = 'none';
+
+    // Bulk overlay elements (inside #loading)
+    const brgLoadOverlay  = document.getElementById('brgLoadOverlay');
+    const brgLoadName     = document.getElementById('brgLoadName');
+    const brgLoadCounter  = document.getElementById('brgLoadCounter');
+    const brgLoadBar      = document.getElementById('brgLoadBar');
+
+    // Devtool log panel (shown after completion for summary)
     const progEl       = document.getElementById('brgProgress');
-    const barEl        = document.getElementById('brgProgBar');
-    const labelEl      = document.getElementById('brgProgLabel');
-    const fracEl       = document.getElementById('brgProgFrac');
     const logEl        = document.getElementById('brgLog');
     const doneBtn      = document.getElementById('brgDoneBtn');
     const countdownEl  = document.getElementById('brgCountdown');
     const elapsedEl    = document.getElementById('brgElapsed');
-    progEl.style.display = 'block';
+    const labelEl      = document.getElementById('brgProgLabel');
+    const fracEl       = document.getElementById('brgProgFrac');
+    const barEl        = document.getElementById('brgProgBar');
     logEl.innerHTML = '';
     countdownEl.textContent = '—';
     elapsedEl.textContent   = '0:00';
@@ -2851,11 +2858,18 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     for (const idx of indices) {
       const t = _brgTranscripts[idx];
       const label = t.label || t.prospect || 'Untitled';
-      labelEl.textContent = `Grading ${done + 1} of ${total}: ${label}`;
-      fracEl.textContent  = `${done + 1} / ${total}`;
-      countdownEl.textContent = itemTimes.length > 0
-        ? fmtSecs(((itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length) * (total - done)) / 1000)
-        : '—';
+
+      // Show the normal loading screen with bulk overlay
+      setLoading(true, label, t.stage || '');
+      document.getElementById('loadContext').textContent =
+        ('BULK // ' + (label.length > 28 ? label.slice(0, 27) + '…' : label)).toUpperCase();
+      if (brgLoadOverlay) {
+        brgLoadOverlay.style.display = 'block';
+        if (brgLoadName)    brgLoadName.textContent    = label;
+        if (brgLoadCounter) brgLoadCounter.textContent = `${done + 1} of ${total}`;
+        if (brgLoadBar)     brgLoadBar.style.width     = Math.round((done / total) * 100) + '%';
+      }
+
       brgLog(`→ Fetching: ${label}`, 'run');
       const itemStart = Date.now();
 
@@ -2924,6 +2938,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
               const ev = JSON.parse(payload);
               if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
                 accumulated += ev.delta.text;
+                updateStreamProgress(accumulated); // animate loading steps live
               }
             } catch {}
           }
@@ -2982,10 +2997,29 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
       itemTimes.push(Date.now() - itemStart);
       done++;
-      barEl.style.width = Math.round((done / total) * 100) + '%';
-      // Brief pause between calls to be kind to the API
-      if (done < total) await new Promise(r => setTimeout(r, 800));
+
+      // Flash all steps to done, update batch bar, brief pause before next
+      updateStreamProgress('"spiced"'); // triggers pct=93 → all 4 steps complete
+      ['pre', 0, 1, 2, 3].forEach(key => {
+        const s  = document.getElementById('lstep-' + key);
+        const ic = document.getElementById('lstep-icon-' + key);
+        const b  = document.getElementById('lstep-bar-' + key);
+        if (s)  { s.classList.add('visible', 'done'); s.classList.remove('active'); }
+        if (ic) ic.textContent = '✓';
+        if (b)  b.style.width = '100%';
+      });
+      if (brgLoadBar) brgLoadBar.style.width = Math.round((done / total) * 100) + '%';
+      if (brgLoadCounter) brgLoadCounter.textContent = `${done} of ${total}`;
+
+      if (done < total) await new Promise(r => setTimeout(r, 900));
     }
+
+    // All done — hide loading screen, show summary log
+    stopRadar();
+    if (brgLoadOverlay) brgLoadOverlay.style.display = 'none';
+    const loadEl2 = document.getElementById('loading');
+    if (loadEl2) loadEl2.style.display = 'none';
+    document.getElementById('savedTranscriptsList').style.display = '';
 
     clearInterval(_tickInterval);
     const totalSec = (Date.now() - runStart) / 1000;
@@ -2993,6 +3027,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     elapsedEl.textContent   = fmtSecs(totalSec);
     labelEl.textContent = `Complete — ${succeeded} succeeded${failed ? ', ' + failed + ' failed' : ''}`;
     fracEl.textContent  = `${done} / ${total}`;
+    barEl.style.width   = '100%';
+    progEl.style.display = 'block';
     doneBtn.style.display = 'block';
     brgLog(`── Bulk re-grade complete: ${succeeded}/${total} updated in ${fmtSecs(totalSec)} ──`, succeeded === total ? 'ok' : 'err');
   }
@@ -3045,6 +3081,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         if (_brgAB) _brgAB.style.display = 'none';
         document.getElementById('savedTranscriptsList').style.display = '';
         document.getElementById('brgDoneBtn').style.display = 'none';
+        const _brgLO = document.getElementById('brgLoadOverlay');
+        if (_brgLO) _brgLO.style.display = 'none';
+        const _loadEl = document.getElementById('loading');
+        if (_loadEl) _loadEl.style.display = 'none';
+        stopRadar();
         document.getElementById('brgProgBar').style.width = '0%';
         document.getElementById('brgLog').innerHTML = '';
         document.getElementById('brgSelectAll').checked = false;

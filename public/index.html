@@ -405,6 +405,20 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
             </div>
           </div>
         </div>
+        <!-- Bulk re-grade overlay (hidden during normal grading) -->
+        <div id="brgLoadOverlay" style="display:none;margin:0 auto 0;width:100%;max-width:340px;padding:10px 0 0;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <span style="font-family:var(--siren-font-hud);font-size:9px;font-weight:700;letter-spacing:.14em;color:#e8a020;border:1px solid rgba(232,160,32,.4);padding:2px 7px;border-radius:3px;">BATCH RE-GRADE</span>
+            <span id="brgLoadName" style="font-family:var(--siren-font-hud);font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;">
+              <div id="brgLoadBar" style="height:100%;width:0%;background:linear-gradient(90deg,#e8a020,#f59e0b);border-radius:2px;transition:width .4s ease;"></div>
+            </div>
+            <span id="brgLoadCounter" style="font-family:var(--siren-font-hud);font-size:10px;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;"></span>
+          </div>
+        </div>
+
         <!-- footer -->
         <div class="load-hud-footer">
           <div class="load-footer-text">Sales Intelligence &nbsp;·&nbsp; Review &nbsp;·&nbsp; Enablement &nbsp;·&nbsp; Network</div>
