@@ -482,7 +482,7 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
   }
 
   function forgeUpdateTemplateTitles() {
-    const active = document.querySelector('.forge-template-card.selected .forge-template-name');
+    const active = document.querySelector('.forge-template-card.selected .forge-tpl-name, .forge-template-card.selected .forge-template-name');
     const name = active ? active.textContent : 'CALL BRIEF';
     const mode = forgeGetMode();
     const audienceSuffix = mode === 'call-brief' ? ` · ${_forgeBriefAudience === 'client' ? 'CLIENT' : 'INTERNAL'}` : '';

@@ -453,42 +453,55 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
       <div class="forge-coming-pill">EARLY DESIGN — HUBSPOT PENDING</div>
     </div>
 
+    <!-- Context bar — Account → Call → Stage → Score -->
+    <div class="forge-context-bar">
+      <div class="forge-ctx-group">
+        <div class="forge-ctx-label">ACCOUNT</div>
+        <select class="forge-select forge-ctx-select" id="forgeAccountSelect" onchange="forgeSelectAccount(this.value)">
+          <option value="">— Select account —</option>
+        </select>
+      </div>
+      <div id="forgeCallPickerWrap" style="display:none;">
+        <div class="forge-ctx-sep"></div>
+        <div class="forge-ctx-group">
+          <div class="forge-ctx-label">CALL</div>
+          <select class="forge-select forge-ctx-select" id="forgeCallSelect" onchange="forgeSelectCall(this.value)"></select>
+        </div>
+      </div>
+      <div id="forgeContextPanel" style="display:none;">
+        <div class="forge-ctx-sep"></div>
+        <div class="forge-ctx-group">
+          <div class="forge-ctx-label">STAGE</div>
+          <div class="forge-stage-row">
+            <div class="forge-stage-dot" id="forgeStageDot" style="background:#4a9eff;"></div>
+            <div>
+              <div class="forge-stage-label" id="forgeStageLabel">—</div>
+              <div class="forge-stage-sub" id="forgeCallCount"></div>
+            </div>
+          </div>
+        </div>
+        <div class="forge-ctx-sep"></div>
+        <div class="forge-ctx-group">
+          <div class="forge-ctx-label">SCORE</div>
+          <div id="forgeScoreDisplay" style="font-family:var(--siren-font-hud);font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--siren-text-primary);">—</div>
+        </div>
+      </div>
+    </div>
+
     <div class="forge-grid">
 
       <!-- ── Left rail ── -->
       <div class="forge-rail">
 
-        <!-- Account + Stage selector -->
-        <div class="forge-panel">
+        <!-- Open Items from VIGIL — shown when account has open tasks -->
+        <div class="forge-panel" id="forgeOpenItemsPanel" style="display:none;">
           <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Deal Context</span>
+            <span class="forge-panel-title">Open Items · VIGIL</span>
           </div>
-          <div class="forge-panel-body">
-            <div class="forge-field-label">ACCOUNT</div>
-            <select class="forge-select" id="forgeAccountSelect" onchange="forgeSelectAccount(this.value)">
-              <option value="">— Select account —</option>
-            </select>
-            <div id="forgeCallPickerWrap" style="display:none;">
-              <div class="forge-field-label" style="margin-top:8px;">CALL</div>
-              <select class="forge-select" id="forgeCallSelect" onchange="forgeSelectCall(this.value)"></select>
-            </div>
-            <div id="forgeContextPanel" style="display:none;">
-              <div style="height:1px;background:var(--siren-border);margin:8px 0;"></div>
-              <div class="forge-field-label">STAGE</div>
-              <div class="forge-stage-row" style="margin-bottom:6px;">
-                <div class="forge-stage-dot" id="forgeStageDot" style="background:#4a9eff;"></div>
-                <div>
-                  <div class="forge-stage-label" id="forgeStageLabel">—</div>
-                  <div class="forge-stage-sub" id="forgeCallCount">—</div>
-                </div>
-              </div>
-              <div class="forge-field-label">SCORE</div>
-              <div id="forgeScoreDisplay" style="font-family:var(--siren-font-hud);font-size:20px;font-weight:700;letter-spacing:.04em;">—</div>
-            </div>
-          </div>
+          <div class="forge-panel-body" id="forgeOpenItemsBody"></div>
         </div>
 
-        <!-- Signals from grading data -->
+        <!-- Call Signals + Deal Snapshot -->
         <div class="forge-panel">
           <div class="forge-panel-hdr">
             <span class="forge-panel-title" id="forgeSignalsTitle">Call Signals</span>
@@ -498,68 +511,34 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           </div>
         </div>
 
-        <!-- HubSpot integration status -->
-        <!-- Open Items from VIGIL -->
-        <div class="forge-panel" id="forgeOpenItemsPanel" style="display:none;">
-          <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Open Items · VIGIL</span>
-          </div>
-          <div class="forge-panel-body" id="forgeOpenItemsBody">
-          </div>
-        </div>
-
-        <div class="forge-panel">
-          <div class="forge-panel-hdr">
-            <span class="forge-panel-title">CRM Integration</span>
-          </div>
-          <div class="forge-panel-body">
-            <div class="forge-hs-badge">
-              <svg class="forge-hs-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.5 7.5C17.5 9.43 15.93 11 14 11s-3.5-1.57-3.5-3.5S12.07 4 14 4s3.5 1.57 3.5 3.5z" fill="rgba(255,122,89,.4)"/><path d="M14 12.5v3M9.5 16a4.5 4.5 0 0 0 9 0" stroke="rgba(255,122,89,.4)" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="17" r="2.5" stroke="rgba(255,122,89,.4)" stroke-width="1.5"/><path d="M6 14.5V9" stroke="rgba(255,122,89,.4)" stroke-width="1.5" stroke-linecap="round"/></svg>
-              <div class="forge-hs-text">
-                <strong>HUBSPOT — NOT CONNECTED</strong><br>
-                Stage sync, deal push, and sequence triggers will activate on connect.
-              </div>
-            </div>
-            <div class="forge-int-cta">Connect HubSpot → Coming Soon</div>
-          </div>
-        </div>
-
       </div>
 
       <!-- ── Main canvas ── -->
       <div class="forge-main">
 
-        <!-- Report template picker -->
-        <div class="forge-panel">
-          <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Report Template</span>
-            <span style="font-size:10px;color:var(--siren-text-muted);">Select a format to generate</span>
-          </div>
-          <div class="forge-panel-body" style="padding-bottom:14px;">
-            <div style="font-family:var(--siren-font-hud);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:8px;">Built-in</div>
+        <!-- Unified workspace: template tabs + toolbar + editor -->
+        <div class="forge-report-preview">
 
-            <div class="forge-template-row">
-              <div class="forge-template-card selected" data-builtin="call-brief">
-                <div class="forge-template-icon">📋</div>
-                <div class="forge-template-name">CALL BRIEF</div>
-                <div class="forge-template-desc">Post-call summary with score, highlights, and next steps for internal review.</div>
-              </div>
-              <div class="forge-template-card" data-builtin="follow-up">
-                <div class="forge-template-icon">📬</div>
-                <div class="forge-template-name">FOLLOW-UP EMAIL</div>
-                <div class="forge-template-desc">Personalized follow-up draft tailored to stage, pain points, and open questions.</div>
-              </div>
-              <div class="forge-template-card" data-builtin="exec-summary">
-                <div class="forge-template-icon">📊</div>
-                <div class="forge-template-name">EXEC SUMMARY</div>
-                <div class="forge-template-desc">Board-ready deal summary with SPICED status and risk indicators.</div>
-              </div>
+          <!-- Template tab strip -->
+          <div class="forge-tpl-strip">
+            <div class="forge-template-card selected" data-builtin="call-brief">
+              <span class="forge-tpl-icon">📋</span>
+              <span class="forge-tpl-name">CALL BRIEF</span>
+              <span class="forge-tpl-desc">Post-call summary with score, highlights &amp; next steps.</span>
+            </div>
+            <div class="forge-template-card" data-builtin="follow-up">
+              <span class="forge-tpl-icon">📬</span>
+              <span class="forge-tpl-name">FOLLOW-UP EMAIL</span>
+              <span class="forge-tpl-desc">Personalized draft tailored to stage and open questions.</span>
+            </div>
+            <div class="forge-template-card" data-builtin="exec-summary">
+              <span class="forge-tpl-icon">📊</span>
+              <span class="forge-tpl-name">EXEC SUMMARY</span>
+              <span class="forge-tpl-desc">Board-ready summary with SPICED status and risk indicators.</span>
             </div>
           </div>
-        </div>
 
-        <!-- Report preview / editor -->
-        <div class="forge-report-preview">
+          <!-- Toolbar -->
           <div class="forge-report-toolbar">
             <span class="forge-report-toolbar-title" id="forgeReportTitle">⬡ &nbsp;CALL BRIEF — PREVIEW</span>
             <div class="forge-audience-toggle" id="forgeAudienceToggle" style="display:none;">
