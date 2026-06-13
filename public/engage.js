@@ -593,6 +593,25 @@
     return `Grade all 7 dimensions: Discovery & needs confirmation (20 pts), Value framing (15 pts), Demo delivery (10 pts — SE only, award 0 for AE/SDR/AM/Manager), Executive presence & strategic positioning (10 pts — Manager/Executive only, award 0 for all others), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts). AE ceiling: 90 pts. SE ceiling: 74 pts. Manager ceiling: 80 pts. All normalized to 0–100.`;
   }
 
+  function buildDemoEdgeCaseGuidance() {
+    return `
+DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
+
+1. UNSCHEDULED DEMO (demo performed during a non-demo call stage):
+   If the transcript shows a product demo was actually conducted despite the meeting type being Discovery, Cold Outreach, Touchpoint, or similar — override the stage ceiling for Demo Delivery only. Set max to 10 and grade it at full weight. Note clearly in the Demo Delivery feedback that an unscheduled demo was conducted and that grading reflects actual call content.
+
+2. SCHEDULED DEMO NOT DELIVERED (demo/solution stage but no demo occurred):
+   Determine WHY the demo did not happen using all available transcript context, then apply the appropriate rule:
+
+   a. EXTERNAL CIRCUMSTANCE — not the rep's fault (examples: prospect's technical resource or required attendee failed to show up, prospect did not brief the right stakeholders, connectivity/technical failure outside rep control, prospect ran out of time due to their own agenda):
+      → Set Demo Delivery max to 0. Write feedback explaining the specific external circumstance that prevented the demo. Do NOT penalize the rep's score for factors outside their control.
+
+   b. REP FAILURE — rep is responsible (examples: rep failed to confirm attendees before the call, lost the prospect's interest through poor discovery or objection handling before demo, was unprepared to present, or prospect explicitly declined due to rep's failure to establish need):
+      → Keep Demo Delivery at its normal max. Score 0 and write specific feedback identifying exactly how the rep's actions or inactions caused the demo not to occur. Treat this as a significant coaching opportunity.
+
+   If the transcript is ambiguous and fault cannot be clearly attributed, default to external circumstance (set max to 0 with a note that context was unclear).`;
+  }
+
   function buildHistoryContext(prospect, rep) {
     const history = loadHistory();
     if (!history.length) return '';
@@ -1060,6 +1079,7 @@ ${buildLibraryPrompt()}${buildDocsPrompt()}${buildHistoryContext(prospect, rep)}
 You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
 
 ${buildStageWeighting()}
+${buildDemoEdgeCaseGuidance()}
 
 Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:
 A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%
@@ -3047,7 +3067,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const prompt = `You are an expert sales coach specializing in MSSP and B2B security sales.\n\n` +
       `${buildLibraryPrompt()}${buildDocsPrompt()}` +
       `\n\nYou are grading a ${stage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}\n\n` +
-      `${buildStageWeighting()}\n\n` +
+      `${buildStageWeighting()}\n` +
+      `${buildDemoEdgeCaseGuidance()}\n\n` +
       `Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:\n` +
       `A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%\n` +
       `Overall call max (stage ceiling, 7 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.\n\n` +
