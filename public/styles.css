@@ -1731,6 +1731,11 @@
   .hist-scores-body.open { display: block; }
   .hist-delete-btn { font-size: 12px; color: var(--siren-text-faint); background: none; border: none; cursor: pointer; padding: 4px 0; text-decoration: underline; }
   .hist-delete-btn:hover { color: var(--siren-danger-red); }
+  .hist-regrade-btn { background: rgba(0,200,255,.1); border: 1px solid rgba(0,200,255,.28); color: #00c8ff; font-family: var(--siren-font-hud); font-size: 11px; font-weight: 700; letter-spacing: .05em; padding: 5px 13px; border-radius: 6px; cursor: pointer; }
+  .hist-regrade-btn:hover:not(:disabled) { background: rgba(0,200,255,.18); }
+  .hist-regrade-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .hist-regrade-btn-active { border-color: rgba(0,200,255,.5); animation: regradeGlow 1.2s ease-in-out infinite alternate; }
+  @keyframes regradeGlow { from { box-shadow: 0 0 0 rgba(0,200,255,0); } to { box-shadow: 0 0 8px rgba(0,200,255,.35); } }
   .hist-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 1.25rem; }
   .hist-sort-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .hist-sort-btn {

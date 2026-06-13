@@ -2135,6 +2135,148 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     }
   }
 
+  async function regradeFromHistory(id, e) {
+    e && e.stopPropagation();
+    const btn = document.getElementById('hist-regrade-' + id);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Grading…'; btn.classList.add('hist-regrade-btn-active'); }
+
+    try {
+      // 1. Load transcript
+      const tRes = await fetch('/api/transcripts/' + encodeURIComponent(String(id)));
+      if (!tRes.ok) throw new Error('No saved transcript for this entry — use Resubmit to re-grade manually.');
+      const tData = await tRes.json();
+
+      const tProspect = tData.prospect || '';
+      const tStage    = tData.stage    || '';
+      const tCallDate = tData.call_date || '';
+      const tRepName  = tData.rep      || '';
+      const team      = loadTeam();
+      const tRepObj   = team.find(m => m.name && m.name.toLowerCase() === tRepName.toLowerCase()) || null;
+
+      // 2. Build prompt under the transcript's stage
+      const prevStage = selectedStage;
+      selectedStage   = tStage;
+      const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage);
+      const context = [
+        tRepObj  ? 'Primary rep: ' + tRepObj.name + ' (' + tRepObj.role + ')' : (tRepName ? 'Primary rep: ' + tRepName : ''),
+        team.length ? 'OneAxiom sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
+        tProspect ? 'Prospect: ' + tProspect   : '',
+        tCallDate ? 'Call date: ' + tCallDate   : '',
+        tStage    ? 'Call stage: ' + tStage     : '',
+      ].filter(Boolean).join(' | ');
+
+      if (btn) btn.textContent = '⏳ Calling Claude…';
+
+      // 3. Stream grading
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 8192,
+          temperature: 0,
+          stream: true,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: context + '\n\n' + tData.transcript }],
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'API error ' + resp.status);
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '', accumulated = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(payload);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') accumulated += ev.delta.text;
+          } catch {}
+        }
+      }
+
+      selectedStage = prevStage;
+
+      // 4. Parse and normalize
+      let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+      const parsed = JSON.parse(raw);
+      normalizeResult(parsed, tRepObj);
+
+      // 5. Re-render results HTML (same as renderResults but store-only path)
+      const rep = tRepObj || (tRepName ? { name: tRepName, role: '' } : null);
+      renderResults(parsed, tProspect, '', rep, tCallDate, tData.transcript, []);
+
+      // 6. Grab the newly rendered HTML and update the history record in-place
+      const newHtml = document.getElementById('results')?.innerHTML || '';
+      const updatedRecord = {
+        id: String(id),
+        ts: new Date().toISOString(),
+        callDate: tCallDate,
+        rep: tRepObj ? tRepObj.name : tRepName,
+        repRole: tRepObj ? tRepObj.role : '',
+        prospect: tProspect,
+        stage: tStage,
+        total: parsed.total,
+        normalized_score: parsed.normalized_score ?? parsed.total,
+        letter_grade: parsed.letter_grade,
+        grade_label: parsed.grade_label || '',
+        top_strength: parsed.top_strength || '',
+        top_priority: parsed.top_priority || '',
+        resultsHtml: newHtml,
+        rep_scores: (parsed.rep_scores && parsed.rep_scores.length) ? parsed.rep_scores : undefined,
+        partner_scores: (parsed.partner_scores && parsed.partner_scores.length) ? parsed.partner_scores : undefined,
+        spiced: parsed.spiced || undefined,
+        is_demo: false,
+      };
+
+      await fetch('/api/history/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([updatedRecord]),
+      });
+
+      // 7. Update cache and re-render the history card
+      const cacheIdx = _histCache.findIndex(h => String(h.id) === String(id));
+      if (cacheIdx !== -1) Object.assign(_histCache[cacheIdx], updatedRecord);
+      else _histCache.unshift(updatedRecord);
+
+      // Hide results panel (renderResults made it visible), restore history view
+      document.getElementById('results').style.display = 'none';
+      document.getElementById('inputCard').style.display = 'block';
+
+      // Refresh just this card in the DOM
+      const cardEl = document.getElementById('hist-' + id);
+      if (cardEl) {
+        const newCardHtml = buildHistCard(_histCache[cacheIdx !== -1 ? cacheIdx : 0], histSort !== 'company');
+        const tmp = document.createElement('div');
+        tmp.innerHTML = newCardHtml;
+        cardEl.replaceWith(tmp.firstElementChild);
+        // Re-open the expanded body
+        const newCard = document.getElementById('hist-' + id);
+        if (newCard) {
+          const body = newCard.querySelector('.hist-card-body');
+          if (body) body.style.display = 'block';
+          const chev = newCard.querySelector('.hist-card-chevron');
+          if (chev) chev.style.transform = 'rotate(180deg)';
+        }
+      }
+
+    } catch (err) {
+      alert('Re-grade failed: ' + err.message);
+      if (btn) { btn.disabled = false; btn.textContent = '↺ Re-grade'; btn.classList.remove('hist-regrade-btn-active'); }
+    }
+  }
+
   window.renderSavedTranscripts = async function() {
     const el = document.getElementById('savedTranscriptsList');
     if (!el) return;
@@ -2314,8 +2456,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${h.id})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
           </div>
-          <div style="display:flex;gap:6px;">
-            <button class="pdf-btn pdf-btn-sm" onclick="resubmitTranscript(${h.id},event)" title="Re-grade using saved transcript">&#8635; Resubmit</button>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="hist-regrade-btn" id="hist-regrade-${h.id}" onclick="regradeFromHistory('${h.id}',event)">&#8635; Re-grade</button>
             <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${h.id});event.stopPropagation()">&#8595; PDF</button>
             <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
           </div>
