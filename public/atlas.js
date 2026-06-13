@@ -957,35 +957,90 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
     const techstack   = prof.techstack    || [];
     const champion    = prof.champion;
 
-    _lcNodes.forEach(nd => {
-      switch (nd.type) {
-        case 'contact':
-          nd.hasData  = contacts.length > 0;
-          nd.label    = contacts.length    ? contacts[0].name    : 'Key Contact';
-          nd.sublabel = contacts.length > 1 ? `+${contacts.length-1} more` : (contacts[0]?.title || 'Decision maker');
-          break;
-        case 'champion':
-          nd.hasData  = !!champion;
-          nd.label    = champion ? champion.name : 'Champion';
-          nd.sublabel = champion ? (champion.title || 'Internal ally') : 'Internal ally';
-          break;
-        case 'stakeholder':
-          nd.hasData  = stakeholders.length > 0;
-          nd.label    = stakeholders.length    ? stakeholders[0].name    : 'Stakeholder';
-          nd.sublabel = stakeholders.length > 1 ? `+${stakeholders.length-1} more` : (stakeholders[0]?.title || 'Evaluator / IT');
-          break;
-        case 'competitor':
-          nd.hasData  = competitors.length > 0;
-          nd.label    = competitors.length    ? competitors[0]    : 'Competitor';
-          nd.sublabel = competitors.length > 1 ? `+${competitors.length-1} more` : 'Competing solution';
-          break;
-        case 'techstack':
-          nd.hasData  = techstack.length > 0;
-          nd.label    = techstack.length    ? techstack[0]    : 'Tech Stack';
-          nd.sublabel = techstack.length > 1 ? `+${techstack.length-1} more` : 'Existing tooling';
-          break;
-      }
-    });
+    // ── Helper: fan N nodes around a center position ───────────────
+    // axis: 'v' = vertical spread, 'h' = horizontal spread
+    function fanPos(cx, cy, count, axis, gap) {
+      if (count <= 1) return [{ x: cx, y: cy }];
+      const total = (count - 1) * gap;
+      return Array.from({ length: count }, (_, i) => ({
+        x: cx + (axis === 'h' ? (i * gap - total / 2) : 0),
+        y: cy + (axis === 'v' ? (i * gap - total / 2) : 0),
+      }));
+    }
+
+    // ── Remove & rebuild dynamic-count node types ──────────────────
+    const dynamic = new Set(['contact','stakeholder','competitor','techstack']);
+    _lcNodes = _lcNodes.filter(n => !dynamic.has(n.type));
+    _lcEdges = _lcEdges.filter(e =>
+      !e.to.startsWith('con-') && !e.to.startsWith('stake-') &&
+      !e.to.startsWith('comp-') && !e.to.startsWith('tech-') &&
+      e.to !== 'ph-con' && e.to !== 'ph-stake' &&
+      e.to !== 'ph-comp' && e.to !== 'ph-tech'
+    );
+
+    // ── Contacts — left cluster, fan vertically ────────────────────
+    if (contacts.length === 0) {
+      _lcNodes.push({ id:'ph-con', type:'contact', x:-210, y:-90, label:'Key Contact', sublabel:'Decision maker', ph:true, hasData:false });
+      _lcEdges.push({ from:'account', to:'ph-con', style:'dashed' });
+    } else {
+      const gap = Math.min(75, Math.max(50, 180 / contacts.length));
+      fanPos(-210, -90, contacts.length, 'v', gap).forEach((pos, i) => {
+        const id = `con-${i}`;
+        _lcNodes.push({ id, type:'contact', x:pos.x, y:pos.y, label:contacts[i].name||'Contact', sublabel:contacts[i].title||'Decision maker', ph:true, hasData:true });
+        _lcEdges.push({ from:'account', to:id, style:'dashed' });
+      });
+    }
+
+    // ── Stakeholders — far-left cluster, fan vertically ───────────
+    const conIds = _lcNodes.filter(n => n.type === 'contact').map(n => n.id);
+    if (stakeholders.length === 0) {
+      _lcNodes.push({ id:'ph-stake', type:'stakeholder', x:-370, y:0, label:'Stakeholder', sublabel:'Evaluator / IT', ph:true, hasData:false });
+      _lcEdges.push({ from: conIds[0] || 'account', to:'ph-stake', style:'dashed' });
+    } else {
+      const gap = Math.min(75, Math.max(50, 180 / stakeholders.length));
+      fanPos(-370, 0, stakeholders.length, 'v', gap).forEach((pos, i) => {
+        const id = `stake-${i}`;
+        _lcNodes.push({ id, type:'stakeholder', x:pos.x, y:pos.y, label:stakeholders[i].name||'Stakeholder', sublabel:stakeholders[i].title||'Evaluator', ph:true, hasData:true });
+        _lcEdges.push({ from: conIds[i] || conIds[0] || 'account', to:id, style:'dashed' });
+      });
+    }
+
+    // ── Competitors — bottom-left, fan horizontally ────────────────
+    if (competitors.length === 0) {
+      _lcNodes.push({ id:'ph-comp', type:'competitor', x:-20, y:200, label:'Competitor', sublabel:'Competing solution', ph:true, hasData:false });
+      _lcEdges.push({ from:'account', to:'ph-comp', style:'dashed' });
+    } else {
+      const gap = Math.min(110, Math.max(70, 300 / competitors.length));
+      fanPos(-20, 200, competitors.length, 'h', gap).forEach((pos, i) => {
+        const id = `comp-${i}`;
+        const label = typeof competitors[i] === 'string' ? competitors[i] : (competitors[i]?.name || 'Competitor');
+        _lcNodes.push({ id, type:'competitor', x:pos.x, y:pos.y, label, sublabel:'Competing solution', ph:true, hasData:true });
+        _lcEdges.push({ from:'account', to:id, style:'dashed' });
+      });
+    }
+
+    // ── Tech Stack — bottom-right, fan horizontally ────────────────
+    if (techstack.length === 0) {
+      _lcNodes.push({ id:'ph-tech', type:'techstack', x:180, y:200, label:'Tech Stack', sublabel:'Existing tooling', ph:true, hasData:false });
+      _lcEdges.push({ from:'account', to:'ph-tech', style:'dashed' });
+    } else {
+      const gap = Math.min(110, Math.max(70, 300 / techstack.length));
+      fanPos(180, 200, techstack.length, 'h', gap).forEach((pos, i) => {
+        const id = `tech-${i}`;
+        const label = typeof techstack[i] === 'string' ? techstack[i] : (techstack[i]?.name || 'Tool');
+        _lcNodes.push({ id, type:'techstack', x:pos.x, y:pos.y, label, sublabel:'Existing tooling', ph:true, hasData:true });
+        _lcEdges.push({ from:'account', to:id, style:'dashed' });
+      });
+    }
+
+    // ── Champion — single node, update in place ────────────────────
+    const champNode = _lcNodes.find(n => n.type === 'champion');
+    if (champNode) {
+      champNode.hasData  = !!champion;
+      champNode.label    = champion ? champion.name : 'Champion';
+      champNode.sublabel = champion ? (champion.title || 'Internal ally') : 'Internal ally';
+    }
+
     drawLcGraph();
   }
 
