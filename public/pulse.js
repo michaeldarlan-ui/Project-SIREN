@@ -377,11 +377,13 @@
     if (score >= 80 && spicedPct >= 60 && momentumColor !== '#ef4444') { healthLabel = 'Strong';   healthColor = '#22c55e'; }
     else if (score >= 65 && spicedPct >= 40)                            { healthLabel = 'Moderate'; healthColor = '#e8a020'; }
     else                                                                  { healthLabel = 'At Risk';  healthColor = '#ef4444'; }
-    // Cadence
-    const lastDate  = h.callDate ? new Date(h.callDate + 'T12:00:00') : new Date(h.ts);
-    const daysSince = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
+    // Cadence — compare plain date strings as UTC midnight to avoid timezone drift
+    const callDateStr = h.callDate || h.ts.slice(0, 10);
+    const callUTC  = new Date(callDateStr + 'T00:00:00Z').getTime();
+    const todayUTC = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime();
+    const daysSince = Math.round((todayUTC - callUTC) / 86400000);
     const cadenceColor = daysSince > 14 ? '#ef4444' : daysSince > 7 ? '#e8a020' : '#22c55e';
-    const cadenceLabel = daysSince === 0 ? 'Today' : daysSince === 1 ? '1 day ago' : `${daysSince} days ago`;
+    const cadenceLabel = new Date(callDateStr + 'T00:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     // Stage velocity + deal age
     const callsAtStage = hist.filter(c => c.stage === h.stage).length;
     const oldest   = hist[hist.length - 1];
@@ -416,7 +418,7 @@
           ${h.top_priority  ? row('▼','Top Gap',      '', '#e8a020', escHtml(h.top_priority))  : ''}
           ${spicedGaps.length ? row('◌','SPICED Gaps', '', '#e8a020', spicedGaps.join(' · ')) : row('◌','SPICED Gaps','None','#22c55e')}
           ${weakestDim      ? row('↘','Weakest Dim',  weakestDim, '#ef4444', `${weakestScore}/100`) : ''}
-          ${daysSince > 14  ? row('⚑','Cadence Risk', 'Stale', '#ef4444', `No call in ${daysSince} days`) : ''}
+          ${daysSince > 14  ? row('⚑','Cadence Risk', `${daysSince}d ago`, '#ef4444', `No call in ${daysSince} days`) : ''}
           ${h.top_strength  ? row('▲','Strength',     '', '#22c55e', escHtml(h.top_strength)) : ''}
         </div>
       </div>`;
@@ -522,7 +524,11 @@
           </div>
         </div>
         <div class="pulse-feed-body">
-          <div class="pulse-feed-cols">
+          <div class="pulse-feed-deal-intel">
+            <div class="pulse-feed-sub-title" style="margin-bottom:10px;">Deal Intel</div>
+            ${vigilBuildDealIntel(a.latest, a.calls)}
+          </div>
+          <div class="pulse-feed-cols" style="margin-top:16px;">
             <div>
               <div class="pulse-feed-sub-title">Next Steps</div>
               ${stepsHtml}
@@ -535,10 +541,6 @@
               <div class="pulse-feed-sub-title">Recommended Deliverables</div>
               ${delivHtml || '<div style="font-size:12px;color:rgba(255,255,255,.25);">None suggested.</div>'}
             </div>
-          </div>
-          <div class="pulse-feed-deal-intel">
-            <div class="pulse-feed-sub-title" style="margin-top:16px;margin-bottom:10px;">Deal Intel</div>
-            ${vigilBuildDealIntel(a.latest, a.calls)}
           </div>
         </div>
       </div>`;
