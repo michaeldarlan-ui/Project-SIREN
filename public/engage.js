@@ -2862,23 +2862,25 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   let _lcEdges          = [];
   let _lcSelId          = null;
   let _lcCallsCollapsed       = false;
-  let _lcContactsCollapsed    = false;
-  let _lcStakeholdersCollapsed= false;
-  let _lcCompetitorsCollapsed = false;
-  let _lcTechstackCollapsed   = false;
+  let _lcPeopleExpanded      = true;
+  let _lcCompetitionExpanded = true;
+  let _lcTechnologyExpanded  = true;
   let _lcAllEntries     = [];   // full entry list, preserved across collapse
   let _lcCompany        = '';
 
   const NODE_DEFS = {
-    account:       { color: '#061824', ring: '#00c8ff', r: 40, label: 'ACCOUNT' },
-    call:          { color: '#061824', ring: '#00c8ff', r: 30, label: 'CALL' },
-    'calls-summary': { color: '#061824', ring: '#00c8ff', r: 38, label: 'ALL CALLS' },
-    contact:       { color: '#1f1510', ring: '#e8a020', r: 26, label: 'CONTACT',     ph: true },
-    champion:      { color: '#061824', ring: '#00c8ff', r: 26, label: 'CHAMPION',    ph: true },
-    opportunity:   { color: '#081428', ring: '#4a9eff', r: 26, label: 'OPPORTUNITY', ph: true },
-    competitor:    { color: '#200a0a', ring: '#e05050', r: 26, label: 'COMPETITOR',  ph: true },
-    techstack:     { color: '#130d20', ring: '#9b59b6', r: 26, label: 'TECH STACK',  ph: true },
-    stakeholder:   { color: '#1f1510', ring: '#e8a020', r: 26, label: 'STAKEHOLDER', ph: true },
+    account:           { color: '#061824', ring: '#00c8ff', r: 40, label: 'ACCOUNT' },
+    call:              { color: '#061824', ring: '#00c8ff', r: 30, label: 'CALL' },
+    'calls-summary':   { color: '#061824', ring: '#00c8ff', r: 38, label: 'ALL CALLS' },
+    contact:           { color: '#1f1510', ring: '#e8a020', r: 24, label: 'CONTACT',     ph: true },
+    champion:          { color: '#0a1428', ring: '#00c8ff', r: 24, label: 'CHAMPION',    ph: true },
+    opportunity:       { color: '#081428', ring: '#4a9eff', r: 26, label: 'OPPORTUNITY', ph: true },
+    competitor:        { color: '#200a0a', ring: '#e05050', r: 24, label: 'COMPETITOR',  ph: true },
+    techstack:         { color: '#130d20', ring: '#9b59b6', r: 24, label: 'TECH STACK',  ph: true },
+    stakeholder:       { color: '#1f1510', ring: '#e8a020', r: 24, label: 'STAKEHOLDER', ph: true },
+    'cat-people':      { color: '#1a1008', ring: '#e8a020', r: 30, label: 'PEOPLE' },
+    'cat-competition': { color: '#1a0505', ring: '#e05050', r: 30, label: 'COMPETITION' },
+    'cat-technology':  { color: '#0d0818', ring: '#9b59b6', r: 30, label: 'TECHNOLOGY' },
   };
 
   const PH_SYMBOLS = { opportunity:'◆', champion:'★', contact:'◉', competitor:'✕', techstack:'⬡', stakeholder:'◈' };

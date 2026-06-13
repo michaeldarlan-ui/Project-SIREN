@@ -55,36 +55,36 @@
     _lcNodes = []; _lcEdges = [];
     _lcAllEntries = entries;
     _lcCompany    = company;
-    _lcT = { x: 0, y: 0, s: 1 }; // reset transform so lcFit always starts clean
+    _lcT = { x: 0, y: 0, s: 1 };
 
-    // Account hub (center-left)
+    // Account hub (center)
     const shortName = company.length > 14 ? company.slice(0,13)+'…' : company;
     _lcNodes.push({ id:'account', type:'account', x:0, y:0, label:shortName, sublabel:company });
 
-    // Placeholder assets around hub
-    _lcNodes.push({ id:'ph-opp',   type:'opportunity', x:-20,  y:-200, label:'Opportunity',  sublabel:'Deal pipeline',   ph:true });
-    _lcNodes.push({ id:'ph-champ', type:'champion',    x:-210, y:90,   label:'Champion',     sublabel:'Internal ally',   ph:true });
-    _lcNodes.push({ id:'ph-con',   type:'contact',     x:-210, y:-90,  label:'Key Contact',  sublabel:'Decision maker',  ph:true });
-    _lcNodes.push({ id:'ph-stake', type:'stakeholder', x:-360, y:0,    label:'Stakeholder',  sublabel:'Evaluator / IT',  ph:true });
-    _lcEdges.push({ from:'account',  to:'ph-opp',   style:'dashed' });
-    _lcEdges.push({ from:'account',  to:'ph-champ', style:'dashed' });
-    _lcEdges.push({ from:'account',  to:'ph-con',   style:'dashed' });
-    _lcEdges.push({ from:'ph-con',   to:'ph-stake', style:'dashed' });
+    // Opportunity (top, static)
+    _lcNodes.push({ id:'cat-opp', type:'opportunity', x:-20, y:-210, label:'Opportunity', sublabel:'Deal pipeline', ph:true });
+    _lcEdges.push({ from:'account', to:'cat-opp', style:'dashed' });
 
+    // ── Category nodes ─────────────────────────────────────────────
+    _lcNodes.push({ id:'cat-people',      type:'cat-people',      x:-230, y:0,   label:'People',      sublabel:'Contacts & stakeholders', ph:true, catKey:'people' });
+    _lcNodes.push({ id:'cat-competition', type:'cat-competition', x:-90,  y:240, label:'Competition', sublabel:'Competing solutions',     ph:true, catKey:'competition' });
+    _lcNodes.push({ id:'cat-technology',  type:'cat-technology',  x:170,  y:240, label:'Technology',  sublabel:'Existing tooling',        ph:true, catKey:'technology' });
+    _lcEdges.push({ from:'account', to:'cat-people',      style:'dashed' });
+    _lcEdges.push({ from:'account', to:'cat-competition', style:'dashed' });
+    _lcEdges.push({ from:'account', to:'cat-technology',  style:'dashed' });
+
+    // ── Call nodes (right) ─────────────────────────────────────────
     if (_lcCallsCollapsed && entries.length > 0) {
-      // Single summary node
-      const scores   = entries.map(h => h.total||0).filter(s => s > 0);
-      const avgScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
-      const grades   = entries.map(h => h.letter_grade||'?');
-      const bestGrade = grades.sort((a,b)=>['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(a)-['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(b))[0]||'?';
+      const scores    = entries.map(h => h.total||0).filter(s => s > 0);
+      const avgScore  = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+      const grades    = entries.map(h => h.letter_grade||'?');
+      const bestGrade = [...grades].sort((a,b)=>['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(a)-['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(b))[0]||'?';
       _lcNodes.push({ id:'calls-summary', type:'calls-summary', x:220, y:0,
         label: bestGrade + ' · ' + avgScore,
         sublabel: entries.length + (entries.length===1?' call':' calls'),
-        summaryData: { entries, avgScore, grades },
-        ringColor: gradeRingColor(bestGrade) });
+        summaryData: { entries, avgScore, grades }, ringColor: gradeRingColor(bestGrade) });
       _lcEdges.push({ from:'account', to:'calls-summary', style:'solid', arrow:'teal' });
     } else {
-      // Call nodes chained chronologically to the right
       const n = entries.length;
       entries.forEach((h, i) => {
         const t  = n === 1 ? 0.5 : i / (n - 1);
@@ -93,21 +93,14 @@
         const ds = h.callDate
           ? new Date(h.callDate+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'})
           : new Date(h.ts).toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'});
-        _lcNodes.push({ id:'call-'+h.id, type:'call', x, y, label:h.letter_grade+' · '+h.total,
-          sublabel:stageAbbrev(h.stage||''), dateStr:ds, data:h, ringColor:gradeRingColor(h.letter_grade) });
+        _lcNodes.push({ id:'call-'+h.id, type:'call', x, y,
+          label:h.letter_grade+' · '+h.total, sublabel:stageAbbrev(h.stage||''), dateStr:ds,
+          data:h, ringColor:gradeRingColor(h.letter_grade) });
         _lcEdges.push({ from: i===0?'account':'call-'+entries[i-1].id, to:'call-'+h.id, style:'solid', arrow:'teal' });
       });
     }
 
-    // Competitor + Tech Stack rooted on the account node (below/above the left cluster)
-    _lcNodes.push({ id:'ph-comp', type:'competitor', x:-20,  y:200,  label:'Competitor', sublabel:'Competing solution', ph:true });
-    _lcNodes.push({ id:'ph-tech', type:'techstack',  x:180,  y:200,  label:'Tech Stack', sublabel:'Existing tooling',   ph:true });
-    _lcEdges.push({ from:'account', to:'ph-comp', style:'dashed' });
-    _lcEdges.push({ from:'account', to:'ph-tech', style:'dashed' });
-
-    // Reflect any saved profile data on initial render (also calls drawLcGraph)
     updateLcGraphNodes(company);
-    // Fit after a frame so the SVG has dimensions
     requestAnimationFrame(() => { requestAnimationFrame(lcFit); });
   }
 
@@ -118,10 +111,9 @@
     if (btn) btn.style.color = _lcCallsCollapsed ? '#00c8ff' : '';
     buildLcGraph(_lcAllEntries, _lcCompany);
   }
-  function toggleLcContacts()     { _lcContactsCollapsed     = !_lcContactsCollapsed;     _lcSelId=null; updateLcGraphNodes(_lcCompany); }
-  function toggleLcStakeholders() { _lcStakeholdersCollapsed = !_lcStakeholdersCollapsed; _lcSelId=null; updateLcGraphNodes(_lcCompany); }
-  function toggleLcCompetitors()  { _lcCompetitorsCollapsed  = !_lcCompetitorsCollapsed;  _lcSelId=null; updateLcGraphNodes(_lcCompany); }
-  function toggleLcTechstack()    { _lcTechstackCollapsed    = !_lcTechstackCollapsed;    _lcSelId=null; updateLcGraphNodes(_lcCompany); }
+  function toggleCatPeople()      { _lcPeopleExpanded      = !_lcPeopleExpanded;      _lcSelId=null; updateLcGraphNodes(_lcCompany); }
+  function toggleCatCompetition() { _lcCompetitionExpanded = !_lcCompetitionExpanded; _lcSelId=null; updateLcGraphNodes(_lcCompany); }
+  function toggleCatTechnology()  { _lcTechnologyExpanded  = !_lcTechnologyExpanded;  _lcSelId=null; updateLcGraphNodes(_lcCompany); }
 
   function drawLcGraph() {
     const root = document.getElementById('lcGraphRoot');
@@ -174,56 +166,53 @@
         nodeSvg += `<circle cx="${tx}" cy="${ty}" r="9" fill="#061824" stroke="#00c8ff" stroke-width="1.5" opacity="0.95" class="lc-collapse-toggle" style="cursor:pointer;"/>`;
         nodeSvg += `<text x="${tx}" y="${ty+1}" text-anchor="middle" dominant-baseline="middle" font-size="15" font-weight="700" fill="#00c8ff" font-family="system-ui,sans-serif" style="pointer-events:none;">${chevron}</text>`;
       }
-      // Per-type chevrons for contacts / stakeholders / competitors / techstack
-      const typeToggleMap = {
-        contacts:     { state: _lcContactsCollapsed,     fn: 'toggleLcContacts()',     color: '#e8a020' },
-        stakeholders: { state: _lcStakeholdersCollapsed, fn: 'toggleLcStakeholders()', color: '#e8a020' },
-        competitors:  { state: _lcCompetitorsCollapsed,  fn: 'toggleLcCompetitors()',  color: '#e05050' },
-        techstack:    { state: _lcTechstackCollapsed,    fn: 'toggleLcTechstack()',    color: '#9b59b6' },
+      // ── Category node collapse chevron (double-click hint + chevron button) ─
+      const catToggleMap = {
+        'cat-people':      { expanded: _lcPeopleExpanded,      fn: 'toggleCatPeople()',      color: '#e8a020' },
+        'cat-competition': { expanded: _lcCompetitionExpanded, fn: 'toggleCatCompetition()', color: '#e05050' },
+        'cat-technology':  { expanded: _lcTechnologyExpanded,  fn: 'toggleCatTechnology()',  color: '#9b59b6' },
       };
-      if (nd.collapseKey && nd.id.endsWith('-0')) {
-        const tm = typeToggleMap[nd.collapseKey];
-        if (tm) {
-          // Show chevron only if there are 2+ items in that cluster
-          const sibCount = _lcNodes.filter(n => n.collapseKey === nd.collapseKey).length;
-          if (sibCount > 1 || nd.collapseTotal > 1) {
-            const isH = nd.collapseKey === 'competitors' || nd.collapseKey === 'techstack';
-            const tx = isH ? nd.x : nd.x - r - 17;
-            const ty = isH ? nd.y - r - 17 : nd.y;
-            const chevron = tm.state ? '›' : '‹';
-            nodeSvg += `<circle cx="${tx}" cy="${ty}" r="9" fill="#061824" stroke="${tm.color}" stroke-width="1.5" opacity="0.95" class="lc-type-collapse" data-fn="${tm.fn}" style="cursor:pointer;"/>`;
-            nodeSvg += `<text x="${tx}" y="${ty+1}" text-anchor="middle" dominant-baseline="middle" font-size="15" font-weight="700" fill="${tm.color}" font-family="system-ui,sans-serif" style="pointer-events:none;">${chevron}</text>`;
-          }
-        }
+      const ctm = catToggleMap[nd.type];
+      if (ctm && nd.hasData) {
+        // Small chevron button above the category node
+        const tx = nd.x, ty = nd.y - r - 16;
+        const chevron = ctm.expanded ? '▴' : '▾';
+        nodeSvg += `<circle cx="${tx}" cy="${ty}" r="8" fill="#080808" stroke="${ctm.color}" stroke-width="1.5" opacity="0.9" class="lc-type-collapse" data-fn="${ctm.fn}" style="cursor:pointer;"/>`;
+        nodeSvg += `<text x="${tx}" y="${ty+1}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="700" fill="${ctm.color}" font-family="system-ui,sans-serif" style="pointer-events:none;">${chevron}</text>`;
       }
 
-      // Inner text
+      // ── Inner text ─────────────────────────────────────────────────
       let inner='', sub='';
+      const isCat = nd.type.startsWith('cat-') && nd.type !== 'cat-opp';
       if (nd.type==='call') { inner=nd.data?.letter_grade||'?'; sub=nd.data?.total??''; }
       else if (nd.type==='calls-summary') {
         const sg=[...(nd.summaryData?.grades||[])].sort((a,b)=>['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(a)-['A+','A','A-','B+','B','B-','C+','C','C-','D','F'].indexOf(b));
         inner=sg[0]||'?'; sub=nd.summaryData?.avgScore??'';
       }
       else if (nd.type==='account') { inner=(nd.sublabel||nd.label).split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+      else if (isCat) {
+        const catIcons = { 'cat-people':'◎', 'cat-competition':'✕', 'cat-technology':'⬡' };
+        inner = catIcons[nd.type] || '◆';
+      }
       else { inner=PH_SYMBOLS[nd.type]||'?'; }
       const tf=ph?'rgba(255,255,255,0.35)':'#fff';
       const innerColor=(nd.type==='call'||nd.type==='calls-summary')&&nd.ringColor?nd.ringColor:tf;
-      const innerSize=nd.type==='account'?15:nd.type==='calls-summary'?17:13;
+      const innerSize=nd.type==='account'?15:nd.type==='calls-summary'?17:(isCat?14:13);
       const yOff=sub!==''?-5:0;
       nodeSvg += `<text x="${nd.x}" y="${nd.y+yOff}" text-anchor="middle" dominant-baseline="middle" font-size="${innerSize}" font-weight="700" fill="${innerColor}" font-family="system-ui,sans-serif" style="pointer-events:none;">${inner}</text>`;
       if (sub!=='') nodeSvg += `<text x="${nd.x}" y="${nd.y+9}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="rgba(255,255,255,0.5)" font-family="'SF Mono','Fira Code',monospace" style="pointer-events:none;">${sub}</text>`;
-      // External labels: stage above + date below for calls; count below for summary
+
+      // ── External labels ────────────────────────────────────────────
       if (nd.type==='call') {
         if (nd.sublabel) nodeSvg += `<text x="${nd.x}" y="${nd.y-r-18}" text-anchor="middle" font-size="9" font-weight="600" fill="rgba(0,200,255,0.75)" font-family="system-ui,sans-serif" letter-spacing="0.06em" style="pointer-events:none;">${escHtml(nd.sublabel.toUpperCase())}</text>`;
-        const ly=nd.y+r+16;
-        if (nd.dateStr) nodeSvg += `<text x="${nd.x}" y="${ly}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="'SF Mono','Fira Code',monospace" style="pointer-events:none;">${escHtml(nd.dateStr)}</text>`;
+        if (nd.dateStr) nodeSvg += `<text x="${nd.x}" y="${nd.y+r+16}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="'SF Mono','Fira Code',monospace" style="pointer-events:none;">${escHtml(nd.dateStr)}</text>`;
       } else if (nd.type==='calls-summary') {
-        const ly=nd.y+r+16;
-        nodeSvg += `<text x="${nd.x}" y="${ly}" text-anchor="middle" font-size="10" font-weight="600" fill="rgba(0,200,255,0.6)" font-family="system-ui,sans-serif" letter-spacing="0.06em" style="pointer-events:none;">${escHtml(nd.sublabel)}</text>`;
+        nodeSvg += `<text x="${nd.x}" y="${nd.y+r+16}" text-anchor="middle" font-size="10" font-weight="600" fill="rgba(0,200,255,0.6)" font-family="system-ui,sans-serif" letter-spacing="0.06em" style="pointer-events:none;">${escHtml(nd.sublabel)}</text>`;
       } else {
-        const ly=nd.y+r+16;
-        nodeSvg += `<text x="${nd.x}" y="${ly}" text-anchor="middle" font-size="11" font-weight="${ph?400:600}" fill="${ph?'rgba(255,255,255,0.28)':'rgba(255,255,255,0.8)'}" font-family="system-ui,sans-serif" style="pointer-events:none;">${escHtml(nd.label)}</text>`;
-        const sub2=nd.type!=='account'?nd.sublabel:'';
+        const ly = nd.y + r + (ctm && nd.hasData ? 24 : 16); // extra gap when chevron is above
+        const labelOpacity = nd.hasData ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.28)';
+        nodeSvg += `<text x="${nd.x}" y="${ly}" text-anchor="middle" font-size="${isCat?12:11}" font-weight="${nd.hasData||!ph?600:400}" fill="${labelOpacity}" font-family="system-ui,sans-serif" style="pointer-events:none;">${escHtml(nd.label)}</text>`;
+        const sub2 = nd.type!=='account' ? nd.sublabel : '';
         if (sub2) nodeSvg += `<text x="${nd.x}" y="${ly+14}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.25)" font-family="system-ui,sans-serif" style="pointer-events:none;">${escHtml(sub2)}</text>`;
       }
     });
@@ -979,116 +968,104 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   }
   function updateLcGraphNodes(company) {
     const prof        = loadAccountProfile(company);
-    const contacts    = prof.contacts     || [];
-    const stakeholders= prof.stakeholders || [];
-    const competitors = prof.competitors  || [];
-    const techstack   = prof.techstack    || [];
     const champion    = prof.champion;
+    const contacts    = (prof.contacts     || []).filter(c => !champion || c.name.trim().toLowerCase() !== champion.name.trim().toLowerCase());
+    const stakeholders= (prof.stakeholders || []).filter(s => !champion || s.name.trim().toLowerCase() !== champion.name.trim().toLowerCase());
+    const competitors = prof.competitors || [];
+    const techstack   = prof.techstack   || [];
 
-    // ── Fan helper: evenly space N nodes along an axis ─────────────
-    // Minimum spacing = 2*r + 20px label clearance (r=26 → min 72px)
-    const MIN_GAP_V = 78;   // vertical fans (contacts, stakeholders)
-    const MIN_GAP_H = 115;  // horizontal fans (competitors, techstack — labels can be wide)
-    function fanPos(cx, cy, count, axis, minGap) {
-      if (count <= 1) return [{ x: cx, y: cy }];
-      const gap   = Math.max(minGap, minGap);  // always use minGap; can raise for fewer items
+    // ── Remove all child nodes (keep account, category nodes, calls, opportunity) ──
+    const keepTypes = new Set(['account','cat-people','cat-competition','cat-technology','opportunity','call','calls-summary']);
+    _lcNodes = _lcNodes.filter(n => keepTypes.has(n.type));
+    _lcEdges = _lcEdges.filter(e => {
+      const toNode = _lcNodes.find(n => n.id === e.to);
+      return !!toNode;
+    });
+
+    // ── Fan helper: spread N nodes in a direction from a parent ────
+    // dir: {dx, dy} unit vector pointing away from account
+    // gap: pixels between node centers
+    function fanAround(cx, cy, count, dx, dy, gap) {
+      // Place nodes in a perpendicular fan, centered, offset from parent
+      const dist = 155; // distance from category to first child ring
+      // Perpendicular axis
+      const px = -dy, py = dx;
       const total = (count - 1) * gap;
       return Array.from({ length: count }, (_, i) => ({
-        x: cx + (axis === 'h' ? (i * gap - total / 2) : 0),
-        y: cy + (axis === 'v' ? (i * gap - total / 2) : 0),
+        x: Math.round(cx + dx * dist + px * (i * gap - total / 2)),
+        y: Math.round(cy + dy * dist + py * (i * gap - total / 2)),
       }));
     }
 
-    // ── Remove & rebuild dynamic-count node types ──────────────────
-    const dynamic = new Set(['contact','stakeholder','competitor','techstack']);
-    _lcNodes = _lcNodes.filter(n => !dynamic.has(n.type));
-    _lcEdges = _lcEdges.filter(e =>
-      !e.to.startsWith('con-') && !e.to.startsWith('stake-') &&
-      !e.to.startsWith('comp-') && !e.to.startsWith('tech-') &&
-      e.to !== 'ph-con' && e.to !== 'ph-stake' &&
-      e.to !== 'ph-comp' && e.to !== 'ph-tech'
-    );
+    // ── Update category node hasData & sublabel ────────────────────
+    const catPeople = _lcNodes.find(n => n.id === 'cat-people');
+    const catComp   = _lcNodes.find(n => n.id === 'cat-competition');
+    const catTech   = _lcNodes.find(n => n.id === 'cat-technology');
+    const peopleItems = (champion ? 1 : 0) + contacts.length + stakeholders.length;
 
-    // ── Contacts — left cluster, fan vertically ────────────────────
-    if (contacts.length === 0) {
-      _lcNodes.push({ id:'ph-con', type:'contact', x:-210, y:-90, label:'Key Contact', sublabel:'Decision maker', ph:true, hasData:false });
-      _lcEdges.push({ from:'account', to:'ph-con', style:'dashed' });
-    } else if (_lcContactsCollapsed) {
-      const extra = contacts.length - 1;
-      const lbl   = extra > 0 ? `${contacts[0].name||'Contact'}` : (contacts[0].name||'Contact');
-      const sub   = extra > 0 ? `+${extra} more` : (contacts[0].title||'Decision maker');
-      _lcNodes.push({ id:'con-0', type:'contact', x:-210, y:-90, label:lbl, sublabel:sub, ph:true, hasData:true, collapseKey:'contacts', collapseTotal:contacts.length });
-      _lcEdges.push({ from:'account', to:'con-0', style:'dashed' });
-    } else {
-      fanPos(-210, -90, contacts.length, 'v', MIN_GAP_V).forEach((pos, i) => {
-        const id = `con-${i}`;
-        _lcNodes.push({ id, type:'contact', x:pos.x, y:pos.y, label:contacts[i].name||'Contact', sublabel:contacts[i].title||'Decision maker', ph:true, hasData:true, collapseKey:'contacts' });
-        _lcEdges.push({ from:'account', to:id, style:'dashed' });
+    if (catPeople) {
+      catPeople.hasData = peopleItems > 0;
+      catPeople.sublabel = peopleItems > 0
+        ? `${peopleItems} person${peopleItems !== 1 ? 's' : ''}`
+        : 'Contacts & stakeholders';
+    }
+    if (catComp) {
+      catComp.hasData = competitors.length > 0;
+      catComp.sublabel = competitors.length > 0
+        ? `${competitors.length} competitor${competitors.length !== 1 ? 's' : ''}`
+        : 'Competing solutions';
+    }
+    if (catTech) {
+      catTech.hasData = techstack.length > 0;
+      catTech.sublabel = techstack.length > 0
+        ? `${techstack.length} tool${techstack.length !== 1 ? 's' : ''}`
+        : 'Existing tooling';
+    }
+
+    // ── People children — fan left from cat-people (-230, 0) ──────
+    // Direction from account to cat-people: pure left (-1, 0)
+    if (_lcPeopleExpanded && peopleItems > 0) {
+      // Build ordered list: champion first, then contacts, then stakeholders
+      const people = [];
+      if (champion) people.push({ id:'champ-0', type:'champion', name:champion.name, title:champion.title||'Internal ally' });
+      contacts.forEach((c,i) => people.push({ id:`con-${i}`, type:'contact', name:c.name||'Contact', title:c.title||'Decision maker' }));
+      stakeholders.forEach((s,i) => people.push({ id:`stake-${i}`, type:'stakeholder', name:s.name||'Stakeholder', title:s.title||'Evaluator' }));
+
+      const cx = catPeople ? catPeople.x : -230, cy = catPeople ? catPeople.y : 0;
+      const gap = Math.max(72, Math.min(90, 360 / people.length));
+      fanAround(cx, cy, people.length, -1, 0, gap).forEach((pos, i) => {
+        const p = people[i];
+        _lcNodes.push({ id:p.id, type:p.type, x:pos.x, y:pos.y, label:p.name, sublabel:p.title, ph:true, hasData:true });
+        _lcEdges.push({ from:'cat-people', to:p.id, style:'dashed' });
       });
     }
 
-    // ── Stakeholders — far-left cluster, fan vertically ───────────
-    const conIds = _lcNodes.filter(n => n.type === 'contact').map(n => n.id);
-    if (stakeholders.length === 0) {
-      _lcNodes.push({ id:'ph-stake', type:'stakeholder', x:-370, y:0, label:'Stakeholder', sublabel:'Evaluator / IT', ph:true, hasData:false });
-      _lcEdges.push({ from: conIds[0] || 'account', to:'ph-stake', style:'dashed' });
-    } else if (_lcStakeholdersCollapsed) {
-      const extra = stakeholders.length - 1;
-      const sub   = extra > 0 ? `+${extra} more` : (stakeholders[0].title||'Evaluator');
-      _lcNodes.push({ id:'stake-0', type:'stakeholder', x:-370, y:0, label:stakeholders[0].name||'Stakeholder', sublabel:sub, ph:true, hasData:true, collapseKey:'stakeholders', collapseTotal:stakeholders.length });
-      _lcEdges.push({ from: conIds[0] || 'account', to:'stake-0', style:'dashed' });
-    } else {
-      fanPos(-370, 0, stakeholders.length, 'v', MIN_GAP_V).forEach((pos, i) => {
-        const id = `stake-${i}`;
-        _lcNodes.push({ id, type:'stakeholder', x:pos.x, y:pos.y, label:stakeholders[i].name||'Stakeholder', sublabel:stakeholders[i].title||'Evaluator', ph:true, hasData:true, collapseKey:'stakeholders' });
-        _lcEdges.push({ from: conIds[i] || conIds[0] || 'account', to:id, style:'dashed' });
-      });
-    }
-
-    // ── Competitors — bottom-left, fan horizontally ────────────────
-    if (competitors.length === 0) {
-      _lcNodes.push({ id:'ph-comp', type:'competitor', x:-20, y:200, label:'Competitor', sublabel:'Competing solution', ph:true, hasData:false });
-      _lcEdges.push({ from:'account', to:'ph-comp', style:'dashed' });
-    } else if (_lcCompetitorsCollapsed) {
-      const extra = competitors.length - 1;
-      const first = typeof competitors[0] === 'string' ? competitors[0] : (competitors[0]?.name||'Competitor');
-      const sub   = extra > 0 ? `+${extra} more` : 'Competing solution';
-      _lcNodes.push({ id:'comp-0', type:'competitor', x:-20, y:200, label:first, sublabel:sub, ph:true, hasData:true, collapseKey:'competitors', collapseTotal:competitors.length });
-      _lcEdges.push({ from:'account', to:'comp-0', style:'dashed' });
-    } else {
-      fanPos(-20, 200, competitors.length, 'h', MIN_GAP_H).forEach((pos, i) => {
-        const id = `comp-${i}`;
+    // ── Competition children — fan down-left from cat-competition ──
+    // cat-competition at (-90, 240); direction from account ≈ (-0.35, 0.94) normalised
+    if (_lcCompetitionExpanded && competitors.length > 0) {
+      const cx = catComp ? catComp.x : -90, cy = catComp ? catComp.y : 240;
+      const mag = Math.sqrt(cx*cx + cy*cy) || 1;
+      const dx = cx / mag, dy = cy / mag;
+      const gap = Math.max(100, Math.min(130, 400 / competitors.length));
+      fanAround(cx, cy, competitors.length, dx, dy, gap).forEach((pos, i) => {
         const label = typeof competitors[i] === 'string' ? competitors[i] : (competitors[i]?.name||'Competitor');
-        _lcNodes.push({ id, type:'competitor', x:pos.x, y:pos.y, label, sublabel:'Competing solution', ph:true, hasData:true, collapseKey:'competitors' });
-        _lcEdges.push({ from:'account', to:id, style:'dashed' });
+        _lcNodes.push({ id:`comp-${i}`, type:'competitor', x:pos.x, y:pos.y, label, sublabel:'Competing solution', ph:true, hasData:true });
+        _lcEdges.push({ from:'cat-competition', to:`comp-${i}`, style:'dashed' });
       });
     }
 
-    // ── Tech Stack — bottom-right, fan horizontally ────────────────
-    if (techstack.length === 0) {
-      _lcNodes.push({ id:'ph-tech', type:'techstack', x:180, y:200, label:'Tech Stack', sublabel:'Existing tooling', ph:true, hasData:false });
-      _lcEdges.push({ from:'account', to:'ph-tech', style:'dashed' });
-    } else if (_lcTechstackCollapsed) {
-      const extra = techstack.length - 1;
-      const first = typeof techstack[0] === 'string' ? techstack[0] : (techstack[0]?.name||'Tool');
-      const sub   = extra > 0 ? `+${extra} more` : 'Existing tooling';
-      _lcNodes.push({ id:'tech-0', type:'techstack', x:180, y:200, label:first, sublabel:sub, ph:true, hasData:true, collapseKey:'techstack', collapseTotal:techstack.length });
-      _lcEdges.push({ from:'account', to:'tech-0', style:'dashed' });
-    } else {
-      fanPos(180, 200, techstack.length, 'h', MIN_GAP_H).forEach((pos, i) => {
-        const id = `tech-${i}`;
+    // ── Technology children — fan down-right from cat-technology ──
+    // cat-technology at (170, 240); direction ≈ (0.58, 0.81) normalised
+    if (_lcTechnologyExpanded && techstack.length > 0) {
+      const cx = catTech ? catTech.x : 170, cy = catTech ? catTech.y : 240;
+      const mag = Math.sqrt(cx*cx + cy*cy) || 1;
+      const dx = cx / mag, dy = cy / mag;
+      const gap = Math.max(100, Math.min(130, 400 / techstack.length));
+      fanAround(cx, cy, techstack.length, dx, dy, gap).forEach((pos, i) => {
         const label = typeof techstack[i] === 'string' ? techstack[i] : (techstack[i]?.name||'Tool');
-        _lcNodes.push({ id, type:'techstack', x:pos.x, y:pos.y, label, sublabel:'Existing tooling', ph:true, hasData:true, collapseKey:'techstack' });
-        _lcEdges.push({ from:'account', to:id, style:'dashed' });
+        _lcNodes.push({ id:`tech-${i}`, type:'techstack', x:pos.x, y:pos.y, label, sublabel:'Existing tooling', ph:true, hasData:true });
+        _lcEdges.push({ from:'cat-technology', to:`tech-${i}`, style:'dashed' });
       });
-    }
-
-    // ── Champion — single node, update in place ────────────────────
-    const champNode = _lcNodes.find(n => n.type === 'champion');
-    if (champNode) {
-      champNode.hasData  = !!champion;
-      champNode.label    = champion ? champion.name : 'Champion';
-      champNode.sublabel = champion ? (champion.title || 'Internal ally') : 'Internal ally';
     }
 
     drawLcGraph();
