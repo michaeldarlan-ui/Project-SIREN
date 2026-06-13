@@ -4931,3 +4931,9 @@ function downloadResponses(){
     localStorage.setItem('oa_demo_version', DEMO_VERSION);
   }
   navTo('pulse');
+
+// ── Settings: Grading Reference accordion ──
+function srefToggle(hdrEl) {
+  const card = hdrEl.closest('.sref-card');
+  card.classList.toggle('open');
+}

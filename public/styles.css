@@ -735,6 +735,41 @@
   .lc-deal-filter-btn { background: none; border: none; color: rgba(255,255,255,.45); font-family: var(--siren-font-hud); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: background .15s, color .15s; }
   .lc-deal-filter-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
   .lc-deal-filter-btn.active { background: rgba(0,200,255,.18); color: #00c8ff; }
+
+/* ── Settings: Grading Reference ── */
+.sref-grid { display: flex; flex-direction: column; gap: 10px; }
+.sref-card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; overflow: hidden; }
+.sref-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; transition: background .15s; }
+.sref-hdr:hover { background: rgba(255,255,255,.04); }
+.sref-title { font-family: var(--siren-font-hud); font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #e2e8f0; flex: 1; }
+.sref-meta { font-family: var(--siren-font-hud); font-size: 10px; color: rgba(255,255,255,.35); letter-spacing: .06em; text-transform: uppercase; }
+.sref-chev { font-size: 9px; color: rgba(255,255,255,.3); transition: transform .2s; }
+.sref-card.open .sref-chev { transform: rotate(90deg); }
+.sref-body { display: none; padding: 4px 16px 16px; }
+.sref-card.open .sref-body { display: block; }
+/* Dimensions */
+.sref-dim-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.sref-dim-bar { height: 4px; border-radius: 2px; min-width: 4px; }
+.sref-dim-name { flex: 1; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.85); }
+.sref-dim-pts { font-family: var(--siren-font-hud); font-size: 11px; font-weight: 700; color: #00c8ff; white-space: nowrap; }
+.sref-dim-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; padding-left: 14px; margin-top: 3px; border-left: 2px solid rgba(255,255,255,.08); }
+/* Grade grid */
+.sref-grade-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+.sref-grade { font-family: var(--siren-font-hud); font-size: 18px; font-weight: 900; display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.04); border-radius: 6px; padding: 8px 4px; }
+.sref-grade span { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.4); margin-top: 2px; }
+.sref-note { font-size: 11px; color: rgba(255,255,255,.35); font-style: italic; }
+/* SPICED */
+.sref-spiced-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.sref-spiced-row:last-child { border-bottom: none; }
+.sref-spiced-letter { flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,200,255,.12); border: 1px solid rgba(0,200,255,.25); display: flex; align-items: center; justify-content: center; font-family: var(--siren-font-hud); font-size: 14px; font-weight: 900; color: #00c8ff; }
+.sref-spiced-name { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.85); margin-bottom: 3px; }
+.sref-spiced-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
+/* Role */
+.sref-role-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.sref-role-row:last-child { border-bottom: none; }
+.sref-role-tag { flex-shrink: 0; background: rgba(0,200,255,.1); border: 1px solid rgba(0,200,255,.22); border-radius: 5px; font-family: var(--siren-font-hud); font-size: 10px; font-weight: 800; letter-spacing: .07em; color: #00c8ff; padding: 3px 8px; min-width: 54px; text-align: center; }
+.sref-role-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
+
   /* Legend */
   .lc-legend {
     display: flex; align-items: center; gap: 14px;
