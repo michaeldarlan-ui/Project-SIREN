@@ -851,6 +851,50 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
     </div>
 
+    <!-- ── Rep Role Dimension Ceilings ── -->
+    <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Rep Role Ceilings</div>
+    <div class="sref-grid" style="margin-bottom:28px;">
+      <div class="sref-card">
+        <div class="sref-hdr" onclick="srefToggle(this)">
+          <span class="sref-title">Dimension Maxes by Rep Role</span>
+          <span class="sref-meta">Compounds with meeting-type weighting · most restrictive ceiling wins</span>
+          <span class="sref-chev">▶</span>
+        </div>
+        <div class="sref-body">
+          <div class="sref-context-note">Role ceilings apply on top of meeting-type ceilings. When a dimension is reduced by both, the lower cap is used. The total possible score for a given rep on a given call type may be less than 100.</div>
+          <div class="sref-role-ceiling-grid">
+            <div class="sref-rcg-head"><div></div><div>Discovery</div><div>Value&nbsp;Framing</div><div>Empathy</div><div>Qualification</div><div>Next&nbsp;Steps</div><div>Max Total</div></div>
+            <div class="sref-rcg-row">
+              <div><span class="sref-role-tag">AE</span></div>
+              <div class="sref-rcg-full">20</div><div class="sref-rcg-full">25</div><div class="sref-rcg-full">25</div><div class="sref-rcg-full">15</div><div class="sref-rcg-full">15</div>
+              <div class="sref-rcg-total">100</div>
+            </div>
+            <div class="sref-rcg-row">
+              <div><span class="sref-role-tag">Manager</span></div>
+              <div class="sref-rcg-full">20</div><div class="sref-rcg-full">25</div><div class="sref-rcg-full">25</div><div class="sref-rcg-full">15</div><div class="sref-rcg-full">15</div>
+              <div class="sref-rcg-total">100</div>
+            </div>
+            <div class="sref-rcg-row">
+              <div><span class="sref-role-tag">SDR</span></div>
+              <div class="sref-rcg-full">20</div><div class="sref-rcg-dim">12</div><div class="sref-rcg-full">25</div><div class="sref-rcg-dim">7</div><div class="sref-rcg-full">15</div>
+              <div class="sref-rcg-total">79</div>
+            </div>
+            <div class="sref-rcg-row">
+              <div><span class="sref-role-tag">SE</span></div>
+              <div class="sref-rcg-dim">12</div><div class="sref-rcg-full">25</div><div class="sref-rcg-full">25</div><div class="sref-rcg-dim">7</div><div class="sref-rcg-dim">10</div>
+              <div class="sref-rcg-total">79</div>
+            </div>
+            <div class="sref-rcg-row">
+              <div><span class="sref-role-tag">AM</span></div>
+              <div class="sref-rcg-full">20</div><div class="sref-rcg-dim">12</div><div class="sref-rcg-full">25</div><div class="sref-rcg-dim">10</div><div class="sref-rcg-full">15</div>
+              <div class="sref-rcg-total">82</div>
+            </div>
+          </div>
+          <div class="sref-note" style="margin-top:12px;">Dimmed values are role-reduced. Letter grades are calculated against the adjusted total — an SDR scoring 75/79 is equivalent to an AE scoring ~95/100.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Universal Reference ── -->
     <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Universal Reference</div>
     <div class="sref-grid" style="margin-bottom:28px;">

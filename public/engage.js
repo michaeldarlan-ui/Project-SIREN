@@ -444,27 +444,61 @@
   // Returns per-stage max points for each dimension.
   // Reduced dimensions get half their normal max so the schema and the
   // prose instruction agree — the LLM cannot score above what max allows.
-  function stageDimMaxes() {
+  // Stage ceilings — what's appropriate for this meeting type
+  function stageDimCeilings() {
     const stage = (selectedStage || '').toLowerCase();
-    // defaults: full weight
     let d = 20, v = 25, t = 25, q = 15, c = 15;
     if (stage.includes('cold')) {
-      v = 12; // value framing reduced
-      q = 7;  // qualification reduced
+      v = 12; q = 7;
     } else if (stage.includes('discovery')) {
-      v = 12; // value framing reduced — light hook only, no demo expected
+      v = 12;
     } else if (stage.includes('proposal') || stage.includes('close')) {
-      d = 10; // discovery reduced — pain already established
+      d = 10;
     } else if (stage.includes('touchpoint')) {
-      v = 12; // value framing reduced — re-demoing unprompted is a red flag
-      q = 7;  // qualification reduced — re-qualifying every touchpoint is noise
+      v = 12; q = 7;
     }
-    // demo / solution: all full weight — no changes
     return { d, v, t, q, c };
   }
 
-  function buildStageDimensions(feedbackHints) {
-    const m = stageDimMaxes();
+  // Role ceilings — what's appropriate for this rep's function
+  function roleDimCeilings(rep) {
+    if (!rep) return { d: 20, v: 25, t: 25, q: 15, c: 15 };
+    const role = (rep.role || '').toLowerCase();
+    const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
+    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
+    const isAM      = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
+
+    if (isSDR) {
+      // Pipeline generation focus: lighter on demo delivery, deep qualification, and close mechanics
+      return { d: 20, v: 12, t: 25, q: 7, c: 15 };
+    }
+    if (isSE) {
+      // Technical delivery focus: lighter on commercial discovery, deal qualification, and closing
+      return { d: 12, v: 25, t: 25, q: 7, c: 10 };
+    }
+    if (isAM) {
+      // Expansion/retention focus: lighter on demo delivery and new-logo qualification mechanics
+      return { d: 20, v: 12, t: 25, q: 10, c: 15 };
+    }
+    // AE, Manager, or unrecognized — full weight on all dimensions
+    return { d: 20, v: 25, t: 25, q: 15, c: 15 };
+  }
+
+  // Final maxes: most restrictive of stage ceiling and role ceiling
+  function stageDimMaxes(rep) {
+    const s = stageDimCeilings();
+    const r = roleDimCeilings(rep);
+    return {
+      d: Math.min(s.d, r.d),
+      v: Math.min(s.v, r.v),
+      t: Math.min(s.t, r.t),
+      q: Math.min(s.q, r.q),
+      c: Math.min(s.c, r.c),
+    };
+  }
+
+  function buildStageDimensions(rep, feedbackHints) {
+    const m = stageDimMaxes(rep);
     const fh = feedbackHints || {};
     return [
       `{ "name": "Discovery & needs confirmation",      "max": ${m.d}, "score": 0, "feedback": "${fh.d || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
@@ -993,7 +1027,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
 
 {
   "dimensions": [
-    ${buildStageDimensions()}
+    ${buildStageDimensions(rep)}
   ],
   "total": 0,
   "letter_grade": "B",
@@ -1010,7 +1044,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
     {
       "name": "Rep Name as spoken in transcript",
       "dimensions": [
-        ${buildStageDimensions({ d: '2-3 sentences specific to this rep\'s contributions only', v: '2-3 sentences', t: '2-3 sentences', q: '2-3 sentences', c: '2-3 sentences' })}
+        ${buildStageDimensions(rep, { d: '2-3 sentences specific to this rep\'s contributions only', v: '2-3 sentences', t: '2-3 sentences', q: '2-3 sentences', c: '2-3 sentences' })}
       ],
       "total": 0,
       "letter_grade": "B",
@@ -1034,7 +1068,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
   }
 }
 
-total: sum of all dimension scores. The maximum possible total for this meeting type is ${Object.values(stageDimMaxes()).reduce((a,b)=>a+b,0)} — do not exceed it. Use this adjusted total when assigning letter_grade.
+total: sum of all dimension scores. The maximum possible total for this rep in this meeting type is ${Object.values(stageDimMaxes(rep)).reduce((a,b)=>a+b,0)} — do not exceed it. Use this adjusted total when assigning letter_grade.
 call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
