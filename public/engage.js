@@ -2304,6 +2304,24 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   window.renderSavedTranscripts = async function() {
     const el = document.getElementById('savedTranscriptsList');
     if (!el) return;
+
+    // If a bulk regrade is in flight, show the in-progress banner instead of resetting
+    if (_brgRunning) {
+      el.style.display = '';
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:8px;border:1px solid rgba(232,160,32,.35);background:rgba(232,160,32,.07);margin-bottom:4px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:#e8a020;flex-shrink:0;animation:regradeGlow 1.2s ease-in-out infinite;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);">Bulk re-grade in progress</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">${_brgDone} of ${_brgTotal} complete — running in background</div>
+          </div>
+          <button class="devtool-run-btn" onclick="brgRestoreProgress()" style="flex-shrink:0;">View Progress</button>
+        </div>`;
+      const actionBar = document.getElementById('brgActionBar');
+      if (actionBar) actionBar.style.display = 'none';
+      return;
+    }
+
     el.style.display = '';  // reset in case bulk regrade hid it
     el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;">Loading…</div>';
     const actionBar = document.getElementById('brgActionBar');
@@ -2801,10 +2819,30 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // ── Bulk Re-grade (Developer Tools) ──────────────────────────────────────
   // State
   let _brgTranscripts = []; // [{id, label, prospect, stage, rep, call_date}] sorted oldest→newest
+  let _brgRunning     = false;  // true while a bulk regrade is in flight
+  let _brgDone        = 0;      // transcripts completed so far
+  let _brgTotal       = 0;      // total selected for this run
 
   function bulkRegradeLoad() {
     // Delegated to renderSavedTranscripts — kept for compatibility
     renderSavedTranscripts();
+  }
+
+  function brgRestoreProgress() {
+    // Re-show the loading screen while the regrade continues in the background
+    const el = document.getElementById('savedTranscriptsList');
+    if (el) el.style.display = 'none';
+    const loadEl = document.getElementById('loading');
+    if (loadEl) loadEl.style.display = 'flex';
+    startRadar();
+    const overlay = document.getElementById('brgLoadOverlay');
+    if (overlay) overlay.style.display = 'block';
+    const counter = document.getElementById('brgLoadCounter');
+    if (counter) counter.textContent = `${_brgDone} of ${_brgTotal}`;
+    const bar = document.getElementById('brgLoadBar');
+    if (bar) bar.style.width = Math.round((_brgDone / _brgTotal) * 100) + '%';
+    const ctx = document.getElementById('loadContext');
+    if (ctx) ctx.textContent = 'BULK RE-GRADE IN PROGRESS';
   }
 
   function brgToggleAll(checked) {
@@ -2856,6 +2894,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
     const total = indices.length;
     let done = 0, succeeded = 0, failed = 0;
+    _brgRunning = true;
+    _brgDone    = 0;
+    _brgTotal   = total;
     const runStart    = Date.now();
     const itemTimes   = []; // ms each completed item took
 
@@ -3025,6 +3066,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
       itemTimes.push(Date.now() - itemStart);
       done++;
+      _brgDone = done;
 
       // Flash all steps to done, update batch bar, brief pause before next
       updateStreamProgress('"spiced"'); // triggers pct=93 → all 4 steps complete
@@ -3043,6 +3085,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     }
 
     // All done — hide loading screen, show summary log
+    _brgRunning = false;
     stopRadar();
     if (brgLoadOverlay) brgLoadOverlay.style.display = 'none';
     const loadEl2 = document.getElementById('loading');
@@ -3119,7 +3162,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         document.getElementById('brgLog').innerHTML = '';
         document.getElementById('brgSelectAll').checked = false;
         _brgTranscripts = [];
+        _brgRunning = false;
+        _brgDone = 0;
+        _brgTotal = 0;
       })
-      .catch(() => navTo('history'));
+      .catch(() => { _brgRunning = false; navTo('history'); });
   }
 
