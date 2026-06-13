@@ -103,9 +103,9 @@
     const calMonthStart  = new Date(now.getFullYear(), now.getMonth(), 1);
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const thisWeek  = history.filter(h => callDateOf(h) >= weekAgo).length;
-    const scores    = history.map(h => h.total).filter(s => s > 0);
+    const scores    = history.map(h => h.normalized_score || h.total).filter(s => s > 0);
     const avgNow    = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null;
-    const lastMonthScores = history.filter(h => { const d=callDateOf(h); return d >= prevMonthStart && d < calMonthStart; }).map(h=>h.total).filter(s=>s>0);
+    const lastMonthScores = history.filter(h => { const d=callDateOf(h); return d >= prevMonthStart && d < calMonthStart; }).map(h=>h.normalized_score||h.total).filter(s=>s>0);
     const avgLast   = lastMonthScores.length ? Math.round(lastMonthScores.reduce((a,b)=>a+b,0)/lastMonthScores.length) : null;
     const avgDelta  = (avgNow !== null && avgLast !== null) ? avgNow - avgLast : null;
 
@@ -180,7 +180,7 @@
             <div class="pulse-call-company">${escHtml(h.prospect||'Unknown')}</div>
             <div class="pulse-call-meta">${escHtml(meta)}</div>
           </div>
-          <div class="pulse-call-score">${h.total}</div>
+          <div class="pulse-call-score">${h.normalized_score ?? h.total}</div>
         </div>`;
       }).join('');
     } else {
@@ -202,7 +202,7 @@
       const callMs = h.callDate ? new Date(h.callDate).getTime() : new Date(h.ts).getTime();
       if (cutoff > 0 && callMs < cutoff) return;
       if (!repMap[h.rep]) repMap[h.rep] = { calls: [], initials: h.rep.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() };
-      if (h.total > 0) repMap[h.rep].calls.push({ score: h.total, ms: callMs });
+      if (( h.normalized_score || h.total) > 0) repMap[h.rep].calls.push({ score: h.normalized_score || h.total, ms: callMs });
     });
 
     const reps = Object.entries(repMap).map(([name, d]) => {
@@ -360,7 +360,7 @@
 
   function vigilBuildDealIntel(h, hist) {
     // ── Momentum: delta across last 3 scored calls ──────────────
-    const scores = hist.map(c => c.total).filter(s => s > 0);
+    const scores = hist.map(c => c.normalized_score || c.total).filter(s => s > 0);
     let momentumColor = 'rgba(255,255,255,.4)', momentumLabel = '→ Flat', momentumDelta = 0;
     if (scores.length >= 2) {
       momentumDelta = scores[0] - scores[Math.min(2, scores.length - 1)];
@@ -383,7 +383,9 @@
     const spicedGaps  = _SPICED_KEYS.filter(k => !spicedCumulative[k]).map(k => _SPICED_LABELS[k]);
 
     // ── Health: composite score + SPICED + momentum ─────────────
-    const score = h.total || 0;
+    // Use normalized_score (0–100 regardless of role/stage ceiling) for fair Deal Health comparison.
+    // Fall back to total for older records that predate normalization.
+    const score = h.normalized_score || h.total || 0;
     const scoreOk    = score >= 65;
     const scoreStrong = score >= 80;
     const spicedOk   = spicedPct >= 40;
@@ -697,7 +699,7 @@
     });
 
     const industries = Object.entries(indMap).map(([name, d]) => {
-      const scores = d.calls.map(c => c.total).filter(s => s > 0);
+      const scores = d.calls.map(c => c.normalized_score || c.total).filter(s => s > 0);
       return { name, accounts: d.accounts, accountCount: d.accounts.size, calls: d.calls,
                avg: scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0 };
     }).sort((a,b) => b.avg - a.avg);
@@ -742,7 +744,7 @@
       return;
     }
     const callDateOf = h => h.callDate ? new Date(h.callDate + 'T12:00:00') : new Date(h.ts);
-    const sorted = [...calls].filter(h => h.total > 0).sort((a,b) => callDateOf(a) - callDateOf(b));
+    const sorted = [...calls].filter(h => ( h.normalized_score || h.total) > 0).sort((a,b) => callDateOf(a) - callDateOf(b));
     if (!sorted.length) {
       container.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.2);padding:1rem 0;text-align:center;">No scored calls in this industry yet.</div>';
       return;
@@ -767,7 +769,7 @@
     });
 
     const pts = sorted.map((h,i) => ({
-      x: toX(i), y: toY(h.total), score: h.total, prospect: h.prospect || '',
+      x: toX(i), y: toY(h.normalized_score || h.total), score: h.normalized_score || h.total, prospect: h.prospect || '',
       color: acctColor(h.prospect || ''),
       date: callDateOf(h).toLocaleDateString([],{month:'short',day:'numeric'}),
     }));
@@ -915,7 +917,7 @@
     const groups = Object.entries(byProspect)
       .map(([prospect, calls]) => ({
         prospect, calls,
-        avgScore: avg(calls.map(c=>c.total).filter(v=>typeof v==='number')),
+        avgScore: avg(calls.map(c=>c.normalized_score||c.total).filter(v=>typeof v==='number')),
         avgDelta: avg(calls.map(c=>c.delta).filter(v=>typeof v==='number')),
         latest: calls.reduce((m,c) => c.date > m ? c.date : m, ''),
       }))
@@ -1001,7 +1003,7 @@
     });
 
     // Points
-    const pts = data.map((h,i) => ({ x: toX(i), y: toY(h.total||0), score: h.total }));
+    const pts = data.map((h,i) => { const s = h.normalized_score || h.total || 0; return { x: toX(i), y: toY(s), score: s }; });
 
     // Area fill path
     const lineD = pts.map((p,i) => `${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ');
@@ -1072,7 +1074,7 @@
       if (repEntries) {
         const team = loadTeam();
         repEntries.forEach(rs => {
-          if (!rs.name || !rs.total) return;
+          if (!rs.name || !(rs.normalized_score || rs.total)) return;
           // Resolve role from team roster
           const norm = s => (s || '').toLowerCase().trim();
           const member = team.find(m => norm(m.name) === norm(rs.name) ||
@@ -1082,13 +1084,13 @@
           if (!repMap[key]) repMap[key] = { calls: [], role: member ? member.role : '' };
           const isCold = /cold.outreach/i.test(h.stage || '');
           if (isCold && !/\bISR\b|\bBDR\b/i.test(repMap[key].role)) return;
-          repMap[key].calls.push({ ms, score: rs.total, stage: h.stage || '' });
+          repMap[key].calls.push({ ms, score: rs.normalized_score || rs.total, stage: h.stage || '' });
         });
-      } else if (h.rep && h.total) {
+      } else if (h.rep && (h.normalized_score || h.total)) {
         if (!repMap[h.rep]) repMap[h.rep] = { calls: [], role: h.repRole || '' };
         const isCold = /cold.outreach/i.test(h.stage || '');
         if (isCold && !/\bISR\b|\bBDR\b/i.test(repMap[h.rep].role)) return;
-        repMap[h.rep].calls.push({ ms, score: h.total, stage: h.stage || '' });
+        repMap[h.rep].calls.push({ ms, score: h.normalized_score || h.total, stage: h.stage || '' });
       }
     });
 

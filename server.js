@@ -44,7 +44,7 @@ if (!process.env.TURSO_DATABASE_URL) {
 const HISTORY_COLS = `
   id TEXT PRIMARY KEY, ts TEXT NOT NULL, call_date TEXT, prospect TEXT,
   rep TEXT, rep_role TEXT, contact_title TEXT, stage TEXT,
-  total INTEGER DEFAULT 0, letter_grade TEXT, grade_label TEXT,
+  total INTEGER DEFAULT 0, normalized_score INTEGER DEFAULT 0, letter_grade TEXT, grade_label TEXT,
   top_strength TEXT, top_priority TEXT, results_html TEXT,
   participants TEXT, dimensions TEXT, next_steps TEXT, overview TEXT,
   partner_scores TEXT, rep_scores TEXT, spiced TEXT
@@ -97,6 +97,12 @@ await client.batch([
       await client.execute(`ALTER TABLE ${tbl} ADD COLUMN spiced TEXT`);
       console.log(`[db] Added spiced column to ${tbl}`);
     }
+    if (!cols.includes('normalized_score')) {
+      await client.execute(`ALTER TABLE ${tbl} ADD COLUMN normalized_score INTEGER DEFAULT 0`);
+      // Back-fill: existing records with no role/stage context treat total as already 0–100
+      await client.execute(`UPDATE ${tbl} SET normalized_score = total WHERE normalized_score = 0 AND total > 0`);
+      console.log(`[db] Added normalized_score column to ${tbl} and back-filled from total`);
+    }
   }
 
   // Migrate old transcripts table (history_id PK) to new standalone schema
@@ -124,12 +130,12 @@ await client.batch([
 
 // ── Row helpers ───────────────────────────────────────────────
 const DB_COLS = `id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
-  total, letter_grade, grade_label, top_strength, top_priority,
+  total, normalized_score, letter_grade, grade_label, top_strength, top_priority,
   results_html, participants, dimensions, next_steps, overview, partner_scores, rep_scores, spiced`;
 
 const DB_PARAMS = `?, ?, ?, ?, ?, ?, ?, ?,
   ?, ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?, ?`;
+  ?, ?, ?, ?, ?, ?, ?, ?, ?`;
 
 function isDemo(r) { return !!(r.is_demo) || String(r.id || '').startsWith('demo-'); }
 
@@ -145,7 +151,8 @@ function dbRowToRecord(row, demoFlag) {
     repRole:      s('rep_role'),
     contactTitle: s('contact_title'),
     stage:        s('stage'),
-    total:        Number(row.total) || 0,
+    total:            Number(row.total) || 0,
+    normalized_score: Number(row.normalized_score) || 0,
     letter_grade: s('letter_grade'),
     grade_label:  s('grade_label'),
     top_strength: s('top_strength'),
@@ -173,7 +180,8 @@ function recordToArgs(r) {
     r.repRole       || null,
     r.contactTitle  || null,
     r.stage         || null,
-    r.total         || 0,
+    r.total            || 0,
+    r.normalized_score || 0,
     r.letter_grade  || null,
     r.grade_label   || null,
     r.top_strength  || null,

@@ -484,10 +484,10 @@
     return { d: 20, v: 25, t: 25, q: 15, c: 15 };
   }
 
-  // Final maxes: most restrictive of stage ceiling and role ceiling
-  function stageDimMaxes(rep) {
+  // Combined maxes: most restrictive of stage ceiling and role ceiling
+  function combinedDimMaxes(repObj) {
     const s = stageDimCeilings();
-    const r = roleDimCeilings(rep);
+    const r = roleDimCeilings(repObj);
     return {
       d: Math.min(s.d, r.d),
       v: Math.min(s.v, r.v),
@@ -497,8 +497,20 @@
     };
   }
 
-  function buildStageDimensions(rep, feedbackHints) {
-    const m = stageDimMaxes(rep);
+  // Keep old name as alias used in total-ceiling injection (overall call uses stage-only)
+  function stageDimMaxes() { return stageDimCeilings(); }
+
+  // Lookup a team member's role ceiling by name for per-rep normalization
+  function repDimMaxesByName(name) {
+    const team = loadTeam();
+    const member = team.find(m => m.name && m.name.toLowerCase() === (name || '').toLowerCase());
+    return member ? combinedDimMaxes(member) : combinedDimMaxes(null);
+  }
+
+  function buildStageDimensions(repObj, feedbackHints) {
+    // Overall call dimensions use stage-only ceilings (not tied to one rep's role)
+    // Rep-specific blocks pass their own repObj
+    const m = repObj === '__stage_only__' ? stageDimCeilings() : combinedDimMaxes(repObj);
     const fh = feedbackHints || {};
     return [
       `{ "name": "Discovery & needs confirmation",      "max": ${m.d}, "score": 0, "feedback": "${fh.d || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
@@ -570,7 +582,7 @@
     const sections = matches.map(h => {
       const dateStr = h.callDate ? h.callDate : (h.ts ? h.ts.slice(0, 10) : 'unknown date');
       const label = [h.stage, h.callDate || h.ts?.slice(0,10)].filter(Boolean).join(' — ');
-      return `Previous call (${label}): Grade ${h.letter_grade} ${h.total}/100. ${h.grade_label ? '"' + h.grade_label + '". ' : ''}Strength: ${h.top_strength || 'n/a'}. Priority: ${h.top_priority || 'n/a'}.`;
+      return `Previous call (${label}): Grade ${h.letter_grade} ${h.normalized_score ?? h.total}/100. ${h.grade_label ? '"' + h.grade_label + '". ' : ''}Strength: ${h.top_strength || 'n/a'}. Priority: ${h.top_priority || 'n/a'}.`;
     }).join('\n');
 
     return `\n\nPrevious call history for this account/rep (use for context and to track progression across calls — note improvement or regression trends):\n${sections}`;
@@ -1018,16 +1030,21 @@ You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key 
 
 ${buildStageWeighting()}
 
-Use this grading scale when assigning letter_grade based on total score (0–100):
-A+: 97–100 | A: 93–96 | A-: 90–92 | B+: 87–89 | B: 83–86 | B-: 80–82 | C+: 77–79 | C: 73–76 | C-: 70–72 | D+: 67–69 | D: 63–66 | D-: 60–62 | F: 0–59
+Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:
+A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%
+Overall call max (stage ceiling): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.
 
 Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
 
-Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble. The max values below reflect the weighting for this meeting type — do not exceed them:
+Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble.
+
+IMPORTANT — two separate scoring contexts apply:
+1. The top-level "dimensions" and "total" represent the overall call effectiveness scored against STAGE-ONLY ceilings (meeting type context only, no role adjustment). Max values shown reflect the stage ceiling.
+2. Each entry in "rep_scores" is scored against that individual rep's role ceiling compounded with the stage ceiling. The "role_max" field in each rep entry tells you the adjusted maximum for that rep — do not exceed it.
 
 {
   "dimensions": [
-    ${buildStageDimensions(rep)}
+    ${buildStageDimensions('__stage_only__')}
   ],
   "total": 0,
   "letter_grade": "B",
@@ -1043,6 +1060,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
   "rep_scores": [
     {
       "name": "Rep Name as spoken in transcript",
+      "role_max": ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)},
       "dimensions": [
         ${buildStageDimensions(rep, { d: '2-3 sentences specific to this rep\'s contributions only', v: '2-3 sentences', t: '2-3 sentences', q: '2-3 sentences', c: '2-3 sentences' })}
       ],
@@ -1068,7 +1086,8 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
   }
 }
 
-total: sum of all dimension scores. The maximum possible total for this rep in this meeting type is ${Object.values(stageDimMaxes(rep)).reduce((a,b)=>a+b,0)} — do not exceed it. Use this adjusted total when assigning letter_grade.
+total (overall call): sum of the top-level dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type. Assign letter_grade based on percentage of this max.
+rep_scores[].total: sum of that rep's dimension scores. Do not exceed the role_max shown in each rep entry. Assign that rep's letter_grade based on percentage of their role_max — not the overall call max.
 call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
@@ -1150,7 +1169,9 @@ Set touched to true only if the rep meaningfully engaged with that component in 
 
       if (inputTokens || outputTokens) updateUsageUI(inputTokens, outputTokens);
       let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      renderResults(JSON.parse(raw), prospect, contactTitle, rep, callDate, notes, allThirdParties);
+      const parsed = JSON.parse(raw);
+      normalizeResult(parsed, rep);
+      renderResults(parsed, prospect, contactTitle, rep, callDate, notes, allThirdParties);
     } catch (err) {
       const msg = err.message || String(err);
       if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('networkerror')) {
@@ -1160,6 +1181,43 @@ Set touched to true only if the rep meaningfully engaged with that component in 
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Post-processing: compute normalized_score (0–100) for overall call and each rep.
+  // Normalized = Math.round(raw_total / applicable_max * 100), clamped to 100.
+  // Letter grades are re-derived from normalized score so they are always consistent.
+  function scoreToGradePct(pct) {
+    if (pct >= 97) return 'A+';
+    if (pct >= 93) return 'A';
+    if (pct >= 90) return 'A-';
+    if (pct >= 87) return 'B+';
+    if (pct >= 83) return 'B';
+    if (pct >= 80) return 'B-';
+    if (pct >= 77) return 'C+';
+    if (pct >= 73) return 'C';
+    if (pct >= 70) return 'C-';
+    if (pct >= 67) return 'D+';
+    if (pct >= 63) return 'D';
+    if (pct >= 60) return 'D-';
+    return 'F';
+  }
+
+  function normalizeResult(r, primaryRep) {
+    // Overall call: stage-only ceiling
+    const stageMax = Object.values(stageDimCeilings()).reduce((a, b) => a + b, 0);
+    const rawTotal = r.total || 0;
+    r.normalized_score = Math.min(100, Math.round((rawTotal / stageMax) * 100));
+    r.letter_grade = scoreToGradePct(r.normalized_score);
+
+    // Per-rep: role+stage ceiling, resolved from team list by name
+    if (Array.isArray(r.rep_scores)) {
+      r.rep_scores.forEach(rs => {
+        const roleMax = rs.role_max || Object.values(repDimMaxesByName(rs.name)).reduce((a, b) => a + b, 0);
+        const repRaw = rs.total || 0;
+        rs.normalized_score = Math.min(100, Math.round((repRaw / roleMax) * 100));
+        rs.letter_grade = scoreToGradePct(rs.normalized_score);
+      });
     }
   }
 
@@ -1201,7 +1259,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     return `<div class="score-view ${viewId === 'overall' ? 'active' : ''}" id="score-view-${viewId}">
       <div class="banner" style="background:${bg};">
         <div>
-          <div class="banner-grade">${escHtml(viewData.letter_grade)} &nbsp; ${viewData.total}/100</div>
+          <div class="banner-grade">${escHtml(viewData.letter_grade)} &nbsp; ${viewData.normalized_score ?? viewData.total}</div>
           <div class="banner-label">${escHtml(viewData.grade_label || '')}</div>
           ${metaLine ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:5px;">${metaLine}</div>` : ''}
         </div>
@@ -1927,6 +1985,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       contactTitle: contactTitle || '',
       stage: selectedStage,
       total: r.total,
+      normalized_score: r.normalized_score ?? r.total,
       letter_grade: r.letter_grade,
       grade_label: r.grade_label || '',
       top_strength: r.top_strength || '',
@@ -2187,7 +2246,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const metaParts = [showCompany ? null : null, h.rep, h.repRole, h.contactTitle].filter(Boolean);
     return `<div class="hist-card" id="hist-${h.id}">
       <div class="hist-card-header" onclick="toggleHistCard(${h.id})">
-        <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.total))}</div>
+        <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.normalized_score ?? h.total))}</div>
         <div class="hist-card-center">
           <div class="hist-card-title">${titleLine}</div>
           ${metaParts.length ? `<div class="hist-card-meta">${escHtml(metaParts.join(' · '))}</div>` : ''}
@@ -2235,7 +2294,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       el.innerHTML = Object.entries(groups).map(([company, entries]) => {
         const stages   = [...new Set(entries.map(h => h.stage).filter(Boolean))];
         const repNames = [...new Set(entries.map(h => h.rep).filter(Boolean))];
-        const avgScore = Math.round(entries.reduce((s, h) => s + (h.total || 0), 0) / entries.length);
+        const avgScore = Math.round(entries.reduce((s, h) => s + (h.normalized_score || h.total || 0), 0) / entries.length);
         const groupId  = 'grp-' + company.replace(/\W+/g, '_');
         const cSafeQ = company.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         const industry = _getProspectIndustry(company);
