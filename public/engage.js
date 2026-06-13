@@ -441,6 +441,40 @@
     return guidance;
   }
 
+  // Returns per-stage max points for each dimension.
+  // Reduced dimensions get half their normal max so the schema and the
+  // prose instruction agree — the LLM cannot score above what max allows.
+  function stageDimMaxes() {
+    const stage = (selectedStage || '').toLowerCase();
+    // defaults: full weight
+    let d = 20, v = 25, t = 25, q = 15, c = 15;
+    if (stage.includes('cold')) {
+      v = 12; // value framing reduced
+      q = 7;  // qualification reduced
+    } else if (stage.includes('discovery')) {
+      v = 12; // value framing reduced — light hook only, no demo expected
+    } else if (stage.includes('proposal') || stage.includes('close')) {
+      d = 10; // discovery reduced — pain already established
+    } else if (stage.includes('touchpoint')) {
+      v = 12; // value framing reduced — re-demoing unprompted is a red flag
+      q = 7;  // qualification reduced — re-qualifying every touchpoint is noise
+    }
+    // demo / solution: all full weight — no changes
+    return { d, v, t, q, c };
+  }
+
+  function buildStageDimensions(feedbackHints) {
+    const m = stageDimMaxes();
+    const fh = feedbackHints || {};
+    return [
+      `{ "name": "Discovery & needs confirmation",      "max": ${m.d}, "score": 0, "feedback": "${fh.d || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
+      `{ "name": "Value framing & demo delivery",       "max": ${m.v}, "score": 0, "feedback": "${fh.v || '2-3 sentences'}" }`,
+      `{ "name": "Tactical empathy & objection handling","max": ${m.t}, "score": 0, "feedback": "${fh.t || '2-3 sentences — call out specific techniques used or missed'}" }`,
+      `{ "name": "Qualification & deal mechanics",      "max": ${m.q}, "score": 0, "feedback": "${fh.q || '2-3 sentences covering budget, authority, timeline, competitive landscape, winnability'}" }`,
+      `{ "name": "Call control & next steps",           "max": ${m.c}, "score": 0, "feedback": "${fh.c || '2-3 sentences'}" }`
+    ].join(',\n    ');
+  }
+
   function buildStageWeighting() {
     const stage = (selectedStage || '').toLowerCase();
 
@@ -955,15 +989,11 @@ A+: 97–100 | A: 93–96 | A-: 90–92 | B+: 87–89 | B: 83–86 | B-: 80–82
 
 Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
 
-Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble:
+Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble. The max values below reflect the weighting for this meeting type — do not exceed them:
 
 {
   "dimensions": [
-    { "name": "Discovery & needs confirmation", "max": 20, "score": 0, "feedback": "2-3 sentences of specific actionable coaching tied to what happened in this call" },
-    { "name": "Value framing & demo delivery", "max": 25, "score": 0, "feedback": "2-3 sentences" },
-    { "name": "Tactical empathy & objection handling", "max": 25, "score": 0, "feedback": "2-3 sentences — call out specific techniques used or missed" },
-    { "name": "Qualification & deal mechanics", "max": 15, "score": 0, "feedback": "2-3 sentences covering budget, authority, timeline, competitive landscape, winnability" },
-    { "name": "Call control & next steps", "max": 15, "score": 0, "feedback": "2-3 sentences" }
+    ${buildStageDimensions()}
   ],
   "total": 0,
   "letter_grade": "B",
@@ -980,11 +1010,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
     {
       "name": "Rep Name as spoken in transcript",
       "dimensions": [
-        { "name": "Discovery & needs confirmation", "max": 20, "score": 0, "feedback": "2-3 sentences specific to this rep's contributions only" },
-        { "name": "Value framing & demo delivery", "max": 25, "score": 0, "feedback": "2-3 sentences" },
-        { "name": "Tactical empathy & objection handling", "max": 25, "score": 0, "feedback": "2-3 sentences" },
-        { "name": "Qualification & deal mechanics", "max": 15, "score": 0, "feedback": "2-3 sentences" },
-        { "name": "Call control & next steps", "max": 15, "score": 0, "feedback": "2-3 sentences" }
+        ${buildStageDimensions({ d: '2-3 sentences specific to this rep\'s contributions only', v: '2-3 sentences', t: '2-3 sentences', q: '2-3 sentences', c: '2-3 sentences' })}
       ],
       "total": 0,
       "letter_grade": "B",
@@ -1008,6 +1034,7 @@ Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no back
   }
 }
 
+total: sum of all dimension scores. The maximum possible total for this meeting type is ${Object.values(stageDimMaxes()).reduce((a,b)=>a+b,0)} — do not exceed it. Use this adjusted total when assigning letter_grade.
 call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
