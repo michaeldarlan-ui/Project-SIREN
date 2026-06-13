@@ -2703,7 +2703,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       countdownEl.textContent = itemTimes.length > 0
         ? fmtSecs(((itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length) * (total - done)) / 1000)
         : '—';
-      brgLog(`→ Fetching transcript: ${label}`, 'run');
+      brgLog(`→ Fetching: ${label}`, 'run');
       const itemStart = Date.now();
 
       try {
@@ -2733,7 +2733,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           tStage    ? 'Call stage: ' + tStage : '',
         ].filter(Boolean).join(' | ');
 
-        // 3. Call Claude (non-streaming for batch reliability)
+        brgLog(`  ↳ Transcript loaded (${(tData.transcript || '').length.toLocaleString()} chars) — calling Claude…`, 'run');
+
+        // 3. Call Claude via SSE stream (same as normal grader — avoids timeout on long transcripts)
         const resp = await fetch('/api/claude', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2741,7 +2743,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             model: 'claude-sonnet-4-6',
             max_tokens: 8192,
             temperature: 0,
-            stream: false,
+            stream: true,
             system: systemPrompt,
             messages: [{ role: 'user', content: context + '\n\n' + tData.transcript }],
           }),
@@ -2750,9 +2752,31 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           const err = await resp.json().catch(() => ({}));
           throw new Error(err.error?.message || 'API error ' + resp.status);
         }
-        const apiData = await resp.json();
-        let raw = (apiData.content?.[0]?.text || '').trim()
-          .replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+        // Read SSE stream, accumulate text deltas
+        const reader  = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = '', accumulated = '';
+        while (true) {
+          const { done: streamDone, value } = await reader.read();
+          if (streamDone) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split('\n');
+          sseBuffer = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const payload = line.slice(6).trim();
+            if (!payload || payload === '[DONE]') continue;
+            try {
+              const ev = JSON.parse(payload);
+              if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+                accumulated += ev.delta.text;
+              }
+            } catch {}
+          }
+        }
+
+        let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
         const parsed = JSON.parse(raw);
         normalizeResult(parsed, tRepObj);
 
