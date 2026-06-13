@@ -47,7 +47,7 @@ const HISTORY_COLS = `
   total INTEGER DEFAULT 0, letter_grade TEXT, grade_label TEXT,
   top_strength TEXT, top_priority TEXT, results_html TEXT,
   participants TEXT, dimensions TEXT, next_steps TEXT, overview TEXT,
-  partner_scores TEXT, rep_scores TEXT
+  partner_scores TEXT, rep_scores TEXT, spiced TEXT
 `;
 
 await client.batch([
@@ -59,6 +59,7 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS team (name TEXT PRIMARY KEY, role TEXT, idx INTEGER DEFAULT 0)` },
   { sql: `CREATE TABLE IF NOT EXISTS usage (id TEXT PRIMARY KEY, cost REAL DEFAULT 0, calls INTEGER DEFAULT 0)` },
   { sql: `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)` },
+  { sql: `CREATE TABLE IF NOT EXISTS roadmap (id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'planned', created_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS usage_daily (
       day TEXT, model TEXT,
       cost REAL DEFAULT 0, calls INTEGER DEFAULT 0,
@@ -92,6 +93,10 @@ await client.batch([
       await client.execute(`ALTER TABLE ${tbl} ADD COLUMN rep_scores TEXT`);
       console.log(`[db] Added rep_scores column to ${tbl}`);
     }
+    if (!cols.includes('spiced')) {
+      await client.execute(`ALTER TABLE ${tbl} ADD COLUMN spiced TEXT`);
+      console.log(`[db] Added spiced column to ${tbl}`);
+    }
   }
 
   // Migrate old transcripts table (history_id PK) to new standalone schema
@@ -120,11 +125,11 @@ await client.batch([
 // ── Row helpers ───────────────────────────────────────────────
 const DB_COLS = `id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
   total, letter_grade, grade_label, top_strength, top_priority,
-  results_html, participants, dimensions, next_steps, overview, partner_scores, rep_scores`;
+  results_html, participants, dimensions, next_steps, overview, partner_scores, rep_scores, spiced`;
 
 const DB_PARAMS = `?, ?, ?, ?, ?, ?, ?, ?,
   ?, ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?`;
+  ?, ?, ?, ?, ?, ?, ?, ?`;
 
 function isDemo(r) { return !!(r.is_demo) || String(r.id || '').startsWith('demo-'); }
 
@@ -153,6 +158,7 @@ function dbRowToRecord(row, demoFlag) {
     overview:       row.overview ? String(row.overview) : undefined,
     partner_scores: j('partner_scores'),
     rep_scores:     j('rep_scores'),
+    spiced:         j('spiced'),
   };
 }
 
@@ -179,6 +185,7 @@ function recordToArgs(r) {
     r.overview       || null,
     ser(r.partner_scores),
     ser(r.rep_scores),
+    ser(r.spiced),
   ];
 }
 
@@ -751,6 +758,54 @@ const server = http.createServer(async (req, res) => {
         });
       });
       await client.batch(ops, 'write');
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  // ── Roadmap API ────────────────────────────────────────────
+  if (req.method === 'GET' && req.url === '/api/roadmap') {
+    const rows = (await client.execute('SELECT id, title, description, status, created_at FROM roadmap ORDER BY id DESC')).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows.map(r => ({
+      id: Number(r.id), title: String(r.title),
+      desc: r.description ? String(r.description) : '',
+      status: String(r.status), ts: String(r.created_at),
+    }))));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/roadmap') {
+    try {
+      const { title, desc, status } = await readBody(req);
+      if (!title) { res.writeHead(400); res.end('title required'); return; }
+      const now = new Date().toISOString();
+      const result = await client.execute({
+        sql: 'INSERT INTO roadmap (title, description, status, created_at) VALUES (?, ?, ?, ?)',
+        args: [String(title), desc ? String(desc) : '', status || 'planned', now],
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ id: Number(result.lastInsertRowid) }));
+    } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  if (req.method === 'PATCH' && req.url.startsWith('/api/roadmap/')) {
+    try {
+      const id = parseInt(req.url.slice('/api/roadmap/'.length));
+      const { status, title, desc } = await readBody(req);
+      if (status)  await client.execute({ sql: 'UPDATE roadmap SET status = ? WHERE id = ?',      args: [String(status), id] });
+      if (title)   await client.execute({ sql: 'UPDATE roadmap SET title = ? WHERE id = ?',       args: [String(title), id] });
+      if (desc !== undefined) await client.execute({ sql: 'UPDATE roadmap SET description = ? WHERE id = ?', args: [String(desc), id] });
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  if (req.method === 'DELETE' && req.url.startsWith('/api/roadmap/')) {
+    try {
+      const id = parseInt(req.url.slice('/api/roadmap/'.length));
+      await client.execute({ sql: 'DELETE FROM roadmap WHERE id = ?', args: [id] });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
