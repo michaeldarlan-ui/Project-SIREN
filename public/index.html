@@ -486,7 +486,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         <!-- Signals from grading data -->
         <div class="forge-panel">
           <div class="forge-panel-hdr">
-            <span class="forge-panel-title" id="forgeSignalsTitle">Deal Intel</span>
+            <span class="forge-panel-title" id="forgeSignalsTitle">Call Signals</span>
           </div>
           <div class="forge-panel-body" id="forgeSignalsBody">
             <div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>
@@ -532,7 +532,15 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           </div>
           <div class="forge-panel-body" style="padding-bottom:14px;">
             <div style="font-family:var(--siren-font-hud);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:8px;">Built-in</div>
-            <div class="forge-template-row">
+
+            <!-- Deal Intel tile + template cards share the same grid -->
+            <div class="forge-template-row forge-template-row-4">
+              <!-- Deal Intel tile -->
+              <div class="forge-template-card forge-deal-intel-tile" id="forgeDealIntelTile" style="cursor:default;">
+                <div id="forgeDealIntelBody">
+                  <div style="font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account.</div>
+                </div>
+              </div>
               <div class="forge-template-card selected" data-builtin="call-brief">
                 <div class="forge-template-icon">📋</div>
                 <div class="forge-template-name">CALL BRIEF</div>

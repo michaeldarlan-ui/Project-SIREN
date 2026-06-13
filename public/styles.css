@@ -527,20 +527,23 @@
   .forge-next-text { font-size: 12px; color: var(--siren-text-body); line-height: 1.45; }
   .forge-next-tag { display: inline-block; margin-top: 4px; padding: 2px 7px; background: var(--siren-cyan-08); border: 1px solid var(--siren-border-mid); border-radius: 10px; font-family: var(--siren-font-hud); font-size: 9px; color: var(--siren-cyan-50); }
 
-  /* Deal Intel panel */
-  .di-kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
-  .di-kpi { background: var(--siren-bg-card-raised); border-radius: 6px; padding: 7px 6px; text-align: center; }
-  .di-kpi-val { font-size: 13px; font-weight: 700; font-family: var(--siren-font-hud); line-height: 1.2; }
-  .di-kpi-label { font-size: 9px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.35); margin-top: 3px; }
-  .di-kpi-sub { font-size: 9px; color: rgba(255,255,255,.22); margin-top: 1px; }
-  .di-section-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.25); margin-bottom: 4px; }
-  .di-row { display: flex; align-items: flex-start; gap: 7px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+  /* Deal Intel tile (in template card row) */
+  .forge-deal-intel-tile { border-color: rgba(0,200,255,.2) !important; background: rgba(0,200,255,.04) !important; }
+  .forge-deal-intel-tile:hover { border-color: rgba(0,200,255,.35) !important; background: rgba(0,200,255,.07) !important; }
+  .di-tile-header { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--siren-cyan-50); margin-bottom: 8px; }
+  .di-kpi-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-bottom: 8px; }
+  .di-kpi { background: rgba(0,0,0,.2); border-radius: 5px; padding: 5px 6px; text-align: center; }
+  .di-kpi-val { font-size: 11px; font-weight: 700; font-family: var(--siren-font-hud); line-height: 1.2; }
+  .di-kpi-label { font-size: 8px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-top: 2px; }
+  .di-kpi-sub { display: none; }
+  .di-section-label { font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.22); margin-bottom: 3px; margin-top: 7px; }
+  .di-row { display: flex; align-items: flex-start; gap: 5px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
   .di-row:last-child { border-bottom: none; }
-  .di-row-icon { font-size: 11px; min-width: 14px; padding-top: 1px; }
+  .di-row-icon { font-size: 10px; min-width: 12px; padding-top: 1px; }
   .di-row-body { flex: 1; min-width: 0; }
-  .di-row-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .05em; margin-right: 6px; }
-  .di-row-val { font-size: 11px; font-weight: 600; }
-  .di-row-detail { font-size: 11px; color: rgba(255,255,255,.6); line-height: 1.45; margin-top: 2px; }
+  .di-row-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,.35); text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
+  .di-row-val { font-size: 10px; font-weight: 600; }
+  .di-row-detail { font-size: 10px; color: rgba(255,255,255,.55); line-height: 1.4; margin-top: 1px; }
 
   /* Open Items / Task panel */
   .forge-open-item { padding: 10px 0; border-bottom: 1px solid var(--siren-border); }
@@ -559,6 +562,8 @@
   .forge-main { display: flex; flex-direction: column; gap: 1.25rem; }
 
   .forge-template-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+  .forge-template-row.forge-template-row-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 1100px) { .forge-template-row.forge-template-row-4 { grid-template-columns: repeat(2,1fr); } }
   @media (max-width: 1000px) { .forge-template-row { grid-template-columns: repeat(2,1fr); } }
   .forge-template-card { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: var(--siren-radius-lg); padding: 14px 16px; cursor: pointer; transition: border-color .15s, background .15s; position: relative; overflow: hidden; }
   .forge-template-card:hover { border-color: var(--siren-border-mid); background: var(--siren-bg-card-raised); }

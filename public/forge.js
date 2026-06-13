@@ -371,13 +371,24 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     forgeUpdateTemplateTitles();
   }
 
-  function forgeRenderSignals(h) { forgeRenderDealIntel(h); }
-
-  function forgeRenderDealIntel(h) {
+  function forgeRenderSignals(h) {
     const el = document.getElementById('forgeSignalsBody');
     const titleEl = document.getElementById('forgeSignalsTitle');
+    if (!el) return;
+    if (titleEl) titleEl.textContent = 'Call Signals';
+    let html = '';
+    if (h.grade_label) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">⬡</div><div><div class="forge-next-text">${escHtml(h.grade_label)}</div><span class="forge-next-tag">Assessment</span></div></div>`;
+    if (h.top_strength) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-signal-green);">▲</div><div><div class="forge-next-text">${escHtml(h.top_strength)}</div><span class="forge-next-tag">Strength</span></div></div>`;
+    if (h.top_priority) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:#e8a020;">▼</div><div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Priority gap</span></div></div>`;
+    if (Array.isArray(h.next_steps) && h.next_steps.length) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">→</div><div><div class="forge-next-text">${escHtml(h.next_steps[0])}</div><span class="forge-next-tag">Next step</span></div></div>`;
+    if (!html) html = '<div style="font-size:11px;color:var(--siren-text-muted);padding:4px 0;">No signals extracted from this call.</div>';
+    el.innerHTML = html;
+    forgeRenderDealIntel(h);
+  }
+
+  function forgeRenderDealIntel(h) {
+    const el = document.getElementById('forgeDealIntelBody');
     if (!el || !h) return;
-    if (titleEl) titleEl.textContent = 'Deal Intel';
 
     const hist = _forgeHistory; // all calls for this account, newest first
 
@@ -432,11 +443,10 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     const openItems = vigilTasks.filter(t => !t.done).length;
 
     // ── Build HTML ──
-    const kpi = (label, value, color, sub) =>
+    const kpi = (label, value, color) =>
       `<div class="di-kpi">
         <div class="di-kpi-val" style="color:${color};">${value}</div>
         <div class="di-kpi-label">${label}</div>
-        ${sub ? `<div class="di-kpi-sub">${sub}</div>` : ''}
       </div>`;
 
     const row = (icon, label, value, color, detail) =>
@@ -450,11 +460,12 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
       </div>`;
 
     el.innerHTML = `
+      <div class="di-tile-header">⬡ Deal Intel</div>
       <div class="di-kpi-strip">
         ${kpi('Health', healthLabel, healthColor)}
-        ${kpi('Momentum', momentumLabel, momentumColor, `${scores.length} call${scores.length!==1?'s':''}`)}
-        ${kpi('SPICED', `${spicedTouched}/${spicedTotal}`, spicedColor, `${spicedPct}% coverage`)}
-        ${kpi('Open Items', openItems, openItems > 0 ? '#e8a020' : '#22c55e')}
+        ${kpi('Momentum', momentumLabel, momentumColor)}
+        ${kpi('SPICED', `${spicedTouched}/${spicedTotal}`, spicedColor)}
+        ${kpi('Open', openItems > 0 ? `${openItems} items` : 'Clear', openItems > 0 ? '#e8a020' : '#22c55e')}
       </div>
 
       <div class="di-section-label">DEAL METRICS</div>
@@ -483,6 +494,8 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     document.getElementById('forgeCallPickerWrap').style.display = 'none';
     document.getElementById('forgeSignalsBody').innerHTML =
       '<div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>';
+    const diEl = document.getElementById('forgeDealIntelBody');
+    if (diEl) diEl.innerHTML = '<div style="font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account.</div>';
     document.getElementById('forgeWipOverlay').style.display = '';
     document.getElementById('forgeCopyBtn').disabled = true;
     document.getElementById('forgeGenBtn').disabled = true;
