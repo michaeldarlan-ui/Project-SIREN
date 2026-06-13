@@ -547,6 +547,36 @@
   .di-kpi-val { font-size: 11px; font-weight: 700; font-family: var(--siren-font-hud); line-height: 1.2; }
   .di-kpi-label { font-size: 8px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.3); margin-top: 2px; }
   .di-kpi-sub { display: none; }
+
+  /* Deal Health KPI hover tooltip */
+  .di-kpi-health { cursor: default; }
+  .di-kpi-health:hover { background: rgba(0,0,0,.35); }
+  .di-health-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 40;
+    min-width: 220px;
+    background: #0e1a22;
+    border: 1px solid rgba(0,200,255,.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.6);
+    text-align: left;
+    pointer-events: none;
+  }
+  .di-health-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: rgba(0,200,255,.25);
+  }
+  .di-kpi-health:hover .di-health-tooltip { display: block; }
   .di-section-label { font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.22); margin-bottom: 3px; margin-top: 7px; }
   .di-row { display: flex; align-items: flex-start; gap: 5px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
   .di-row:last-child { border-bottom: none; }

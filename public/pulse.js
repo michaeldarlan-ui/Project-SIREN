@@ -395,14 +395,20 @@
     else if (scoreOk && spicedOk && momOk)        { healthLabel = 'Moderate'; healthColor = '#e8a020'; }
     else                                            { healthLabel = 'At Risk';  healthColor = '#ef4444'; }
 
-    // Health factor detail — show what's passing/failing
-    const factorLine = (pass, label) =>
-      `<span style="color:${pass?'#22c55e':'#ef4444'};margin-right:10px;">${pass?'✓':'✗'} ${label}</span>`;
-    const healthFactors = `
-      <div style="display:flex;flex-wrap:wrap;margin-top:5px;font-size:10px;font-family:var(--siren-font-hud);letter-spacing:.03em;">
-        ${factorLine(scoreOk,   `Score ${score}`)}
-        ${factorLine(spicedOk,  `SPICED ${spicedPct}%`)}
-        ${factorLine(momOk,     `Momentum`)}
+    // Health tooltip — shown on hover via CSS, one row per factor
+    const factorRow = (pass, label, actual, threshold) =>
+      `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+        <span style="color:${pass?'#22c55e':'#ef4444'};font-size:12px;flex-shrink:0;width:12px;">${pass?'✓':'✗'}</span>
+        <span style="color:rgba(255,255,255,.65);font-size:11px;flex:1;">${label}</span>
+        <span style="color:${pass?'#22c55e':'#ef4444'};font-size:11px;font-weight:700;white-space:nowrap;">${actual}</span>
+        <span style="color:rgba(255,255,255,.22);font-size:10px;white-space:nowrap;">/ ${threshold}</span>
+      </div>`;
+    const healthTooltip = `
+      <div class="di-health-tooltip">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:8px;">Why ${healthLabel}?</div>
+        ${factorRow(scoreOk,  'Call Score',      `${score}`,       healthLabel==='Strong'?'80+':'65+')}
+        ${factorRow(spicedOk, 'SPICED Coverage', `${spicedPct}%`, healthLabel==='Strong'?'60%+':'40%+')}
+        ${factorRow(momOk,    'Momentum',         momentumLabel,    'not declining')}
       </div>`;
 
     // ── Cadence ─────────────────────────────────────────────────
@@ -460,13 +466,16 @@
 
     return `
       <div class="di-kpi-strip" style="grid-template-columns:repeat(4,1fr);">
-        ${kpi('Deal Health', healthLabel, healthColor)}
+        <div class="di-kpi di-kpi-health" style="position:relative;">
+          <div class="di-kpi-val" style="color:${healthColor};">${healthLabel}</div>
+          <div class="di-kpi-label">Deal Health</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.25);margin-top:2px;">hover for detail</div>
+          ${healthTooltip}
+        </div>
         ${kpi('Momentum',    momentumLabel, momentumColor, scores.length >= 2 ? `last ${Math.min(3,scores.length)} calls` : 'only 1 call')}
         ${kpi('SPICED',      `${spicedTouch}/${spicedTotal}`, spicedColor, `${spicedPct}% coverage`)}
         ${kpi('Open Items',  openItems > 0 ? `${openItems}` : 'Clear', openItems > 0 ? '#e8a020' : '#22c55e')}
       </div>
-
-      ${healthFactors}
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:14px;">
         <div>
