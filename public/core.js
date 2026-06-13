@@ -30,6 +30,7 @@
     if (page === 'coach')       coachInit();
     if (page === 'usage')       renderUsagePage();
     if (page === 'settings')    rdmRender();
+    if (page === 'audit')       typeof auditLoad === 'function' && auditLoad();
   }
 
   // ── Demo mode ──────────────────────────────────────────────
