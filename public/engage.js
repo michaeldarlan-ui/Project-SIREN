@@ -1306,14 +1306,13 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     </div>`;
   }
 
-  function renderResults(r, prospect, contactTitle, rep, callDate, notes, thirdParties) {
+  // Builds the results HTML string from a parsed grading result.
+  // Pure function — no DOM writes, no history saves. Used by renderResults and regradeFromHistory.
+  function buildResultsHtml(r, prospect, contactTitle, rep, callDate, notes, thirdParties, stage) {
+    const stageCtx = stage || selectedStage || '';
     const formattedDate = callDate ? new Date(callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-    const overallMeta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, selectedStage, formattedDate].filter(Boolean).join(' · ');
+    const overallMeta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, stageCtx, formattedDate].filter(Boolean).join(' · ');
 
-    // Auto-save recommendations
-    if (r.recommended_books?.length) autoSaveRecommendations(r.recommended_books);
-
-    // Call summary (switchable per rep)
     const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
     const showToggle = repScores.length >= 1;
     const overallSummary = buildSummaryHtml(r.call_summary || {}, 'overall', true, 'Call summary');
@@ -1374,7 +1373,6 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         </div>`;
       }).join('')}` : '';
 
-    // Toggle + score views (repScores + showToggle already computed above)
     const toggleHtml = showToggle ? `
       <div class="rep-toggle">
         <button class="rep-toggle-btn active" id="toggle-overall" onclick="switchScoreView('overall',event)">Overall Call</button>
@@ -1382,9 +1380,9 @@ Set touched to true only if the rep meaningfully engaged with that component in 
       </div>` : '';
 
     const overallView = buildScoreView(r, overallMeta, 'overall');
-    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (selectedStage ? ' · ' + selectedStage : ''), `rep-${i}`)).join('') : '';
+    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`)).join('') : '';
 
-    const isColdCall = selectedStage.toLowerCase().includes('cold');
+    const isColdCall = stageCtx.toLowerCase().includes('cold');
     const priorCalls = prospect
       ? loadHistory().filter(h => (h.prospect || '').toLowerCase().trim() === prospect.toLowerCase().trim())
       : [];
@@ -1394,7 +1392,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         <span>No prior call history found for <strong>${escHtml(prospect || 'this prospect')}</strong>. This report was graded without account context — missed questions or gaps may reflect unknown prior discovery rather than rep performance.</span>
       </div>` : '';
 
-    const missingRecWarnings = detectMissingRecordings(priorCalls, callDate, notes);
+    const missingRecWarnings = detectMissingRecordings(priorCalls, callDate, notes || '');
     const missingRecBanner = missingRecWarnings.length ? `
       <div class="no-context-banner missing-rec-banner">
         <span class="no-context-icon">&#9888;</span>
@@ -1417,21 +1415,30 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         </div>
       </div>` : '';
 
-    const pdfTitle = [prospect, selectedStage, callDate].filter(Boolean).join(' — ');
-    const resultsHtml = `
-      ${noContextBanner}
-      ${missingRecBanner}
-      ${thirdPartyBanner}
-      ${toggleHtml}
-      ${overallView}
-      ${repViews}
-      ${summaryHtml}
-      ${spicedHtml}
-      ${partnerHtml}
-      <div class="results-actions">
-        <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
-        <button class="pdf-btn" onclick="exportReportPDF(${escHtml(JSON.stringify(pdfTitle))})">&#8595; Export PDF</button>
-      </div>`;
+    const pdfTitle = [prospect, stageCtx, callDate].filter(Boolean).join(' — ');
+    return {
+      html: `
+        ${noContextBanner}
+        ${missingRecBanner}
+        ${thirdPartyBanner}
+        ${toggleHtml}
+        ${overallView}
+        ${repViews}
+        ${summaryHtml}
+        ${spicedHtml}
+        ${partnerHtml}
+        <div class="results-actions">
+          <button class="reset-btn" onclick="resetForm()">&#8592; Grade another call</button>
+          <button class="pdf-btn" onclick="exportReportPDF(${escHtml(JSON.stringify(pdfTitle))})">&#8595; Export PDF</button>
+        </div>`,
+      pdfTitle,
+    };
+  }
+
+  function renderResults(r, prospect, contactTitle, rep, callDate, notes, thirdParties) {
+    if (r.recommended_books?.length) autoSaveRecommendations(r.recommended_books);
+
+    const { html: resultsHtml, pdfTitle } = buildResultsHtml(r, prospect, contactTitle, rep, callDate, notes, thirdParties);
 
     document.getElementById('results').innerHTML = resultsHtml;
     document.getElementById('results').style.display = 'block';
@@ -2212,12 +2219,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const parsed = JSON.parse(raw);
       normalizeResult(parsed, tRepObj);
 
-      // 5. Re-render results HTML (same as renderResults but store-only path)
+      // 5. Build results HTML without touching DOM or creating new history records
       const rep = tRepObj || (tRepName ? { name: tRepName, role: '' } : null);
-      renderResults(parsed, tProspect, '', rep, tCallDate, tData.transcript, []);
+      const { html: newHtml } = buildResultsHtml(parsed, tProspect, '', rep, tCallDate, tData.transcript, [], tStage);
 
-      // 6. Grab the newly rendered HTML and update the history record in-place
-      const newHtml = document.getElementById('results')?.innerHTML || '';
+      // 6. Update the history record in-place (same ID — no duplicate created)
       const updatedRecord = {
         id: String(id),
         ts: new Date().toISOString(),
@@ -2249,10 +2255,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const cacheIdx = _histCache.findIndex(h => String(h.id) === String(id));
       if (cacheIdx !== -1) Object.assign(_histCache[cacheIdx], updatedRecord);
       else _histCache.unshift(updatedRecord);
-
-      // Hide results panel (renderResults made it visible), restore history view
-      document.getElementById('results').style.display = 'none';
-      document.getElementById('inputCard').style.display = 'block';
 
       // Refresh just this card in the DOM
       const cardEl = document.getElementById('hist-' + id);
