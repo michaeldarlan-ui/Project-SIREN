@@ -381,15 +381,105 @@
   function buildRoleGuidance(rep) {
     if (!rep) return '';
     const role = rep.role.toLowerCase();
-    if (role.includes('sdr') || role.includes('bdr') || role.includes('development'))
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward pipeline generation skills: opening, qualifying interest, booking the next meeting. Hold lighter expectations on deep technical demo delivery or close mechanics, but be rigorous on discovery quality and next-step commitment.`;
-    if (role.includes('engineer') || role.includes('se') || role.includes('presales') || role.includes('pre-sales'))
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward technical demo quality, solution fit accuracy, and ability to translate prospect pain into OneAxiom's technical differentiators. Hold lighter expectations on commercial negotiation or close tactics, but be rigorous on demo delivery and technical objection handling.`;
-    if (role.includes('manager') || role.includes('director') || role.includes('vp') || role.includes('leader'))
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward deal strategy, executive-level value framing, and qualification rigor. Note any coaching or leadership behaviors if this appears to be a joint call.`;
-    if (role.includes('account manager') || role.includes('csm') || role.includes('success') || role.includes('renewal'))
-      return `\n\nRep role context — ${rep.name} is a ${rep.role}. Weight grading toward expansion discovery, upsell signals, relationship depth, and retention mechanics. Hold lighter expectations on cold prospecting technique, but be rigorous on value confirmation and next-step clarity.`;
-    return `\n\nRep role context — ${rep.name} is a ${rep.role}. Grade the full sales cycle with balanced weight across all five dimensions.`;
+    const stage = (selectedStage || '').toLowerCase();
+
+    const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
+    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
+    const isManager = role.includes('manager') && !role.includes('account manager') || role.includes('director') || role.includes('vp') || role.includes('leader');
+    const isAM      = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
+
+    const isCold      = stage.includes('cold');
+    const isDiscovery = stage.includes('discovery');
+    const isDemo      = stage.includes('demo') || stage.includes('solution');
+    const isProposal  = stage.includes('proposal') || stage.includes('close');
+    const isTouchpoint = stage.includes('touchpoint');
+
+    let guidance = `\n\nRep role context — ${rep.name} is a ${rep.role}.`;
+
+    if (isSDR) {
+      if (isCold)
+        guidance += ` SDR on a cold call: this is their primary motion. Grade rigorously on all five dimensions within the cold context — opening strength, handling resistance, and booking a concrete next meeting.`;
+      else if (isDiscovery)
+        guidance += ` SDR on a discovery call: grade on question quality and handoff clarity. Do not grade on closing mechanics or deep qualification — those are the AE's responsibility.`;
+      else if (isDemo)
+        guidance += ` SDR on a demo call: SDRs are rarely expected here. Grade only on whether their contributions helped or created noise. No penalty for appropriate silence.`;
+      else if (isTouchpoint)
+        guidance += ` SDR on a touchpoint: not expected. No grading expectations beyond professional conduct.`;
+      else
+        guidance += ` Weight grading toward pipeline generation: opening, qualifying interest, booking the next meeting. Lighter expectations on technical demo delivery or close mechanics. Rigorous on discovery quality and next-step commitment.`;
+    } else if (isSE) {
+      if (isDemo)
+        guidance += ` SE on a demo: this is their primary motion. Grade rigorously on technical accuracy, pain-to-feature linkage, and handling of technical objections. Do not grade on commercial negotiation or close mechanics — those belong to the AE.`;
+      else if (isProposal)
+        guidance += ` SE on a proposal/close call: grade only on last-mile technical contributions — answering outstanding technical questions, resolving integration concerns. Do not grade on commercial terms or closing pressure.`;
+      else if (isDiscovery)
+        guidance += ` SE on a discovery call: grade on technical listening — did they hear the right signals to inform a targeted demo? Hold lighter expectations on commercial discovery.`;
+      else
+        guidance += ` Weight grading toward technical demo quality, solution fit accuracy, and translating prospect pain into OneAxiom's technical differentiators. Lighter expectations on commercial negotiation. Rigorous on demo delivery and technical objection handling.`;
+    } else if (isManager) {
+      if (isProposal)
+        guidance += ` Manager on a proposal/close call: grade on executive-level value framing and whether their presence accelerated or stalled the decision. Note any coaching behaviors toward the AE during the call.`;
+      else if (isDiscovery)
+        guidance += ` Manager on a discovery call: grade on whether they enhanced or undercut the AE, and whether they identified coaching moments in real time without taking over the call.`;
+      else
+        guidance += ` Weight grading toward deal strategy, executive-level value framing, and qualification rigor. Note any coaching or leadership behaviors on joint calls.`;
+    } else if (isAM) {
+      if (isTouchpoint)
+        guidance += ` AM on a touchpoint: this is a post-sale or renewal context. Grade on expansion discovery, upsell signals surfaced, relationship depth, and retention mechanics. Do not grade on pipeline generation techniques.`;
+      else
+        guidance += ` Weight grading toward expansion discovery, upsell signals, relationship depth, and retention mechanics. Lighter expectations on cold prospecting. Rigorous on value confirmation and next-step clarity.`;
+    } else {
+      // AE or unrecognized — full balanced weight
+      if (isCold)
+        guidance += ` AE on a cold call: same expectations as SDR cold outreach. Grade on opening, handling resistance, and booking a concrete next meeting. No extra credit for seniority.`;
+      else if (isTouchpoint)
+        guidance += ` AE on a touchpoint: grade on confirming deal status, surfacing new stakeholders or blockers, and owning a specific forward action. Penalize re-demoing unprompted.`;
+      else
+        guidance += ` Grade the full sales cycle with balanced weight across all five dimensions.`;
+    }
+
+    return guidance;
+  }
+
+  function buildStageWeighting() {
+    const stage = (selectedStage || '').toLowerCase();
+
+    if (stage.includes('cold')) return `Dimension weighting for Cold Outreach:
+- Discovery & needs confirmation (20 pts): Full weight. Surface initial pain or curiosity; confirm there is something worth exploring. One sharp question beats five generic ones.
+- Value framing & demo delivery (25 pts): REDUCED. Brief value hook only — one sentence on what OneAxiom solves. No demo expected. Do not penalize absence of a full demo.
+- Tactical empathy & objection handling (25 pts): Full weight. Handling "not interested" or "we already have something" gracefully is the core skill being tested here.
+- Qualification & deal mechanics (15 pts): REDUCED. Light confirmation of fit is acceptable — full BANT qualification is not appropriate on a cold call. Do not penalize for shallow qualification.
+- Call control & next steps (15 pts): Full weight, rigorous. Must end with a specific booked meeting — date, time, named attendees. "I'll send info" is not a next step.`;
+
+    if (stage.includes('discovery')) return `Dimension weighting for Discovery:
+- Discovery & needs confirmation (20 pts): Full weight, primary focus. Rep must go deep — current environment, specific pain, impact, what they have already tried. Reps who pitch instead of listen lose points here.
+- Value framing & demo delivery (25 pts): REDUCED. Light framing only — connecting pain to OneAxiom's capability. No demo expected unless explicitly pre-agreed. Do not penalize absence of a demo.
+- Tactical empathy & objection handling (25 pts): Full weight. Resistance to questions or early skepticism must be handled with labeling and calibrated questions.
+- Qualification & deal mechanics (15 pts): Full weight. Budget awareness, decision authority, timeline, and competitive context should all be touched — even if not fully resolved.
+- Call control & next steps (15 pts): Full weight. Must close with a defined next step — demo date confirmed, attendees named, preparation steps assigned.`;
+
+    if (stage.includes('demo') || stage.includes('solution')) return `Dimension weighting for Demo / Solution Presentation:
+- Discovery & needs confirmation (20 pts): Full weight. Rep must re-confirm pain at the start — "before I show you anything, I want to make sure I have the right story." Skipping this is a grading penalty regardless of demo quality.
+- Value framing & demo delivery (25 pts): Full weight, primary focus. Every feature shown must be anchored to a stated prospect problem. Generic feature tours are penalized. If an SE is present, technical depth and accuracy are graded rigorously.
+- Tactical empathy & objection handling (25 pts): Full weight. Technical objections, "we already have that," and pricing probes all require labeling and calibrated responses — not defensive justification.
+- Qualification & deal mechanics (15 pts): Full weight. Budget and authority must be confirmed. Any gaps from discovery should be closed here.
+- Call control & next steps (15 pts): Full weight. Must end with a proposal date or trial scope defined — not "let us know what you think."`;
+
+    if (stage.includes('proposal') || stage.includes('close')) return `Dimension weighting for Proposal / Close:
+- Discovery & needs confirmation (20 pts): REDUCED. Pain should already be established. Grade only on whether the rep re-anchors the proposal to stated pain when presenting pricing — not on new discovery.
+- Value framing & demo delivery (25 pts): Full weight, but no demo. Framing here is about ROI, risk of inaction, and why OneAxiom over the alternative. Rep must justify the investment — not just restate it.
+- Tactical empathy & objection handling (25 pts): Full weight, highest scrutiny. Price objections, "we need to loop in legal," and "let's revisit next quarter" must all be handled. Caving without a counter is a hard grading failure.
+- Qualification & deal mechanics (15 pts): Full weight. Contract terms, procurement process, signatories, and any legal or compliance requirements must be surfaced and handled — not left open.
+- Call control & next steps (15 pts): Full weight, critical. Ends with a signed agreement, a signature date with a named decision-maker, or a specific reason for the gap. "I'll follow up" is not a next step.`;
+
+    if (stage.includes('touchpoint')) return `Dimension weighting for Touchpoint:
+- Discovery & needs confirmation (20 pts): Full weight, but the goal shifts — confirm previously stated pain still holds, surface any new developments such as new stakeholders, budget changes, or internal shifts. Do not grade on re-opening discovery from scratch.
+- Value framing & demo delivery (25 pts): REDUCED. Not applicable unless the prospect explicitly requests a refresher. Re-demoing unprompted is a red flag and should be noted as a missed read.
+- Tactical empathy & objection handling (25 pts): Full weight. Silence or vague answers must be labeled and probed — "it sounds like something has changed" is the model response.
+- Qualification & deal mechanics (15 pts): REDUCED. Re-qualifying every touchpoint is noise. Grade only if new information surfaces that changes deal mechanics.
+- Call control & next steps (15 pts): Full weight. Every touchpoint must end with a specific forward action — even if only confirming the decision timeline is intact.`;
+
+    return `Grade all five dimensions at full weight: Discovery & needs confirmation (20 pts), Value framing & demo delivery (25 pts), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts).`;
   }
 
   function buildHistoryContext(prospect, rep) {
@@ -858,6 +948,8 @@ ${buildLibraryPrompt()}${buildDocsPrompt()}${buildHistoryContext(prospect, rep)}
 
 You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
 
+${buildStageWeighting()}
+
 Use this grading scale when assigning letter_grade based on total score (0–100):
 A+: 97–100 | A: 93–96 | A-: 90–92 | B+: 87–89 | B: 83–86 | B-: 80–82 | C+: 77–79 | C: 73–76 | C-: 70–72 | D+: 67–69 | D: 63–66 | D-: 60–62 | F: 0–59
 
@@ -922,7 +1014,14 @@ call_summary.improvements: 2-4 concrete, actionable things to do differently on 
 recommended_books: only recommend resources from the approved list above. If no list is configured or no gaps exist, return an empty array.
 rep_scores: identify every sales rep who speaks in the transcript, resolving any generic speaker labels (Speaker 1, etc.) to real names using the Participants section and context clues as instructed above. For each, score them individually across the same 5 dimensions based only on their own contributions — what they said, asked, or did. If only one rep is present, still populate rep_scores with that one entry. If no reps can be identified even after resolution, return an empty array.
 rep_scores[].call_summary: per-rep summary based solely on that rep's individual contributions. positives = specific things this rep personally did well. missed = opportunities or techniques this specific rep failed to attempt. improvements = concrete actions this rep should take differently next call. Do not repeat overall call observations — focus only on this rep's behavior.
-spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Critical Event, Evolution, Decision) from the SPICED framework (Winning by Design). Set touched to true if the rep meaningfully engaged with that component in the transcript, false if it was absent or superficial. Write a 1-2 sentence summary for each regardless of whether it was touched — if not touched, briefly note what was missing and why it matters.${thirdPartyContext}`;
+spiced: evaluate each of the 6 SPICED components using the SPICED framework (Winning by Design). SPICED is built across the full deal lifecycle — not completed in a single call. Grade each component against what is expected at this stage:
+- Situation: expected in full on Meeting 1 / Cold Outreach. A gap here on any later-stage call is a red flag — penalize if still unknown by Demo.
+- Pain: expected on Discovery. Must be in the prospect's own words, not assumed. Re-confirmed on every subsequent call. Penalize if still superficial by Demo stage.
+- Impact: expected by mid-deal (Demo stage). Quantified business/financial consequence of the pain. Penalize if never quantified by Proposal.
+- Critical Event: must be identified by Demo stage. A deal with no Critical Event has no close date — penalize accordingly.
+- Evolution: tracked across every call. Grade on whether the rep noticed and responded to changes in the buying committee or process — not just whether they asked once.
+- Decision: expected by late-stage (Proposal/Close). Named decision-maker and procurement process must be confirmed before contract. Penalize if unknown at close.
+Set touched to true only if the rep meaningfully engaged with that component in this specific transcript, false if absent or superficial. Write a 1-2 sentence summary regardless — if not touched, note what is missing and whether the gap is acceptable at this stage or a grading concern.${thirdPartyContext}`;
 
     const team = loadTeam();
     const teamContext = team.length
