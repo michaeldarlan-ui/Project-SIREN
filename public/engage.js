@@ -2401,20 +2401,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
-    // Show full report: remove reset button and rep-toggle switcher, make all score-views visible
+    // Render report preserving the toggle — strip only the grader action buttons
     const bodyHtml = (h.resultsHtml || '')
-      .replace(/<button[^>]*class="[^"]*reset-btn[^"]*"[\s\S]*?<\/button>/g, '')
-      .replace(/<div class="rep-toggle">[\s\S]*?<\/div>\s*/, '')
-      .replace(/class="score-view[^"]*"/g, 'class="score-view active"')
-      .replace(/class="summary-view[^"]*"/g, 'class="summary-view active"')
-      .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"")
-      .replace(/background:#00c8ff/g, 'background:#006a8a')
-      .replace(/background:#00c896/g, 'background:#0a6b52')
-      .replace(/background:#e8a020/g, 'background:#7c5514')
-      .replace(/background:#e05050/g, 'background:#7a2828')
-      .replace(/background:#c03030/g, 'background:#5c1c1c')
-      .replace(/color:#e8a020/g, 'color:#c47f1a')
-      .replace(/color:#e05050/g, 'color:#a83535');
+      // Remove "Grade another call" reset button and "Export PDF" button from results-actions
+      .replace(/<div class="results-actions">[\s\S]*?<\/div>/g, '')
+      // Ensure switchScoreView calls pass the event for .hist-card-body scoping
+      .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"");
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
