@@ -816,6 +816,11 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         <!-- Top bar -->
         <div class="lc-graph-topbar" onmousedown="event.stopPropagation()">
           <span class="lc-graph-topbar-title">ATLAS</span>
+          <div class="lc-deal-filter">
+            <button class="lc-deal-filter-btn active" data-filter="open"   onclick="atlasSetDealFilter('open')">Open</button>
+            <button class="lc-deal-filter-btn"        data-filter="closed" onclick="atlasSetDealFilter('closed')">Closed</button>
+            <button class="lc-deal-filter-btn"        data-filter="all"    onclick="atlasSetDealFilter('all')">All</button>
+          </div>
           <select id="lcCompanySelect" onchange="onLcCompanyChange()">
             <option value="">— Select an account —</option>
           </select>

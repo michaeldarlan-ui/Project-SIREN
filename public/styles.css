@@ -731,6 +731,10 @@
     font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.5);
     letter-spacing: 0.05em; text-transform: uppercase;
   }
+  .lc-deal-filter { display: flex; gap: 2px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 7px; padding: 2px; }
+  .lc-deal-filter-btn { background: none; border: none; color: rgba(255,255,255,.45); font-family: var(--siren-font-hud); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: background .15s, color .15s; }
+  .lc-deal-filter-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+  .lc-deal-filter-btn.active { background: rgba(0,200,255,.18); color: #00c8ff; }
   /* Legend */
   .lc-legend {
     display: flex; align-items: center; gap: 14px;

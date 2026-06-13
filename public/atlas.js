@@ -1,10 +1,38 @@
-﻿  function renderLifecyclePage() {
-    const companies = getLcCompanies();
+﻿  let _atlasFilter = 'open'; // 'open' | 'closed' | 'all'
+
+  function atlasSetDealFilter(f) {
+    _atlasFilter = f;
+    document.querySelectorAll('.lc-deal-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+    renderLifecyclePage();
+  }
+
+  function renderLifecyclePage() {
+    const allCompanies = getLcCompanies();
+    // Filter companies by deal status
+    const companies = allCompanies.filter(c => {
+      if (_atlasFilter === 'all') return true;
+      const status = (loadAccountProfile(c).deal_status) || 'active';
+      if (_atlasFilter === 'open')   return status === 'active';
+      if (_atlasFilter === 'closed') return status === 'won' || status === 'lost';
+      return true;
+    });
     const sel = document.getElementById('lcCompanySelect');
     const prev = sel.value;
     sel.innerHTML = '<option value="">— Select an account —</option>' +
-      companies.map(c => `<option value="${escHtml(c)}"${c===prev?' selected':''}>${escHtml(c)}</option>`).join('');
-    if (prev && companies.includes(prev)) onLcCompanyChange();
+      companies.map(c => {
+        const status = loadAccountProfile(c).deal_status || 'active';
+        const badge  = status === 'won' ? ' ✓ Won' : status === 'lost' ? ' ✗ Lost' : '';
+        return `<option value="${escHtml(c)}"${c===prev?' selected':''}>${escHtml(c)}${badge}</option>`;
+      }).join('');
+    // If previously selected company is still in filtered list, keep it; otherwise clear graph
+    if (prev && companies.includes(prev)) {
+      onLcCompanyChange();
+    } else if (prev) {
+      document.getElementById('lcGraphRoot').innerHTML = '';
+      const emptyEl = document.getElementById('lcGraphEmpty');
+      if (emptyEl) emptyEl.style.display = 'flex';
+      lcCloseSidebar();
+    }
   }
 
   function onLcCompanyChange() {
@@ -439,6 +467,7 @@
     prof.deal_status = status;
     saveAccountProfile(company, prof);
     lcSelectNode('account'); // re-render sidebar
+    renderLifecyclePage();  // refresh dropdown so account moves to correct filter bucket
   }
 
   let _atlasRadarRaf = null;
