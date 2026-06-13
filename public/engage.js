@@ -2276,24 +2276,30 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
-    // Build attendee list: prefer rep_scores (all graded reps) with roles, fall back to primary rep
+    // Build attendee list: OneAxiom reps from rep_scores + third parties from partner_scores
     const team = loadTeam();
-    const attendees = Array.isArray(h.rep_scores) && h.rep_scores.length
+    const repChips = Array.isArray(h.rep_scores) && h.rep_scores.length
       ? h.rep_scores.map(rs => {
           const member = team.find(m => m.name && m.name.toLowerCase() === (rs.name || '').toLowerCase());
           const role = member?.role || rs.role || '';
-          return role ? `${rs.name} · ${role}` : rs.name;
+          return { label: role ? `${rs.name} · ${role}` : rs.name, type: 'rep' };
         })
-      : [h.rep, h.repRole ? h.repRole : null].filter(Boolean).join(' · ')
-        ? [[h.rep, h.repRole].filter(Boolean).join(' · ')]
+      : [h.rep, h.repRole].filter(Boolean).join(' · ')
+        ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }]
         : [];
-    const metaParts = attendees;
+    const partnerChips = Array.isArray(h.partner_scores) && h.partner_scores.length
+      ? h.partner_scores.map(ps => {
+          const label = [ps.name, ps.role || ps.organization].filter(Boolean).join(' · ');
+          return { label: label || ps.name, type: 'partner' };
+        })
+      : [];
+    const metaParts = [...repChips, ...partnerChips];
     return `<div class="hist-card" id="hist-${h.id}">
       <div class="hist-card-header" onclick="toggleHistCard(${h.id})">
         <div class="hist-grade-badge" style="background:${bannerBg};">${escHtml(h.letter_grade)} ${escHtml(String(h.normalized_score ?? h.total))}</div>
         <div class="hist-card-center">
           <div class="hist-card-title">${titleLine}</div>
-          ${metaParts.length ? `<div class="hist-card-meta">${metaParts.map(a => `<span class="hist-attendee">${escHtml(a)}</span>`).join('')}</div>` : ''}
+          ${metaParts.length ? `<div class="hist-card-meta">${metaParts.map(a => `<span class="hist-attendee hist-attendee-${a.type}">${escHtml(a.label)}</span>`).join('')}</div>` : ''}
         </div>
         <div class="hist-card-right">
           <span class="hist-card-date">${escHtml(displayDate)}</span>
