@@ -9,6 +9,8 @@
   let _forgeCustomTemplate = null; // selected user template object
   let _forgeCall    = null; // currently selected call entry
   let _forgeBriefAudience = 'internal'; // 'internal' | 'client'
+  let _forgeActiveTask = null;  // currently selected VIGIL task text
+  let _forgeResearch = '';      // research output for active task
 
   function forgeRenderUserTemplates() {
     const el = document.getElementById('forgeUserTemplates');
@@ -72,6 +74,23 @@
       .replace(/\{\{notes\}\}/gi, h.notes||'');
   }
 
+  function _forgeVigilOpenCounts() {
+    // Returns a Map<company, openCount> for accounts with open VIGIL tasks
+    const hist = loadHistory();
+    const companyMap = {};
+    hist.forEach(h => {
+      const n = (h.prospect||'').trim();
+      if (n) { companyMap[n] = companyMap[n] || []; companyMap[n].push(h); }
+    });
+    const counts = new Map();
+    Object.entries(companyMap).forEach(([company, calls]) => {
+      const tasks = pulseSeedTasks(company, calls);
+      const open = tasks.filter(t => !t.done).length;
+      if (open > 0) counts.set(company.toLowerCase(), open);
+    });
+    return counts;
+  }
+
   function forgeInit() {
     const hist = loadHistory();
     const sel  = document.getElementById('forgeAccountSelect');
@@ -83,13 +102,20 @@
       if (n && !seen.has(n.toLowerCase())) { seen.add(n.toLowerCase()); companies.push(n); }
     });
     companies.sort((a,b) => a.localeCompare(b));
+    const vigilCounts = _forgeVigilOpenCounts();
     sel.innerHTML = '<option value="">— Select account —</option>' +
-      companies.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+      companies.map(c => {
+        const open = vigilCounts.get(c.toLowerCase()) || 0;
+        const flag = open > 0 ? ` ⬤ ${open} open` : '';
+        return `<option value="${escHtml(c)}">${escHtml(c)}${flag}</option>`;
+      }).join('');
     forgeRenderUserTemplates();
   }
 
   function forgeSelectAccount(company) {
-    if (!company) { _forgeHistory = []; _forgeCall = null; forgeRenderEmpty(); return; }
+    _forgeActiveTask = null;
+    _forgeResearch = '';
+    if (!company) { _forgeHistory = []; _forgeCall = null; forgeRenderEmpty(); forgeRenderOpenItems(null); return; }
     _forgeHistory = loadHistory()
       .filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase())
       .sort((a,b) => { const da=a.callDate||a.ts.slice(0,10), db=b.callDate||b.ts.slice(0,10); return da>db?-1:da<db?1:0; });
@@ -104,7 +130,163 @@
     } else {
       picker.style.display = 'none';
     }
+    forgeRenderOpenItems(company);
     forgeLoadCall(_forgeHistory[0]);
+  }
+
+  function forgeRenderOpenItems(company) {
+    const panel = document.getElementById('forgeOpenItemsPanel');
+    const body  = document.getElementById('forgeOpenItemsBody');
+    if (!panel || !body) return;
+    if (!company) { panel.style.display = 'none'; return; }
+
+    const calls = _forgeHistory;
+    const tasks = pulseSeedTasks(company, calls).filter(t => !t.done);
+    if (!tasks.length) { panel.style.display = 'none'; return; }
+
+    panel.style.display = '';
+    body.innerHTML = tasks.map((t, i) => {
+      const safe = escHtml(t.text);
+      const safeJs = t.text.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="forge-open-item" id="forge-task-${i}">
+        <div style="font-size:11px;color:rgba(255,255,255,.85);line-height:1.5;margin-bottom:6px;">${safe}</div>
+        ${t.source ? `<div style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:6px;">${escHtml(t.source)}</div>` : ''}
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="forge-task-btn" onclick="forgeSelectTask('${safeJs}', 'call-brief', ${i})">📋 Call Brief</button>
+          <button class="forge-task-btn" onclick="forgeSelectTask('${safeJs}', 'follow-up', ${i})">📬 Follow-Up</button>
+          <button class="forge-task-btn" onclick="forgeSelectTask('${safeJs}', 'exec-summary', ${i})">📊 Exec Summary</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function forgeSelectTask(taskText, templateMode, taskIdx) {
+    _forgeActiveTask = taskText;
+    _forgeResearch = '';
+
+    // Highlight selected task
+    document.querySelectorAll('.forge-open-item').forEach(el => el.classList.remove('forge-task-active'));
+    const taskEl = document.getElementById('forge-task-' + taskIdx);
+    if (taskEl) taskEl.classList.add('forge-task-active');
+
+    // Highlight all task buttons in this item, dim others
+    document.querySelectorAll('.forge-task-btn').forEach(b => b.classList.remove('forge-task-btn-active'));
+    if (taskEl) {
+      const btns = taskEl.querySelectorAll('.forge-task-btn');
+      const modeLabels = { 'call-brief': '📋', 'follow-up': '📬', 'exec-summary': '📊' };
+      btns.forEach(b => { if (b.textContent.startsWith(modeLabels[templateMode])) b.classList.add('forge-task-btn-active'); });
+    }
+
+    // Switch template
+    _forgeCustomTemplate = null;
+    document.querySelectorAll('.forge-template-card').forEach(c => c.classList.remove('selected'));
+    const card = document.querySelector(`.forge-template-card[data-builtin="${templateMode}"]`);
+    if (card) card.classList.add('selected');
+    forgeUpdateTemplateTitles();
+
+    // Show research panel, reset output
+    const researchSection = document.getElementById('fr-research-section');
+    const taskLabel = document.getElementById('fr-research-task-label');
+    const researchOutput = document.getElementById('fr-research-output');
+    const researchBody = document.getElementById('fr-research-body');
+    const researchChevron = document.getElementById('forgeResearchChevron');
+    if (researchSection) researchSection.style.display = '';
+    if (taskLabel) taskLabel.textContent = `"${taskText}"`;
+    if (researchOutput) researchOutput.textContent = '';
+    if (researchBody) { researchBody.style.display = 'none'; }
+    if (researchChevron) researchChevron.textContent = '▶';
+  }
+
+  function forgeResearchToggle() {
+    const body = document.getElementById('fr-research-body');
+    const chev = document.getElementById('forgeResearchChevron');
+    if (!body) return;
+    const open = body.style.display === 'none';
+    body.style.display = open ? '' : 'none';
+    if (chev) chev.textContent = open ? '▼' : '▶';
+  }
+
+  async function forgeRunResearch() {
+    if (!_forgeActiveTask || !_forgeCall) return;
+    const btn = document.getElementById('forgeResearchBtn');
+    const spinner = document.getElementById('fr-research-spinner');
+    const output = document.getElementById('fr-research-output');
+    const body = document.getElementById('fr-research-body');
+    const chev = document.getElementById('forgeResearchChevron');
+
+    // Open panel and show spinner
+    if (body) body.style.display = '';
+    if (chev) chev.textContent = '▼';
+    if (spinner) spinner.style.display = '';
+    if (output) output.textContent = '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Researching…'; }
+    _forgeResearch = '';
+
+    const prompt = `You are a sales intelligence assistant helping a solutions engineer at OneAxiom, a cybersecurity consultancy.
+
+The rep has a pending next step for this account:
+"${_forgeActiveTask}"
+
+Account context:
+- Company: ${_forgeCall.prospect || '—'}
+- Deal stage: ${_forgeCall.stage || '—'}
+- Last call grade: ${_forgeCall.letter_grade} (${_forgeCall.total}/100)
+- Top priority/gap: ${_forgeCall.top_priority || '—'}
+- Top strength: ${_forgeCall.top_strength || '—'}
+
+Research and provide:
+1. What this next step typically involves in a cybersecurity sales context
+2. Key talking points or content elements to include in the related document
+3. Any relevant frameworks, regulations, or timelines the rep should reference
+4. Specific angles to personalize based on the deal context above
+
+Be concise and practical — 150-200 words. No preamble, just the research.`;
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5',
+          max_tokens: 400,
+          stream: true,
+          system: 'You are a concise sales intelligence researcher. Provide practical, specific insights. No fluff.',
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (spinner) spinner.style.display = 'none';
+      if (!resp.ok) throw new Error('API error ' + resp.status);
+
+      let sseBuffer = '', accumulated = '';
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(payload);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              accumulated += ev.delta.text;
+              if (output) output.textContent = accumulated;
+            }
+          } catch {}
+        }
+      }
+      _forgeResearch = accumulated;
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-research'; }
+    } catch (err) {
+      if (spinner) spinner.style.display = 'none';
+      if (output) output.textContent = 'Research failed: ' + err.message;
+      if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    }
   }
 
   function forgeSelectCall(idx) {
@@ -224,6 +406,10 @@
   }
 
   function forgeRenderEmpty() {
+    _forgeActiveTask = null;
+    _forgeResearch = '';
+    const researchSection = document.getElementById('fr-research-section');
+    if (researchSection) researchSection.style.display = 'none';
     document.getElementById('forgeContextPanel').style.display = 'none';
     document.getElementById('forgeCallPickerWrap').style.display = 'none';
     document.getElementById('forgeSignalsBody').innerHTML =
@@ -410,8 +596,12 @@
       : '';
     const nextSteps = Array.isArray(h.next_steps) ? h.next_steps.map(s=>'  • '+s).join('\n') : (h.next_steps||'');
 
-    const prompt = `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a professional, warm follow-up email to send to a prospect after a discovery/sales call.
+    const researchBlock = (_forgeActiveTask && _forgeResearch)
+      ? `\nACTIVE NEXT STEP: "${_forgeActiveTask}"\nRESEARCH CONTEXT:\n${_forgeResearch}\n`
+      : (_forgeActiveTask ? `\nACTIVE NEXT STEP THIS EMAIL SHOULD DRIVE: "${_forgeActiveTask}"\n` : '');
 
+    const prompt = `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a professional, warm follow-up email to send to a prospect after a discovery/sales call.
+${researchBlock}
 CALL DATA:
 - Prospect / Company: ${h.prospect || '—'}
 - Contact: ${h.contact || '—'}
@@ -554,11 +744,15 @@ Contact: ${h.contact||'—'}
 ${nextSteps ? 'Next Steps:\n'+nextSteps : ''}
 ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
 
+    const researchCtx = (_forgeActiveTask && _forgeResearch)
+      ? `\nACTIVE NEXT STEP: "${_forgeActiveTask}"\nRESEARCH CONTEXT:\n${_forgeResearch}\n`
+      : (_forgeActiveTask ? `\nACTIVE NEXT STEP TO EMPHASIZE: "${_forgeActiveTask}"\n` : '');
+
     const prompts = {
       'call-brief': isClientBrief
-        ? `You are a professional sales consultant at OneAxiom (a cybersecurity consultancy). Write a polished post-call summary to send to the client contact. It should feel professional and collaborative — not salesy. Format with clear sections: DISCUSSION SUMMARY, KEY TAKEAWAYS, AGREED NEXT STEPS. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 250 words. Do not include internal scores, grades, coaching notes, or SPICED framework references.\n\nCALL DATA:\n${clientCallData}`
-        : `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`,
-      'exec-summary': `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a board-ready executive deal summary based on the following call data. Format it with sections: Deal Overview, Business Context, Risk Indicators, SPICED Status, Recommended Next Actions. Use plain text with section headers in ALL CAPS followed by a colon. Keep it professional, concise, under 300 words. Do not add meta-commentary.\n\nCALL DATA:\n${callData}`
+        ? `You are a professional sales consultant at OneAxiom (a cybersecurity consultancy). Write a polished post-call summary to send to the client contact. It should feel professional and collaborative — not salesy. Format with clear sections: DISCUSSION SUMMARY, KEY TAKEAWAYS, AGREED NEXT STEPS. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 250 words. Do not include internal scores, grades, coaching notes, or SPICED framework references.${researchCtx}\nCALL DATA:\n${clientCallData}`
+        : `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.${researchCtx}\nCALL DATA:\n${callData}`,
+      'exec-summary': `You are a Solutions Engineer at OneAxiom (a cybersecurity consultancy). Write a board-ready executive deal summary based on the following call data. Format it with sections: Deal Overview, Business Context, Risk Indicators, SPICED Status, Recommended Next Actions. Use plain text with section headers in ALL CAPS followed by a colon. Keep it professional, concise, under 300 words. Do not add meta-commentary.${researchCtx}\nCALL DATA:\n${callData}`
     };
 
     const systemPrompts = {

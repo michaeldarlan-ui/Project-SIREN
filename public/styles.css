@@ -527,6 +527,14 @@
   .forge-next-text { font-size: 12px; color: var(--siren-text-body); line-height: 1.45; }
   .forge-next-tag { display: inline-block; margin-top: 4px; padding: 2px 7px; background: var(--siren-cyan-08); border: 1px solid var(--siren-border-mid); border-radius: 10px; font-family: var(--siren-font-hud); font-size: 9px; color: var(--siren-cyan-50); }
 
+  /* Open Items / Task panel */
+  .forge-open-item { padding: 10px 0; border-bottom: 1px solid var(--siren-border); }
+  .forge-open-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .forge-open-item.forge-task-active { background: rgba(0,200,255,.04); border-radius: 6px; padding: 8px; margin: -4px; }
+  .forge-task-btn { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: rgba(255,255,255,.6); border-radius: 5px; font-size: 10px; font-weight: 600; padding: 3px 8px; cursor: pointer; transition: background .15s, color .15s; }
+  .forge-task-btn:hover { background: rgba(0,200,255,.12); border-color: rgba(0,200,255,.3); color: #00c8ff; }
+  .forge-task-btn.forge-task-btn-active { background: rgba(0,200,255,.15); border-color: rgba(0,200,255,.4); color: #00c8ff; }
+
   .forge-hs-badge { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: rgba(255,122,89,.06); border: 1px dashed rgba(255,122,89,.25); border-radius: var(--siren-radius-sm); }
   .forge-hs-icon { width: 20px; height: 20px; flex-shrink: 0; opacity: .5; }
   .forge-hs-text { font-size: 11px; color: rgba(255,255,255,.3); line-height: 1.4; }
