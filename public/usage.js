@@ -4,11 +4,17 @@
 // plus /api/usage for the console-mirror (month spend + credit balance).
 
   let _usageDays = 30;
+  let _tokenGroupBy = 'token_type';
 
   window.usageSetPeriod = function(days) {
     _usageDays = days;
     document.querySelectorAll('#page-usage .cd-period-btn').forEach(b =>
       b.classList.toggle('cd-period-btn-active', b.textContent === days + 'd'));
+    renderUsagePage();
+  };
+
+  window.usageSetTokenGroup = function(val) {
+    _tokenGroupBy = val;
     renderUsagePage();
   };
 
@@ -94,24 +100,76 @@
         <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
       </div>`;
 
-    // ── Tokens per day (stacked in/out bars) ──
-    const maxTok = Math.max(...dayList.map(d => d.tin + d.tout), 1);
-    document.getElementById('usageTokenChart').innerHTML = `
-      <div style="display:flex;align-items:flex-end;gap:2px;height:120px;">
-        ${dayList.map(d => {
-          const hIn  = d.tin  > 0 ? Math.max(2, Math.round(d.tin  / maxTok * 100)) : 0;
-          const hOut = d.tout > 0 ? Math.max(2, Math.round(d.tout / maxTok * 100)) : 0;
-          return `<div title="${fmtDay(d.day)} — in ${_fmtTok(d.tin)} · out ${_fmtTok(d.tout)}"
-               style="flex:1;min-width:2px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;">
-            <div style="height:${hOut}%;background:rgba(74,222,128,.75);border-radius:2px 2px 0 0;"></div>
-            <div style="height:${hIn}%;background:rgba(0,200,255,.75);${hOut ? '' : 'border-radius:2px 2px 0 0;'}"></div>
-            ${(d.tin + d.tout) === 0 ? '<div style="border-bottom:2px solid rgba(255,255,255,.06);"></div>' : ''}
-          </div>`;
-        }).join('')}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6);margin-top:6px;">
-        <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
-      </div>`;
+    // ── Tokens per day (grouped) ──
+    // sync dropdown
+    const tokGroupEl = document.getElementById('tokenGroupBy');
+    if (tokGroupEl) tokGroupEl.value = _tokenGroupBy;
+
+    const MODEL_COLORS = [
+      'rgba(0,200,255,.8)', 'rgba(74,222,128,.8)', 'rgba(251,191,36,.8)',
+      'rgba(248,113,113,.8)', 'rgba(167,139,250,.8)', 'rgba(251,146,60,.8)',
+    ];
+
+    if (_tokenGroupBy === 'model') {
+      // Group by model — one color per model, stacked bars per day
+      const modelNames = [...new Set(rows.map(r => r.model))].sort();
+      const byDayModel = {};
+      rows.forEach(r => {
+        byDayModel[r.day] = byDayModel[r.day] || {};
+        const d = byDayModel[r.day][r.model] = byDayModel[r.day][r.model] || { tin: 0, tout: 0 };
+        d.tin += r.tokens_in; d.tout += r.tokens_out;
+      });
+      const maxTokM = Math.max(...dayList.map(d => {
+        const dm = byDayModel[d.day] || {};
+        return Object.values(dm).reduce((s, m) => s + m.tin + m.tout, 0);
+      }), 1);
+      // legend
+      const legendEl = document.getElementById('usageTokenLegend');
+      if (legendEl) legendEl.innerHTML = modelNames.slice(0, 6).map((m, i) =>
+        `<span style="color:${MODEL_COLORS[i % MODEL_COLORS.length]}">&#9632;</span> ${escHtml(_shortModel(m))}`
+      ).join(' &nbsp;');
+
+      document.getElementById('usageTokenChart').innerHTML = `
+        <div style="display:flex;align-items:flex-end;gap:2px;height:120px;">
+          ${dayList.map(d => {
+            const dm = byDayModel[d.day] || {};
+            const total = Object.values(dm).reduce((s, m) => s + m.tin + m.tout, 0);
+            const segments = modelNames.map((model, i) => {
+              const tok = ((dm[model] || {}).tin || 0) + ((dm[model] || {}).tout || 0);
+              const h = tok > 0 ? Math.max(2, Math.round(tok / maxTokM * 100)) : 0;
+              return h > 0 ? `<div style="height:${h}%;background:${MODEL_COLORS[i % MODEL_COLORS.length]};"></div>` : '';
+            }).join('');
+            return `<div title="${fmtDay(d.day)} — ${_fmtTok(total)} tokens"
+                 style="flex:1;min-width:2px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;">
+              ${segments || `<div style="border-bottom:2px solid rgba(255,255,255,.06);"></div>`}
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6);margin-top:6px;">
+          <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
+        </div>`;
+    } else {
+      // Token Type (default) — stacked input/output
+      const legendEl = document.getElementById('usageTokenLegend');
+      if (legendEl) legendEl.innerHTML = '<span style="color:#00c8ff;">&#9632;</span> input &nbsp;<span style="color:#4ade80;">&#9632;</span> output';
+      const maxTok = Math.max(...dayList.map(d => d.tin + d.tout), 1);
+      document.getElementById('usageTokenChart').innerHTML = `
+        <div style="display:flex;align-items:flex-end;gap:2px;height:120px;">
+          ${dayList.map(d => {
+            const hIn  = d.tin  > 0 ? Math.max(2, Math.round(d.tin  / maxTok * 100)) : 0;
+            const hOut = d.tout > 0 ? Math.max(2, Math.round(d.tout / maxTok * 100)) : 0;
+            return `<div title="${fmtDay(d.day)} — in ${_fmtTok(d.tin)} · out ${_fmtTok(d.tout)}"
+                 style="flex:1;min-width:2px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;">
+              <div style="height:${hOut}%;background:rgba(74,222,128,.75);border-radius:2px 2px 0 0;"></div>
+              <div style="height:${hIn}%;background:rgba(0,200,255,.75);${hOut ? '' : 'border-radius:2px 2px 0 0;'}"></div>
+              ${(d.tin + d.tout) === 0 ? '<div style="border-bottom:2px solid rgba(255,255,255,.06);"></div>' : ''}
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6);margin-top:6px;">
+          <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
+        </div>`;
+    }
 
     // ── By-model table ──
     const byModel = {};

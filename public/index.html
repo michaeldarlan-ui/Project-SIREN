@@ -1428,7 +1428,22 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
     <div class="cd-panel" style="margin-bottom:18px;">
       <div class="cd-panel-hdr" style="margin-bottom:12px;">
         <div class="cd-panel-title">Tokens per day</div>
-        <div class="cd-panel-hint"><span style="color:#00c8ff;">&#9632;</span> input &nbsp;<span style="color:#4ade80;">&#9632;</span> output</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="cd-panel-hint" id="usageTokenLegend"><span style="color:#00c8ff;">&#9632;</span> input &nbsp;<span style="color:#4ade80;">&#9632;</span> output</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;letter-spacing:.05em;text-transform:uppercase;">Group by</span>
+            <select id="tokenGroupBy" onchange="usageSetTokenGroup(this.value)"
+              style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:#fff;font-size:11px;padding:3px 8px;cursor:pointer;outline:none;">
+              <option value="token_type">Token Type</option>
+              <option value="model">Model</option>
+              <option value="context_window" disabled>Context Window</option>
+              <option value="service_tier" disabled>Service Tier</option>
+              <option value="api_key" disabled>API Key</option>
+              <option value="service_account" disabled>Service Account</option>
+              <option value="inference_geo" disabled>Inference Geo</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div id="usageTokenChart"></div>
     </div>

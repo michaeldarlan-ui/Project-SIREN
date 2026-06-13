@@ -973,6 +973,8 @@
   .cd-period-btn:hover { background: var(--siren-cyan-08); color: var(--siren-cyan-70); }
   .cd-period-btn-active { background: var(--siren-cyan-08); color: var(--siren-cyan-70); font-weight: 700; }
 
+  #tokenGroupBy option:disabled { color: rgba(255,255,255,.25); }
+
   .cd-overview-panel { min-height: 320px; }
   .cd-overview-placeholder {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
