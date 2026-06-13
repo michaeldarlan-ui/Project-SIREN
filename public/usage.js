@@ -90,7 +90,7 @@
           <div title="${fmtDay(d.day)} — ${_fmtCost(d.cost)} · ${d.calls} request${d.calls !== 1 ? 's' : ''}"
                style="flex:1;min-width:2px;height:${d.cost > 0 ? Math.max(3, Math.round(d.cost / maxCost * 100)) : 0}%;background:rgba(0,200,255,${d.cost > 0 ? '.75' : '0'});border-radius:2px 2px 0 0;${d.cost === 0 ? 'border-bottom:2px solid rgba(255,255,255,.06);' : ''}"></div>`).join('')}
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--siren-text-faint);margin-top:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6);margin-top:6px;">
         <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
       </div>`;
 
@@ -109,7 +109,7 @@
           </div>`;
         }).join('')}
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--siren-text-faint);margin-top:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6);margin-top:6px;">
         <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
       </div>`;
 
@@ -124,7 +124,7 @@
     const td = 'padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.05);';
     document.getElementById('usageModelTable').innerHTML = models.length ? `
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="color:rgba(0,200,255,.6);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;">
+        <thead><tr style="color:#ffffff;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;">
           <th style="${td}">Model</th>
           <th style="${td}text-align:right;">Requests</th>
           <th style="${td}text-align:right;">Tokens in</th>
@@ -132,9 +132,9 @@
           <th style="${td}text-align:right;">Cache w/r</th>
           <th style="${td}text-align:right;">Cost</th>
         </tr></thead>
-        <tbody style="color:rgba(255,255,255,.7);">
+        <tbody style="color:#ffffff;">
           ${models.map(([model, m]) => `<tr>
-            <td style="${td}font-weight:600;color:rgba(255,255,255,.85);">${escHtml(_shortModel(model))}</td>
+            <td style="${td}font-weight:600;color:#ffffff;">${escHtml(_shortModel(model))}</td>
             <td style="${td}text-align:right;">${m.calls.toLocaleString()}</td>
             <td style="${td}text-align:right;">${_fmtTok(m.tin)}</td>
             <td style="${td}text-align:right;">${_fmtTok(m.tout)}</td>
