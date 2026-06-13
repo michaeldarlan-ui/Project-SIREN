@@ -396,16 +396,20 @@
     else                                            { healthLabel = 'At Risk';  healthColor = '#ef4444'; }
 
     // Health tooltip — shown on hover via CSS, one row per factor
-    const factorRow = (pass, label, actual, threshold) =>
+    const factorRow = (pass, label, actual, needed) =>
       `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.06);">
         <span style="color:${pass?'#22c55e':'#ef4444'};font-size:12px;flex-shrink:0;width:12px;">${pass?'✓':'✗'}</span>
         <span style="color:rgba(255,255,255,.65);font-size:11px;flex:1;">${label}</span>
         <span style="color:${pass?'#22c55e':'#ef4444'};font-size:11px;font-weight:700;white-space:nowrap;">${actual}</span>
-        <span style="color:rgba(255,255,255,.22);font-size:10px;white-space:nowrap;">/ ${threshold}</span>
+        <span style="color:rgba(255,255,255,.28);font-size:10px;white-space:nowrap;">need ${needed}</span>
       </div>`;
     const healthTooltip = `
       <div class="di-health-tooltip">
         <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:8px;">Why ${healthLabel}?</div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:2px;padding:0 0 4px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <span style="font-size:8px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.2);text-transform:uppercase;width:32px;text-align:right;">Score</span>
+          <span style="font-size:8px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.2);text-transform:uppercase;width:52px;text-align:right;">Minimum</span>
+        </div>
         ${factorRow(scoreOk,  'Call Score',      `${score}`,       healthLabel==='Strong'?'80+':'65+')}
         ${factorRow(spicedOk, 'SPICED Coverage', `${spicedPct}%`, healthLabel==='Strong'?'60%+':'40%+')}
         ${factorRow(momOk,    'Momentum',         momentumLabel,    'not declining')}
