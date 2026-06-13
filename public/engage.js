@@ -2283,18 +2283,31 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const el = document.getElementById('savedTranscriptsList');
     if (!el) return;
     el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;">Loading…</div>';
+    const actionBar = document.getElementById('brgActionBar');
+    const progressEl = document.getElementById('brgProgress');
+    if (actionBar) actionBar.style.display = 'none';
+    if (progressEl) progressEl.style.display = 'none';
     try {
       const rows = await fetch('/api/transcripts').then(r => r.json());
       if (!rows.length) {
         el.innerHTML = '<div style="color:rgba(255,255,255,.2);font-size:13px;padding:8px 0;">No saved transcripts yet. Transcripts are saved automatically after each grading.</div>';
         return;
       }
-      el.innerHTML = rows.map(t => {
+      // Sort oldest → newest for bulk regrade ordering
+      _brgTranscripts = rows.slice().sort((a, b) => {
+        const da = a.call_date || a.saved_at || '';
+        const db = b.call_date || b.saved_at || '';
+        return da.localeCompare(db);
+      });
+      el.innerHTML = _brgTranscripts.map((t, i) => {
         const ds = t.call_date
           ? new Date(t.call_date + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
           : new Date(t.saved_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
         const meta = [t.stage, t.rep, ds].filter(Boolean).join(' · ');
         return `<div class="saved-transcript-row" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.07);margin-bottom:6px;background:rgba(255,255,255,.03);">
+          <label style="display:flex;align-items:center;cursor:pointer;padding:2px 0;">
+            <input type="checkbox" data-idx="${i}" onchange="brgUpdateCount()" style="margin:0 8px 0 0;accent-color:#00c8ff;">
+          </label>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(t.prospect || t.label || 'Untitled')}</div>
             <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;">${escHtml(meta)}</div>
@@ -2303,6 +2316,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           <button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${escHtml(JSON.stringify(t.id))},this)">Delete</button>
         </div>`;
       }).join('');
+      if (actionBar) { actionBar.style.display = 'block'; brgUpdateCount(); }
     } catch (e) {
       el.innerHTML = '<div style="color:#ef4444;font-size:13px;">Failed to load transcripts.</div>';
     }
@@ -2761,51 +2775,37 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   let _brgTranscripts = []; // [{id, label, prospect, stage, rep, call_date}] sorted oldest→newest
 
   function bulkRegradeLoad() {
-    const listEl = document.getElementById('brgTranscriptList');
-    const itemsEl = document.getElementById('brgItems');
-    fetch('/api/transcripts')
-      .then(r => r.json())
-      .then(rows => {
-        // Sort oldest → newest by call_date, then saved_at as fallback
-        _brgTranscripts = rows.slice().sort((a, b) => {
-          const da = a.call_date || a.saved_at || '';
-          const db = b.call_date || b.saved_at || '';
-          return da.localeCompare(db);
-        });
-        itemsEl.innerHTML = _brgTranscripts.map((t, i) => {
-          const label = t.label || t.prospect || 'Untitled';
-          const meta  = [t.stage, t.rep].filter(Boolean).join(' · ');
-          const date  = t.call_date || (t.saved_at ? t.saved_at.slice(0,10) : '');
-          return `<label class="devtool-item">
-            <input type="checkbox" data-idx="${i}" onchange="brgUpdateCount()">
-            <span class="devtool-item-label">${escHtml(label)}${meta ? ' <span class="devtool-item-meta">— ' + escHtml(meta) + '</span>' : ''}</span>
-            <span class="devtool-item-date">${escHtml(date)}</span>
-          </label>`;
-        }).join('');
-        brgUpdateCount();
-        listEl.style.display = 'block';
-      })
-      .catch(e => alert('Could not load transcripts: ' + e.message));
+    // Delegated to renderSavedTranscripts — kept for compatibility
+    renderSavedTranscripts();
   }
 
   function brgToggleAll(checked) {
-    document.querySelectorAll('#brgItems input[type=checkbox]').forEach(cb => cb.checked = checked);
+    document.querySelectorAll('#savedTranscriptsList input[type=checkbox]').forEach(cb => cb.checked = checked);
     brgUpdateCount();
   }
 
   function brgUpdateCount() {
-    const checked = document.querySelectorAll('#brgItems input[type=checkbox]:checked').length;
-    document.getElementById('brgSelCount').textContent = checked + ' selected';
-    document.getElementById('brgRunBtn').disabled = checked === 0;
+    const checked = document.querySelectorAll('#savedTranscriptsList input[type=checkbox]:checked').length;
+    const countEl = document.getElementById('brgSelCount');
+    const runBtn  = document.getElementById('brgRunBtn');
+    const allCbs  = document.querySelectorAll('#savedTranscriptsList input[type=checkbox]');
+    const allChk  = document.getElementById('brgSelectAll');
+    if (countEl) countEl.textContent = checked + ' selected';
+    if (runBtn)  runBtn.disabled = checked === 0;
+    if (allChk)  allChk.indeterminate = checked > 0 && checked < allCbs.length;
+    if (allChk && checked === allCbs.length && allCbs.length > 0) allChk.checked = true;
+    if (allChk && checked === 0) allChk.checked = false;
   }
 
   async function bulkRegradeRun() {
-    const indices = [...document.querySelectorAll('#brgItems input[type=checkbox]:checked')]
+    const indices = [...document.querySelectorAll('#savedTranscriptsList input[type=checkbox]:checked')]
       .map(cb => parseInt(cb.dataset.idx));
     if (!indices.length) return;
 
     // Hide selector, show progress
-    document.getElementById('brgTranscriptList').style.display = 'none';
+    document.getElementById('savedTranscriptsList').style.display = 'none';
+    const brgActionBarEl = document.getElementById('brgActionBar');
+    if (brgActionBarEl) brgActionBarEl.style.display = 'none';
     const progEl       = document.getElementById('brgProgress');
     const barEl        = document.getElementById('brgProgBar');
     const labelEl      = document.getElementById('brgProgLabel');
@@ -3041,7 +3041,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         navTo('history');
         // Reset UI state
         document.getElementById('brgProgress').style.display = 'none';
-        document.getElementById('brgTranscriptList').style.display = 'none';
+        const _brgAB = document.getElementById('brgActionBar');
+        if (_brgAB) _brgAB.style.display = 'none';
+        document.getElementById('savedTranscriptsList').style.display = '';
         document.getElementById('brgDoneBtn').style.display = 'none';
         document.getElementById('brgProgBar').style.width = '0%';
         document.getElementById('brgLog').innerHTML = '';
