@@ -57,12 +57,13 @@
     localStorage.setItem('oa_team_migrated_to_db', 'v1');
   }
 
-  // ── 2. Load history + prospects from DB into cache ───────────
+  // ── 2. Load history + prospects + profiles from DB into cache ─
   await _loadHistFromDB();
   await _loadProspectsFromDB();
   await _loadThirdPartiesFromDB();
   await _loadTeamFromDB();
   await _loadUsageFromDB();
+  await initAccountProfiles();
 
   // ── 3. Demo version check — reseed if stale or incomplete ────
   const demoCount = _histCache.filter(h => h.is_demo).length;

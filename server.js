@@ -61,6 +61,7 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS roadmap (id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'planned', created_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY, action TEXT NOT NULL, entity_id TEXT, entity_label TEXT, rep TEXT, stage TEXT, score TEXT, letter_grade TEXT, details TEXT, created_at TEXT NOT NULL)` },
+  { sql: `CREATE TABLE IF NOT EXISTS account_profiles (company TEXT PRIMARY KEY, profile TEXT NOT NULL, updated_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS usage_daily (
       day TEXT, model TEXT,
       cost REAL DEFAULT 0, calls INTEGER DEFAULT 0,
@@ -919,6 +920,31 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ inserted: toInsert.length, skipped: allRows.length - toInsert.length }));
     } catch (e) { res.writeHead(500); res.end(e.message); }
+    return;
+  }
+
+  // ── Account Profiles API ──────────────────────────────────
+  if (req.method === 'GET' && req.url === '/api/account-profiles') {
+    const rows = (await client.execute('SELECT company, profile FROM account_profiles')).rows;
+    const out = {};
+    rows.forEach(r => {
+      try { out[String(r.company)] = JSON.parse(String(r.profile)); } catch {}
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(out));
+    return;
+  }
+
+  if (req.method === 'PUT' && req.url.startsWith('/api/account-profiles/')) {
+    try {
+      const company = decodeURIComponent(req.url.slice('/api/account-profiles/'.length));
+      const body = await readBody(req);
+      await client.execute({
+        sql: 'INSERT OR REPLACE INTO account_profiles (company, profile, updated_at) VALUES (?, ?, ?)',
+        args: [company, JSON.stringify(body), new Date().toISOString()],
+      });
+      res.writeHead(200); res.end();
+    } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
   }
 

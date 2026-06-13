@@ -760,23 +760,59 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
     setTimeout(() => { if (inp) inp.style.borderColor = ''; }, 1400);
   }
 
+  // ── Account Profile storage (DB-backed, in-memory cache) ──────
+  let _profilesCache = {}; // keyed by company.trim().toLowerCase()
+
   function loadAccountProfiles() {
-    try { return JSON.parse(localStorage.getItem('siren_account_profiles') || '{}'); } catch { return {}; }
-  }
-  function saveAccountProfiles(profiles) {
-    localStorage.setItem('siren_account_profiles', JSON.stringify(profiles));
+    return _profilesCache;
   }
   function loadAccountProfile(company) {
     const key = company.trim().toLowerCase();
-    return loadAccountProfiles()[key] || { contacts:[], champion:null, stakeholders:[], competitors:[], techstack:[] };
+    return _profilesCache[key] || { contacts:[], champion:null, stakeholders:[], competitors:[], techstack:[] };
   }
   function saveAccountProfile(company, prof) {
-    const profiles = loadAccountProfiles();
-    profiles[company.trim().toLowerCase()] = prof;
-    saveAccountProfiles(profiles);
+    const key = company.trim().toLowerCase();
+    _profilesCache[key] = prof;
+    // Persist to DB (fire-and-forget — cache is source of truth for this session)
+    fetch('/api/account-profiles/' + encodeURIComponent(key), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prof),
+    }).catch(e => console.warn('[atlas] profile save failed:', e.message));
     // Refresh graph nodes to reflect populated state
     updateLcGraphNodes(company);
   }
+
+  // Called at startup — loads all profiles from DB into cache, migrates localStorage if present
+  window.initAccountProfiles = async function() {
+    try {
+      // Migrate localStorage data to DB (one-time)
+      if (!localStorage.getItem('oa_profiles_migrated_to_db')) {
+        const local = (() => {
+          try { return JSON.parse(localStorage.getItem('siren_account_profiles') || '{}'); } catch { return {}; }
+        })();
+        const keys = Object.keys(local);
+        if (keys.length) {
+          await Promise.all(keys.map(key =>
+            fetch('/api/account-profiles/' + encodeURIComponent(key), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(local[key]),
+            }).catch(() => {})
+          ));
+          localStorage.removeItem('siren_account_profiles');
+        }
+        localStorage.setItem('oa_profiles_migrated_to_db', 'v1');
+      }
+      // Fetch all profiles from DB into cache
+      const data = await fetch('/api/account-profiles').then(r => r.json());
+      _profilesCache = data || {};
+    } catch (e) {
+      console.warn('[atlas] profile init failed:', e.message);
+      // Fallback: try reading whatever is in localStorage
+      try { _profilesCache = JSON.parse(localStorage.getItem('siren_account_profiles') || '{}'); } catch {}
+    }
+  };
 
   // ── Auto-populate from grading ────────────────────────────────
   // Called after every grade with the atlas_data block Claude extracted.
