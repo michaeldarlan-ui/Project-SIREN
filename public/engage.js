@@ -1533,6 +1533,8 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     try { localStorage.setItem('oa_usage_open', open); } catch {}
   }
 
+  const _setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
   function updateUsageUI(inputTokens, outputTokens) {
     // Per-call and session figures are estimated locally for instant display.
     // All-time / monthly totals are metered server-side on every proxied call.
@@ -1541,7 +1543,7 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
     document.getElementById('val-tokens').textContent = (inputTokens + outputTokens).toLocaleString();
     document.getElementById('val-cost-call').textContent = '$' + callCost.toFixed(4);
-    document.getElementById('val-cost-session').textContent = '$' + sessionCost.toFixed(4);
+    _setEl('val-cost-session', '$' + sessionCost.toFixed(4));
     document.getElementById('lastCallLabel').textContent = 'Last call: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.getElementById('usageDot').style.background = '#00c8ff';
 
@@ -1569,14 +1571,14 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
     fetch('/api/usage/reset', { method: 'POST' }).catch(() => {});
     _usageCache = { cost: 0, calls: 0, month: { cost: 0, calls: 0 } };
     try { localStorage.setItem('oa_usage', JSON.stringify(_usageCache)); } catch {}
-    document.getElementById('val-cost-alltime').textContent = '$0.00';
-    document.getElementById('sub-alltime').textContent = '0 API calls';
+    _setEl('val-cost-alltime', '$0.00');
+    _setEl('sub-alltime', '0 API calls');
   }
 
   function initUsageBar() {
     const allTime = loadAllTime();
-    document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
-    document.getElementById('sub-alltime').textContent = allTime.calls + ' API call' + (allTime.calls !== 1 ? 's' : '');
+    _setEl('val-cost-alltime', '$' + allTime.cost.toFixed(2));
+    _setEl('sub-alltime', allTime.calls + ' API call' + (allTime.calls !== 1 ? 's' : ''));
     applyToggles();
     try {
       if (localStorage.getItem('oa_usage_open') !== 'false') {
