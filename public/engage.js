@@ -1087,6 +1087,8 @@ Overall call max (stage ceiling, 7 dimensions): ${Object.values(stageDimCeilings
 
 Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
 
+Transcription errors — name mismatches: AI transcription software frequently mishears or misrecords spoken names. If the transcript shows a rep introducing themselves with a name that does not match any known team member, assume it is a transcription error — do NOT flag it as a missed opportunity, professionalism issue, or coaching point. Cross-reference the known sales team roster provided. If the spoken name is phonetically similar to a known team member's name, or if context otherwise identifies the speaker as a known rep, treat the introduction as correct and move on. Never penalize a rep for a name the transcript recorded incorrectly.
+
 Grade across these 7 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble.
 
 IMPORTANT — two separate scoring contexts apply:
@@ -3171,7 +3173,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       `Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:\n` +
       `A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%\n` +
       `Overall call max (stage ceiling, 7 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.\n\n` +
-      `Speaker resolution: Resolve generic speaker labels ("Speaker 1", etc.) to real names using all available context. Apply resolved names consistently throughout, including rep_scores.\n\n` +
+      `Speaker resolution: Resolve generic speaker labels ("Speaker 1", etc.) to real names using all available context. Apply resolved names consistently throughout, including rep_scores.\n\nTranscription errors — name mismatches: AI transcription software frequently mishears or misrecords spoken names. If the transcript shows a rep introducing themselves with a name that does not match any known team member, assume it is a transcription error — do NOT flag it as a missed opportunity, professionalism issue, or coaching point. Cross-reference the known sales team roster. If the spoken name is phonetically similar to a known team member's name, or if context otherwise identifies the speaker as a known rep, treat the introduction as correct. Never penalize a rep for a name the transcript recorded incorrectly.\n\n` +
       `Grade across these 7 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble.\n\n` +
       `IMPORTANT — two separate scoring contexts apply:\n` +
       `1. The top-level "dimensions" and "total" represent the overall call effectiveness scored against STAGE-ONLY ceilings.\n` +
