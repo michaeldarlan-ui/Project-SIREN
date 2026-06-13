@@ -2857,6 +2857,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // ── Graph state ──
   let _lcT              = { x: 0, y: 0, s: 1 };
   let _lcPan            = null;
+  let _lcNodeDrag       = null; // { nodeId, ox, oy, nx, ny } — active node drag
   let _lcNodes          = [];
   let _lcEdges          = [];
   let _lcSelId          = null;

@@ -164,7 +164,7 @@
       const dashAttr = ph && !populated ? 'stroke-dasharray="4,3"' : '';
       const nodeOpacity = populated ? 0.88 : (ph ? 0.55 : 1);
       nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r+3}" fill="none" stroke="${ring}" stroke-width="1.5" opacity="${ringOpacity}" ${dashAttr}/>`;
-      nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2" opacity="${nodeOpacity}" class="lc-node-hit" data-id="${nd.id}" style="cursor:pointer;"/>`;
+      nodeSvg += `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${fill}" stroke="${ring}" stroke-width="2" opacity="${nodeOpacity}" class="lc-node-hit" data-id="${nd.id}" style="cursor:grab;"/>`;
 
       // ── Collapse/expand chevrons ───────────────────────────────────
       const isFirstScore = nd.type==='calls-summary' || (nd.type==='call' && nd.id==='call-'+(_lcAllEntries[0]?.id));
@@ -239,13 +239,11 @@
       el.addEventListener('click', ev => { ev.stopPropagation(); eval(el.getAttribute('data-fn')); });
     });
     root.querySelectorAll('.lc-node-hit').forEach(el => {
-      el.addEventListener('mousedown', ev => { ev.stopPropagation(); });
-      el.addEventListener('click', ev => { ev.stopPropagation(); lcSelectNode(el.getAttribute('data-id')); });
-      // Double-click on first call node (or summary node) toggles collapse
+      // mousedown bubbles to lcPanStart which handles drag vs click distinction
+      // Double-click shortcuts
       const id = el.getAttribute('data-id');
       if (id === 'call-' + (_lcAllEntries[0]?.id) || id === 'calls-summary') {
         el.addEventListener('dblclick', ev => { ev.stopPropagation(); toggleLcCalls(); });
-        el.style.cursor = 'pointer';
         el.setAttribute('title', _lcCallsCollapsed ? 'Double-click to expand' : 'Double-click to collapse');
       }
     });
@@ -1104,20 +1102,55 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
 
   // ── Pan & Zoom ──
   function lcPanStart(e) {
-    if (e.target.classList.contains('lc-node-hit')) return;
     if (e.button !== 0) return;
-    // Close sidebar when clicking on the canvas background
+    // ── Node drag: mousedown directly on a node circle ─────────────
+    if (e.target.classList.contains('lc-node-hit')) {
+      const nodeId = e.target.getAttribute('data-id');
+      const nd = _lcNodes.find(n => n.id === nodeId);
+      if (nd) {
+        _lcNodeDrag = { nodeId, ox: e.clientX, oy: e.clientY, nx: nd.x, ny: nd.y, moved: false };
+        e.stopPropagation();
+        return;
+      }
+    }
+    // ── Canvas pan ─────────────────────────────────────────────────
     if (_lcSelId) lcCloseSidebar();
     document.getElementById('lcGraphCanvas').classList.add('panning');
     _lcPan = { ox:e.clientX, oy:e.clientY, tx:_lcT.x, ty:_lcT.y };
   }
   function lcPanMove(e) {
+    // ── Node drag move ─────────────────────────────────────────────
+    if (_lcNodeDrag) {
+      const dx = (e.clientX - _lcNodeDrag.ox) / _lcT.s;
+      const dy = (e.clientY - _lcNodeDrag.oy) / _lcT.s;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _lcNodeDrag.moved = true;
+      if (_lcNodeDrag.moved) {
+        const nd = _lcNodes.find(n => n.id === _lcNodeDrag.nodeId);
+        if (nd) {
+          nd.x = _lcNodeDrag.nx + dx;
+          nd.y = _lcNodeDrag.ny + dy;
+          drawLcGraph();
+        }
+      }
+      return;
+    }
+    // ── Canvas pan move ────────────────────────────────────────────
     if (!_lcPan) return;
     _lcT.x = _lcPan.tx + (e.clientX - _lcPan.ox);
     _lcT.y = _lcPan.ty + (e.clientY - _lcPan.oy);
     applyLcTransform();
   }
-  function lcPanEnd() {
+  function lcPanEnd(e) {
+    // ── Node drag end ──────────────────────────────────────────────
+    if (_lcNodeDrag) {
+      // If barely moved, treat as a click → open sidebar
+      if (!_lcNodeDrag.moved) lcSelectNode(_lcNodeDrag.nodeId);
+      _lcNodeDrag = null;
+      const c = document.getElementById('lcGraphCanvas');
+      if (c) c.classList.remove('panning');
+      return;
+    }
+    // ── Canvas pan end ─────────────────────────────────────────────
     _lcPan = null;
     const c=document.getElementById('lcGraphCanvas');
     if (c) c.classList.remove('panning');

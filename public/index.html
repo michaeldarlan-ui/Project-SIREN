@@ -1140,8 +1140,8 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
       <div class="lc-graph-canvas" id="lcGraphCanvas"
         onmousedown="lcPanStart(event)"
         onmousemove="lcPanMove(event)"
-        onmouseup="lcPanEnd()"
-        onmouseleave="lcPanEnd()"
+        onmouseup="lcPanEnd(event)"
+        onmouseleave="lcPanEnd(event)"
         onwheel="lcWheel(event)">
         <!-- Top bar -->
         <div class="lc-graph-topbar" onmousedown="event.stopPropagation()">
