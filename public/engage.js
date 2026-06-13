@@ -432,13 +432,16 @@
       else
         guidance += ` Weight grading toward expansion discovery, upsell signals, relationship depth, and retention mechanics. Lighter expectations on cold prospecting. Rigorous on value confirmation and next-step clarity.`;
     } else {
-      // AE or unrecognized — full balanced weight
+      // AE or unrecognized
+      guidance += ` Demo delivery is N/A for AEs — the AE orchestrates and sets context for the demo but does not deliver it; that is the SE's responsibility. Award 0 for demo delivery regardless of what occurred.`;
       if (isCold)
-        guidance += ` AE on a cold call: same expectations as SDR cold outreach. Grade on opening, handling resistance, and booking a concrete next meeting. No extra credit for seniority.`;
+        guidance += ` AE on a cold call: grade on opening, handling resistance, and booking a concrete next meeting. No extra credit for seniority.`;
+      else if (isDemo)
+        guidance += ` AE on a demo: grade rigorously on discovery re-confirmation, value framing of each capability shown, and owning next steps. Do not grade the AE on the demo itself — that belongs to the SE. Penalize if the AE talks over the SE or re-explains features without connecting them to pain.`;
       else if (isTouchpoint)
         guidance += ` AE on a touchpoint: grade on confirming deal status, surfacing new stakeholders or blockers, and owning a specific forward action. Penalize re-demoing unprompted.`;
       else
-        guidance += ` Grade the full sales cycle with balanced weight across all five dimensions.`;
+        guidance += ` Grade the full sales cycle with balanced weight across all applicable dimensions.`;
     }
 
     return guidance;
@@ -475,7 +478,7 @@
 
   // Role ceilings — what's appropriate for this rep's function
   function roleDimCeilings(rep) {
-    if (!rep) return { d: 20, vf: 15, dd: 10, ep: 0, t: 25, q: 15, c: 15 };
+    if (!rep) return { d: 20, vf: 15, dd: 0, ep: 0, t: 25, q: 15, c: 15 };
     const role = (rep.role || '').toLowerCase();
     const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
     const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
@@ -498,8 +501,8 @@
       // Executive/strategic force multiplier: never demos; graded on exec presence instead
       return { d: 12, vf: 15, dd: 0, ep: 10, t: 25, q: 8, c: 10 };
     }
-    // AE or unrecognized — full balanced weight; no executive presence dimension
-    return { d: 20, vf: 15, dd: 10, ep: 0, t: 25, q: 15, c: 15 };
+    // AE or unrecognized — AE orchestrates demo but does not deliver it; SE owns demo delivery
+    return { d: 20, vf: 15, dd: 0, ep: 0, t: 25, q: 15, c: 15 };
   }
 
   // Combined maxes: most restrictive of stage ceiling and role ceiling
@@ -565,7 +568,8 @@
     if (stage.includes('demo') || stage.includes('solution')) return `Dimension weighting for Demo / Solution Presentation:
 - Discovery & needs confirmation (20 pts): Full weight. Rep must re-confirm pain at the start before showing anything. Skipping this is a grading penalty regardless of demo quality.
 - Value framing (15 pts): Full weight. Every capability shown must be explicitly connected to a stated prospect problem with a clear "this solves X because Y" statement.
-- Demo delivery (10 pts): Full weight, primary technical focus. Penalize generic feature touring. If an SE is present, technical depth and accuracy are graded rigorously.
+- Demo delivery (10 pts): SE only — full weight. AE demo delivery max is 0; award 0 for AEs regardless of what occurred. Penalize generic feature touring by the SE. If no SE is present, note that the AE-only demo is a delivery gap.
+- Executive presence & strategic positioning (10 pts): Manager/Executive roles only. Award 0 for AE, SE, SDR, and AM/CSM.
 - Tactical empathy & objection handling (25 pts): Full weight. Technical objections and pricing probes require labeling and calibrated responses.
 - Qualification & deal mechanics (15 pts): Full weight. Budget and authority must be confirmed. Any discovery gaps should be closed here.
 - Call control & next steps (15 pts): Full weight. Must end with a proposal date or trial scope — not "let us know what you think."`;
@@ -586,7 +590,7 @@
 - Qualification & deal mechanics (15 pts → 7 pts): REDUCED. Re-qualifying is noise. Grade only if new information surfaces that changes deal mechanics.
 - Call control & next steps (15 pts): Full weight. Every touchpoint must end with a specific forward action.`;
 
-    return `Grade all 7 dimensions: Discovery & needs confirmation (20 pts), Value framing (15 pts), Demo delivery (10 pts), Executive presence & strategic positioning (10 pts, Manager/Executive roles only — award 0 for all other roles), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts). AE total ceiling: 100 pts. Manager ceiling: 80 pts (normalized to 100).`;
+    return `Grade all 7 dimensions: Discovery & needs confirmation (20 pts), Value framing (15 pts), Demo delivery (10 pts — SE only, award 0 for AE/SDR/AM/Manager), Executive presence & strategic positioning (10 pts — Manager/Executive only, award 0 for all others), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts). AE ceiling: 90 pts. SE ceiling: 74 pts. Manager ceiling: 80 pts. All normalized to 0–100.`;
   }
 
   function buildHistoryContext(prospect, rep) {
