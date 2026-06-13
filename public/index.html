@@ -1187,10 +1187,20 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         </div>
         <!-- Zoom controls -->
         <div class="lc-zoom-controls" onmousedown="event.stopPropagation()">
+          <!-- Zoom -->
           <button class="lc-zoom-btn" onclick="lcZoom(1.25)" title="Zoom in">+</button>
-          <button class="lc-zoom-btn" onclick="lcFit()" title="Fit to screen" style="font-size:13px;">⊡</button>
-          <button class="lc-zoom-btn" onclick="lcZoom(0.8)" title="Zoom out">−</button>
-          <button class="lc-zoom-btn" id="lcCollapseBtn" onclick="toggleLcCalls()" title="Collapse / expand calls" style="font-size:14px;">⊞</button>
+          <button class="lc-zoom-btn" onclick="lcFit()"       title="Fit to screen" style="font-size:13px;">⊡</button>
+          <button class="lc-zoom-btn" onclick="lcZoom(0.8)"  title="Zoom out">−</button>
+          <!-- Divider -->
+          <div style="height:1px;background:rgba(255,255,255,.1);margin:3px 4px;"></div>
+          <!-- Layout -->
+          <button class="lc-zoom-btn" onclick="lcResetLayout()"      title="Reset node positions" style="font-size:14px;">↺</button>
+          <button class="lc-zoom-btn" id="lcCatExpandBtn" onclick="lcToggleCategories()" title="Expand / collapse categories" style="font-size:14px;">◎</button>
+          <button class="lc-zoom-btn" id="lcCollapseBtn"  onclick="toggleLcCalls()"      title="Collapse / expand call chain" style="font-size:14px;">⊞</button>
+          <!-- Divider -->
+          <div style="height:1px;background:rgba(255,255,255,.1);margin:3px 4px;"></div>
+          <!-- Intelligence -->
+          <button class="lc-zoom-btn" onclick="lcExportSnapshot()" title="Copy graph summary to clipboard" style="font-size:13px;">⎘</button>
         </div>
       </div>
       <!-- Sidebar -->

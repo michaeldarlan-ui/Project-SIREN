@@ -1243,6 +1243,106 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
     if (root) root.setAttribute('transform',`translate(${_lcT.x},${_lcT.y}) scale(${_lcT.s})`);
   }
 
+  // ── Graph toolbar actions ─────────────────────────────────────────
+
+  // ↺ Reset Layout — rebuild graph from scratch, restoring default positions
+  function lcResetLayout() {
+    if (!_lcCompany) return;
+    _lcPeopleExpanded      = true;
+    _lcCompetitionExpanded = true;
+    _lcTechnologyExpanded  = true;
+    _lcCallsCollapsed      = false;
+    _lcSelId               = null;
+    buildLcGraph(_lcAllEntries, _lcCompany);
+  }
+
+  // ◎ Toggle all category nodes expanded / collapsed at once
+  function lcToggleCategories() {
+    const allExpanded = _lcPeopleExpanded && _lcCompetitionExpanded && _lcTechnologyExpanded;
+    _lcPeopleExpanded = _lcCompetitionExpanded = _lcTechnologyExpanded = !allExpanded;
+    _lcSelId = null;
+    updateLcGraphNodes(_lcCompany);
+    // Update button icon
+    const btn = document.getElementById('lcCatExpandBtn');
+    if (btn) btn.textContent = allExpanded ? '◉' : '◎';
+  }
+
+  // ⎘ Export snapshot — copies a plain-text deal intelligence summary to clipboard
+  function lcExportSnapshot() {
+    if (!_lcCompany) return;
+    const prof = loadAccountProfile(_lcCompany);
+    const calls = _lcAllEntries;
+    const lines = [];
+    lines.push(`ATLAS SNAPSHOT — ${_lcCompany}`);
+    lines.push(`Generated: ${new Date().toLocaleDateString([], { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`);
+    lines.push('');
+
+    // Call history
+    if (calls.length) {
+      lines.push(`CALL HISTORY (${calls.length} call${calls.length !== 1 ? 's' : ''})`);
+      calls.forEach(h => {
+        const ds = h.callDate
+          ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' })
+          : new Date(h.ts).toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' });
+        lines.push(`  ${ds}  ${h.stage || ''}  ${h.letter_grade || '?'} (${h.normalized_score || h.total || 0}%)  — ${h.rep || 'Unknown rep'}`);
+      });
+      lines.push('');
+    }
+
+    // Champion
+    if (prof.champion) {
+      lines.push(`CHAMPION`);
+      lines.push(`  ${prof.champion.name}${prof.champion.title ? ' · ' + prof.champion.title : ''}`);
+      lines.push('');
+    }
+
+    // Contacts
+    const contacts = (prof.contacts || []).filter(c => !prof.champion || _baseName(c.name) !== _baseName(prof.champion.name));
+    if (contacts.length) {
+      lines.push(`CONTACTS`);
+      contacts.forEach(c => lines.push(`  ${c.name}${c.title ? ' · ' + c.title : ''}`));
+      lines.push('');
+    }
+
+    // Stakeholders
+    if ((prof.stakeholders || []).length) {
+      lines.push(`STAKEHOLDERS`);
+      prof.stakeholders.forEach(s => lines.push(`  ${s.name}${s.title ? ' · ' + s.title : ''}`));
+      lines.push('');
+    }
+
+    // Competitors
+    if ((prof.competitors || []).length) {
+      lines.push(`COMPETITION`);
+      _dedupeStrArr(prof.competitors).forEach(c => lines.push(`  ${c}`));
+      lines.push('');
+    }
+
+    // Tech stack
+    if ((prof.techstack || []).length) {
+      lines.push(`TECHNOLOGY IN USE`);
+      _dedupeStrArr(prof.techstack).forEach(t => lines.push(`  ${t}`));
+      lines.push('');
+    }
+
+    // Opportunity summary
+    if (prof.opportunity_summary) {
+      lines.push(`OPPORTUNITY SUMMARY`);
+      lines.push(`  ${prof.opportunity_summary}`);
+      lines.push('');
+    }
+
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      // Flash the button as confirmation
+      const btn = document.querySelector('[onclick="lcExportSnapshot()"]');
+      if (btn) {
+        const orig = btn.style.color;
+        btn.style.color = '#00c8ff';
+        setTimeout(() => { btn.style.color = orig; }, 1200);
+      }
+    }).catch(() => {});
+  }
+
   function stageAbbrev(stage) {
     return { 'Cold outreach':'Cold Outreach','Discovery':'Discovery','Demo / solution presentation':'Demo','Proposal / close':'Proposal / Close','Touchpoint':'Touchpoint','Security Observability Scorecard':'Scorecard' }[stage] || stage;
   }
