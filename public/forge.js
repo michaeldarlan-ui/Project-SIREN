@@ -11,6 +11,8 @@
   let _forgeBriefAudience = 'internal'; // 'internal' | 'client'
   let _forgeActiveTask = null;  // currently selected VIGIL task text
   let _forgeResearch = '';      // research output for active task
+  let _forgeLastAccount = '';   // persists across nav so forgeInit() can restore
+  let _forgeLastCallIdx = 0;    // persists call picker position across nav
 
   function forgeRenderUserTemplates() {
     const el = document.getElementById('forgeUserTemplates');
@@ -110,11 +112,20 @@
         return `<option value="${escHtml(c)}">${escHtml(c)}${flag}</option>`;
       }).join('');
     forgeRenderUserTemplates();
+
+    // Restore the last selected account and call when returning to FORGE
+    if (_forgeLastAccount && companies.some(c => c.toLowerCase() === _forgeLastAccount.toLowerCase())) {
+      sel.value = companies.find(c => c.toLowerCase() === _forgeLastAccount.toLowerCase()) || '';
+      forgeSelectAccount(sel.value, true /* restoring */);
+    }
   }
 
-  function forgeSelectAccount(company) {
-    _forgeActiveTask = null;
-    _forgeResearch = '';
+  function forgeSelectAccount(company, _restoring = false) {
+    if (!_restoring) {
+      _forgeActiveTask = null;
+      _forgeResearch = '';
+    }
+    _forgeLastAccount = company || '';
     if (!company) { _forgeHistory = []; _forgeCall = null; forgeRenderEmpty(); forgeRenderOpenItems(null); return; }
     _forgeHistory = loadHistory()
       .filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase())
@@ -126,12 +137,16 @@
         const ds = h.callDate || h.ts.slice(0,10);
         return `<option value="${i}">${escHtml(ds)} — ${escHtml(h.stage||'Call')} — ${escHtml(h.letter_grade)} ${h.total}</option>`;
       }).join('');
+      // Restore the previously selected call index when navigating back
+      const idx = _restoring ? Math.min(_forgeLastCallIdx, _forgeHistory.length - 1) : 0;
+      callSel.value = idx;
       picker.style.display = '';
     } else {
       picker.style.display = 'none';
     }
     forgeRenderOpenItems(company);
-    forgeLoadCall(_forgeHistory[0]);
+    const targetCall = _forgeHistory[_restoring ? Math.min(_forgeLastCallIdx, _forgeHistory.length - 1) : 0];
+    forgeLoadCall(targetCall);
   }
 
   function _forgeSetCtxPanelsClass(hasOpen) {
@@ -296,7 +311,8 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
   }
 
   function forgeSelectCall(idx) {
-    forgeLoadCall(_forgeHistory[parseInt(idx)] || _forgeHistory[0]);
+    _forgeLastCallIdx = parseInt(idx) || 0;
+    forgeLoadCall(_forgeHistory[_forgeLastCallIdx] || _forgeHistory[0]);
   }
 
   function forgeLoadCall(h) {
