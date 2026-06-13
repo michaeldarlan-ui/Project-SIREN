@@ -38,6 +38,10 @@
         <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
         Roadmap &amp; Requests
       </button>
+      <button class="settings-item" onclick="navTo('grading');closeSettingsMenu()">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Grading Reference
+      </button>
       <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;"></div>
       <button class="settings-item" onclick="navTo('history');closeSettingsMenu()">
         <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 16 3.05 11 8 11"/></svg>
@@ -685,8 +689,48 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
       </div>
     </div>
 
-    <!-- ── Grading Reference ── -->
-    <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Grading Reference</div>
+    <!-- ── Feature Requests ── -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);">Feature Requests</div>
+      <div style="display:flex;gap:6px;">
+        <select id="rdmFilterSel" onchange="rdmRender()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:5px 10px;font-size:11px;font-family:inherit;outline:none;">
+          <option value="all">All</option>
+          <option value="planned">Planned</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Add form -->
+    <div class="cd-panel" style="margin-bottom:16px;padding:16px 18px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:start;flex-wrap:wrap;" class="rdm-add-grid">
+        <input id="rdmTitle" type="text" placeholder="Feature or request title…" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
+        <input id="rdmDesc" type="text" placeholder="Description (optional)…" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
+        <select id="rdmStatus" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
+          <option value="planned">Planned</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+        </select>
+        <button onclick="rdmAdd()" style="background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.3);color:#00c8ff;border-radius:6px;font-size:12px;font-weight:600;padding:7px 16px;cursor:pointer;white-space:nowrap;">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Items list -->
+    <div id="rdmList"></div>
+
+    <div class="footer">SIREN · Developer roadmap — internal use only</div>
+  </div>
+</div>
+
+<!-- ══ GRADING REFERENCE PAGE ══ -->
+<div class="page" id="page-grading">
+  <div class="shell">
+    <div class="page-heading" style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">GRADING REFERENCE</h2>
+      <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Score dimensions, grade scale, SPICED framework, and rep role weighting used to evaluate transcripts.</p>
+    </div>
+
     <div class="sref-grid" style="margin-bottom:28px;">
 
       <!-- Score Dimensions -->
@@ -792,37 +836,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
     </div>
 
-    <!-- ── Feature Requests ── -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-      <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);">Feature Requests</div>
-      <div style="display:flex;gap:6px;">
-        <select id="rdmFilterSel" onchange="rdmRender()" style="background:var(--siren-bg-card);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:6px;padding:5px 10px;font-size:11px;font-family:inherit;outline:none;">
-          <option value="all">All</option>
-          <option value="planned">Planned</option>
-          <option value="in-progress">In Progress</option>
-          <option value="done">Done</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Add form -->
-    <div class="cd-panel" style="margin-bottom:16px;padding:16px 18px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:start;flex-wrap:wrap;" class="rdm-add-grid">
-        <input id="rdmTitle" type="text" placeholder="Feature or request title…" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
-        <input id="rdmDesc" type="text" placeholder="Description (optional)…" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
-        <select id="rdmStatus" style="background:var(--siren-bg-card-raised);border:1px solid var(--siren-border-mid);border-radius:6px;color:var(--siren-text-primary);font-size:12px;padding:7px 10px;font-family:inherit;outline:none;">
-          <option value="planned">Planned</option>
-          <option value="in-progress">In Progress</option>
-          <option value="done">Done</option>
-        </select>
-        <button onclick="rdmAdd()" style="background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.3);color:#00c8ff;border-radius:6px;font-size:12px;font-weight:600;padding:7px 16px;cursor:pointer;white-space:nowrap;">+ Add</button>
-      </div>
-    </div>
-
-    <!-- Items list -->
-    <div id="rdmList"></div>
-
-    <div class="footer">SIREN · Developer roadmap — internal use only</div>
+    <div class="footer">SIREN · Grading reference — internal use only</div>
   </div>
 </div>
 
