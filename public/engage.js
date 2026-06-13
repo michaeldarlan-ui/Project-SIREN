@@ -1136,8 +1136,25 @@ IMPORTANT — two separate scoring contexts apply:
     "critical_event": { "touched": false, "summary": "1-2 sentences on urgency or deadline drivers raised or absent" },
     "evolution":      { "touched": false, "summary": "1-2 sentences on decision process, stakeholders, or how the deal progresses" },
     "decision":       { "touched": true,  "summary": "1-2 sentences on decision criteria, timeline, or authority discussed" }
+  },
+  "atlas_data": {
+    "contacts":     [{ "name": "Prospect name as spoken", "title": "Their title or role" }],
+    "champion":     { "name": "", "title": "" },
+    "stakeholders": [{ "name": "Name of person mentioned but not on call", "title": "Their role" }],
+    "competitors":  ["Vendor or solution name mentioned as competition"],
+    "tech_stack":   ["Existing tool or platform the prospect currently uses"],
+    "opportunity_summary": "1-2 sentence summary of the deal opportunity and current stage"
   }
 }
+
+atlas_data instructions — extract from the transcript:
+- contacts: every named prospect-side participant actually on this call, with their title. Exclude OneAxiom reps and third-party partners already captured elsewhere.
+- champion: the single prospect-side person who showed the most enthusiasm, advocacy, or internal influence toward OneAxiom. Null object if no clear champion is identifiable ({\"name\":\"\",\"title\":\"\"}).
+- stakeholders: prospect-side people mentioned in the conversation but NOT on the call (e.g., "I need to loop in our CFO", "our IT director said"). Include name if given, or role if only role was mentioned.
+- competitors: any competing vendor, product, or solution mentioned (e.g., existing tools being evaluated against OneAxiom, other MSSPs, or incumbent solutions).
+- tech_stack: any existing security tools, platforms, or vendors the prospect currently has deployed (not competitors — tools they own today).
+- opportunity_summary: a concise 1-2 sentence summary of what this deal is about and where it stands.
+If a field has nothing to report, return an empty array [] or empty object as appropriate.
 
 total (overall call): sum of all 7 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type. Assign letter_grade based on percentage of this max.
 rep_scores[].total: sum of that rep's 7 dimension scores. Do not exceed the role_max shown in each rep entry. Assign that rep's letter_grade based on percentage of their role_max.
@@ -1461,6 +1478,9 @@ Set touched to true only if the rep meaningfully engaged with that component in 
 
   function renderResults(r, prospect, contactTitle, rep, callDate, notes, thirdParties) {
     if (r.recommended_books?.length) autoSaveRecommendations(r.recommended_books);
+    if (r.atlas_data && prospect && typeof atlasAutoPopulate === 'function') {
+      atlasAutoPopulate(prospect, r.atlas_data);
+    }
 
     const { html: resultsHtml, pdfTitle } = buildResultsHtml(r, prospect, contactTitle, rep, callDate, notes, thirdParties);
 
@@ -2302,6 +2322,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         letter_grade: updatedRecord.letter_grade,
         details:      { grade_label: updatedRecord.grade_label, top_priority: updatedRecord.top_priority, triggered_from: 'history' },
       });
+      if (parsed.atlas_data && tProspect && typeof atlasAutoPopulate === 'function') {
+        atlasAutoPopulate(tProspect, parsed.atlas_data);
+      }
 
       // 7. Update cache and re-render the history card
       const cacheIdx = _histCache.findIndex(h => String(h.id) === String(id));
@@ -3065,6 +3088,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const parsed = JSON.parse(raw);
         normalizeResult(parsed, tRepObj);
 
+        // Auto-populate Atlas account profile from extracted data
+        if (parsed.atlas_data && tProspect && typeof atlasAutoPopulate === 'function') {
+          atlasAutoPopulate(tProspect, parsed.atlas_data);
+        }
+
         // 4. Build results HTML (needed so history cards have content to display)
         const tRepForHtml = tRepObj || (tRepName ? { name: tRepName, role: '' } : null);
         const { html: resultsHtml } = buildResultsHtml(parsed, tProspect, '', tRepForHtml, tCallDate, tData.transcript, [], tStage);
@@ -3189,7 +3217,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       `      "call_summary": { "positives": [], "missed": [], "improvements": [] }\n    }\n  ],\n` +
       `  "spiced": {\n    "situation": { "touched": true, "summary": "" },\n    "pain": { "touched": true, "summary": "" },\n` +
       `    "impact": { "touched": false, "summary": "" },\n    "critical_event": { "touched": false, "summary": "" },\n` +
-      `    "evolution": { "touched": false, "summary": "" },\n    "decision": { "touched": true, "summary": "" }\n  }\n}\n\n` +
+      `    "evolution": { "touched": false, "summary": "" },\n    "decision": { "touched": true, "summary": "" }\n  },\n` +
+      `  "atlas_data": {\n    "contacts": [{ "name": "", "title": "" }],\n    "champion": { "name": "", "title": "" },\n` +
+      `    "stakeholders": [{ "name": "", "title": "" }],\n    "competitors": [],\n    "tech_stack": [],\n    "opportunity_summary": ""\n  }\n}\n\n` +
+      `atlas_data: contacts = prospect-side attendees with titles. champion = single most enthusiastic/influential prospect-side person (empty object if unclear). stakeholders = prospect-side people mentioned but not on call. competitors = competing vendors mentioned. tech_stack = existing tools the prospect currently uses. opportunity_summary = 1-2 sentence deal summary. Empty array/object if nothing to report.\n` +
       `total (overall call): sum of all 7 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type.\n` +
       `rep_scores[].total: sum of that rep's 7 dimension scores. Do not exceed the role_max shown in each rep entry.\n` +
       `IMPORTANT — Demo delivery: if max is 0 for this context, score MUST be 0. Write "N/A" in the feedback field.\n` +

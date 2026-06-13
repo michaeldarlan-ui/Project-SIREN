@@ -330,6 +330,7 @@
         <div class="lc-sb-row"><span class="lc-sb-key">Total Calls</span><span class="lc-sb-val">${calls.length}</span></div>
         <div class="lc-sb-row"><span class="lc-sb-key">Avg Score</span><span class="lc-sb-val">${avg}${avg!=='—'?'/100':''}</span></div>
         <div class="lc-sb-row"><span class="lc-sb-key">Stages</span><span class="lc-sb-val" style="text-align:right;">${stages.join(', ')||'—'}</span></div>
+        ${prof.opportunity_summary ? `<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;font-style:italic;">${escHtml(prof.opportunity_summary)}</div>` : ''}
       </div>
       <div class="lc-profile-divider"></div>
       <div class="lc-sb-section">
@@ -776,6 +777,81 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
     // Refresh graph nodes to reflect populated state
     updateLcGraphNodes(company);
   }
+
+  // ── Auto-populate from grading ────────────────────────────────
+  // Called after every grade with the atlas_data block Claude extracted.
+  // Merges new data into the existing profile without overwriting manual edits.
+  window.atlasAutoPopulate = function(company, atlasData) {
+    if (!company || !atlasData) return;
+    const prof = loadAccountProfile(company);
+    let changed = false;
+
+    const norm = s => (s || '').trim().toLowerCase();
+
+    // Contacts — add if name not already present
+    const newContacts = Array.isArray(atlasData.contacts) ? atlasData.contacts : [];
+    newContacts.forEach(c => {
+      if (!c.name || !c.name.trim()) return;
+      const already = (prof.contacts || []).some(x => norm(x.name) === norm(c.name));
+      if (!already) {
+        prof.contacts = prof.contacts || [];
+        prof.contacts.push({ name: c.name.trim(), title: (c.title || '').trim() });
+        changed = true;
+      }
+    });
+
+    // Champion — only set if none exists and champion has a non-empty name
+    const champ = atlasData.champion;
+    if (champ && champ.name && champ.name.trim() && !prof.champion) {
+      prof.champion = { name: champ.name.trim(), title: (champ.title || '').trim() };
+      changed = true;
+    }
+
+    // Stakeholders — add if name not already present across contacts + stakeholders
+    const newStakeholders = Array.isArray(atlasData.stakeholders) ? atlasData.stakeholders : [];
+    newStakeholders.forEach(s => {
+      if (!s.name || !s.name.trim()) return;
+      const inContacts = (prof.contacts || []).some(x => norm(x.name) === norm(s.name));
+      const inStake    = (prof.stakeholders || []).some(x => norm(x.name) === norm(s.name));
+      if (!inContacts && !inStake) {
+        prof.stakeholders = prof.stakeholders || [];
+        prof.stakeholders.push({ name: s.name.trim(), title: (s.title || '').trim() });
+        changed = true;
+      }
+    });
+
+    // Competitors — add if not already present (case-insensitive)
+    const newCompetitors = Array.isArray(atlasData.competitors) ? atlasData.competitors : [];
+    newCompetitors.forEach(c => {
+      if (!c || !c.trim()) return;
+      const already = (prof.competitors || []).some(x => norm(x) === norm(c));
+      if (!already) {
+        prof.competitors = prof.competitors || [];
+        prof.competitors.push(c.trim());
+        changed = true;
+      }
+    });
+
+    // Tech stack — add if not already present
+    const newTech = Array.isArray(atlasData.tech_stack) ? atlasData.tech_stack : [];
+    newTech.forEach(t => {
+      if (!t || !t.trim()) return;
+      const already = (prof.techstack || []).some(x => norm(x) === norm(t));
+      if (!already) {
+        prof.techstack = prof.techstack || [];
+        prof.techstack.push(t.trim());
+        changed = true;
+      }
+    });
+
+    // Opportunity summary — set if not already set
+    if (atlasData.opportunity_summary && atlasData.opportunity_summary.trim() && !prof.opportunity_summary) {
+      prof.opportunity_summary = atlasData.opportunity_summary.trim();
+      changed = true;
+    }
+
+    if (changed) saveAccountProfile(company, prof);
+  };
 
   function profAddContact(company) {
     const nameEl=document.getElementById('prof-con-name'), titleEl=document.getElementById('prof-con-title');
