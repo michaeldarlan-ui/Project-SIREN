@@ -382,107 +382,32 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     if (h.top_priority) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:#e8a020;">▼</div><div><div class="forge-next-text">${escHtml(h.top_priority)}</div><span class="forge-next-tag">Priority gap</span></div></div>`;
     if (Array.isArray(h.next_steps) && h.next_steps.length) html += `<div class="forge-next-item"><div class="forge-next-num" style="color:var(--siren-cyan-50);">→</div><div><div class="forge-next-text">${escHtml(h.next_steps[0])}</div><span class="forge-next-tag">Next step</span></div></div>`;
     if (!html) html = '<div style="font-size:11px;color:var(--siren-text-muted);padding:4px 0;">No signals extracted from this call.</div>';
-    el.innerHTML = html;
-    forgeRenderDealIntel(h);
-  }
-
-  function forgeRenderDealIntel(h) {
-    const el = document.getElementById('forgeDealIntelBody');
-    if (!el || !h) return;
-
-    const hist = _forgeHistory; // all calls for this account, newest first
-
-    // ── Momentum: score trend across last 3 calls ──
-    const scores = hist.map(c => c.total).filter(s => s > 0);
-    let momentum = 'flat', momentumColor = 'rgba(255,255,255,.4)', momentumLabel = '→ Flat';
-    if (scores.length >= 2) {
-      const delta = scores[0] - scores[Math.min(2, scores.length - 1)];
-      if (delta >= 5)       { momentum = 'up';   momentumColor = '#22c55e'; momentumLabel = `↑ +${delta} pts`; }
-      else if (delta <= -5) { momentum = 'down'; momentumColor = '#ef4444'; momentumLabel = `↓ ${delta} pts`; }
-    }
-
-    // ── SPICED coverage ──
-    const spicedKeys = h.spiced ? Object.keys(h.spiced) : [];
-    const spicedTouched = spicedKeys.filter(k => h.spiced[k].touched).length;
-    const spicedTotal   = spicedKeys.length || 6;
-    const spicedPct     = spicedTotal > 0 ? Math.round(spicedTouched / spicedTotal * 100) : 0;
-    const spicedColor   = spicedPct >= 70 ? '#22c55e' : spicedPct >= 40 ? '#e8a020' : '#ef4444';
-    const spicedGaps    = spicedKeys.filter(k => !h.spiced[k].touched).map(k => k.charAt(0).toUpperCase()+k.slice(1).replace('_',' '));
-
-    // ── Deal health (composite) ──
-    const score = h.total || 0;
-    let healthLabel, healthColor;
-    if (score >= 80 && spicedPct >= 60 && momentum !== 'down') { healthLabel = 'Strong'; healthColor = '#22c55e'; }
-    else if (score >= 65 && spicedPct >= 40)                   { healthLabel = 'Moderate'; healthColor = '#e8a020'; }
-    else                                                         { healthLabel = 'At Risk'; healthColor = '#ef4444'; }
-
-    // ── Days since last call ──
-    const lastDate = h.callDate ? new Date(h.callDate + 'T12:00:00') : new Date(h.ts);
-    const daysSince = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
-    const cadenceColor = daysSince > 14 ? '#ef4444' : daysSince > 7 ? '#e8a020' : '#22c55e';
-    const cadenceLabel = daysSince === 0 ? 'Today' : daysSince === 1 ? '1 day ago' : `${daysSince} days ago`;
-
-    // ── Stage velocity: calls at current stage ──
-    const callsAtStage = hist.filter(c => c.stage === h.stage).length;
-
-    // ── Deal age: first to last call ──
-    const oldest = hist[hist.length - 1];
-    const firstDate = oldest?.callDate ? new Date(oldest.callDate+'T12:00:00') : new Date(oldest?.ts||Date.now());
-    const dealAgeDays = Math.floor((Date.now() - firstDate.getTime()) / 86400000);
-
-    // ── Lowest dimension (biggest skill gap) ──
-    let weakestDim = null, weakestScore = Infinity;
-    if (h.dimensions) {
-      Object.entries(h.dimensions).forEach(([name, d]) => {
-        if ((d.score ?? 100) < weakestScore) { weakestScore = d.score ?? 0; weakestDim = name; }
-      });
-    }
-
-    // ── Open VIGIL items ──
-    const vigilTasks = pulseSeedTasks(h.prospect || '', hist);
-    const openItems = vigilTasks.filter(t => !t.done).length;
-
-    // ── Build HTML ──
-    const kpi = (label, value, color) =>
-      `<div class="di-kpi">
-        <div class="di-kpi-val" style="color:${color};">${value}</div>
-        <div class="di-kpi-label">${label}</div>
-      </div>`;
-
-    const row = (icon, label, value, color, detail) =>
-      `<div class="di-row">
-        <span class="di-row-icon" style="color:${color};">${icon}</span>
-        <div class="di-row-body">
-          <span class="di-row-label">${label}</span>
-          <span class="di-row-val" style="color:${color};">${value}</span>
-          ${detail ? `<div class="di-row-detail">${detail}</div>` : ''}
-        </div>
-      </div>`;
-
-    el.innerHTML = `
-      <div class="di-tile-header">⬡ Deal Intel</div>
-      <div class="di-kpi-strip">
-        ${kpi('Health', healthLabel, healthColor)}
-        ${kpi('Momentum', momentumLabel, momentumColor)}
-        ${kpi('SPICED', `${spicedTouched}/${spicedTotal}`, spicedColor)}
-        ${kpi('Open', openItems > 0 ? `${openItems} items` : 'Clear', openItems > 0 ? '#e8a020' : '#22c55e')}
+    // Compact Deal Snapshot (4 KPIs) below signals — full Deal Intel lives in VIGIL
+    const _hist = _forgeHistory;
+    const _scores = _hist.map(c => c.total).filter(s => s > 0);
+    let _momColor = 'rgba(255,255,255,.4)', _momLabel = '→ Flat';
+    if (_scores.length >= 2) { const d = _scores[0] - _scores[Math.min(2,_scores.length-1)]; if (d>=5){_momColor='#22c55e';_momLabel=`↑ +${d}pts`;}else if(d<=-5){_momColor='#ef4444';_momLabel=`↓ ${d}pts`;} }
+    const _spKeys = h.spiced ? Object.keys(h.spiced) : [];
+    const _spTch  = _spKeys.filter(k=>h.spiced[k].touched).length, _spTot = _spKeys.length||6;
+    const _spPct  = _spTot>0 ? Math.round(_spTch/_spTot*100) : 0;
+    const _spCol  = _spPct>=70?'#22c55e':_spPct>=40?'#e8a020':'#ef4444';
+    const _sc = h.total||0;
+    let _hlLbl = 'At Risk', _hlCol = '#ef4444';
+    if (_sc>=80&&_spPct>=60&&_momColor!=='#ef4444'){_hlLbl='Strong';_hlCol='#22c55e';}
+    else if (_sc>=65&&_spPct>=40){_hlLbl='Moderate';_hlCol='#e8a020';}
+    const _openCt = pulseSeedTasks(h.prospect||'', _hist).filter(t=>!t.done).length;
+    const _kpi = (lbl, val, col) => `<div class="di-kpi"><div class="di-kpi-val" style="color:${col};">${val}</div><div class="di-kpi-label">${lbl}</div></div>`;
+    html += `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:6px;">Deal Snapshot</div>
+      <div class="di-kpi-strip" style="grid-template-columns:repeat(4,1fr);">
+        ${_kpi('Health',    _hlLbl,                        _hlCol)}
+        ${_kpi('Momentum',  _momLabel,                     _momColor)}
+        ${_kpi('SPICED',    `${_spTch}/${_spTot}`,         _spCol)}
+        ${_kpi('Open Items',_openCt>0?`${_openCt}`:'Clear',_openCt>0?'#e8a020':'#22c55e')}
       </div>
-
-      <div class="di-section-label">DEAL METRICS</div>
-      ${row('◷', 'Last Call', cadenceLabel, cadenceColor)}
-      ${row('◈', 'Stage', h.stage || '—', 'rgba(255,255,255,.7)', `${callsAtStage} call${callsAtStage!==1?'s':''} at this stage`)}
-      ${row('⬡', 'Deal Age', `${dealAgeDays}d`, 'rgba(255,255,255,.55)', `${hist.length} total call${hist.length!==1?'s':''}`)}
-      ${row('★', 'Call Score', `${h.letter_grade} · ${score}`, score >= 80 ? '#22c55e' : score >= 65 ? '#e8a020' : '#ef4444')}
-
-      <div class="di-section-label" style="margin-top:10px;">RISK INDICATORS</div>
-      ${h.top_priority ? row('▼', 'Top Gap', '', '#e8a020', escHtml(h.top_priority)) : ''}
-      ${spicedGaps.length ? row('◌', 'SPICED Gaps', '', '#e8a020', spicedGaps.join(' · ')) : row('◌', 'SPICED Gaps', 'None', '#22c55e')}
-      ${weakestDim ? row('↘', 'Weakest Dim', weakestDim, '#ef4444', `${weakestScore}/100`) : ''}
-      ${daysSince > 14 ? row('⚑', 'Cadence Risk', 'Stale', '#ef4444', `No call in ${daysSince} days`) : ''}
-
-      <div class="di-section-label" style="margin-top:10px;">STRENGTH</div>
-      ${h.top_strength ? row('▲', 'Top Strength', '', '#22c55e', escHtml(h.top_strength)) : '<div style="font-size:11px;color:var(--siren-text-muted);padding:2px 0;">No strength data.</div>'}
-    `;
+      <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px;">Full Deal Intel available in VIGIL ›</div>
+    </div>`;
+    el.innerHTML = html;
   }
 
   function forgeRenderEmpty() {
@@ -494,8 +419,6 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     document.getElementById('forgeCallPickerWrap').style.display = 'none';
     document.getElementById('forgeSignalsBody').innerHTML =
       '<div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>';
-    const diEl = document.getElementById('forgeDealIntelBody');
-    if (diEl) diEl.innerHTML = '<div style="font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account.</div>';
     document.getElementById('forgeWipOverlay').style.display = '';
     document.getElementById('forgeCopyBtn').disabled = true;
     document.getElementById('forgeGenBtn').disabled = true;

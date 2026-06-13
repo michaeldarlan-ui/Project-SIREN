@@ -354,6 +354,74 @@
     return tasks;
   }
 
+  // ── Deal Intel builder (shared with VIGIL feed) ───────────────
+  function vigilBuildDealIntel(h, hist) {
+    // Momentum
+    const scores = hist.map(c => c.total).filter(s => s > 0);
+    let momentumColor = 'rgba(255,255,255,.4)', momentumLabel = '→ Flat';
+    if (scores.length >= 2) {
+      const delta = scores[0] - scores[Math.min(2, scores.length - 1)];
+      if (delta >= 5)       { momentumColor = '#22c55e'; momentumLabel = `↑ +${delta} pts`; }
+      else if (delta <= -5) { momentumColor = '#ef4444'; momentumLabel = `↓ ${delta} pts`; }
+    }
+    // SPICED
+    const spicedKeys  = h.spiced ? Object.keys(h.spiced) : [];
+    const spicedTouch = spicedKeys.filter(k => h.spiced[k].touched).length;
+    const spicedTotal = spicedKeys.length || 6;
+    const spicedPct   = spicedTotal > 0 ? Math.round(spicedTouch / spicedTotal * 100) : 0;
+    const spicedColor = spicedPct >= 70 ? '#22c55e' : spicedPct >= 40 ? '#e8a020' : '#ef4444';
+    const spicedGaps  = spicedKeys.filter(k => !h.spiced[k].touched).map(k => k.charAt(0).toUpperCase()+k.slice(1).replace('_',' '));
+    // Health
+    const score = h.total || 0;
+    let healthLabel, healthColor;
+    if (score >= 80 && spicedPct >= 60 && momentumColor !== '#ef4444') { healthLabel = 'Strong';   healthColor = '#22c55e'; }
+    else if (score >= 65 && spicedPct >= 40)                            { healthLabel = 'Moderate'; healthColor = '#e8a020'; }
+    else                                                                  { healthLabel = 'At Risk';  healthColor = '#ef4444'; }
+    // Cadence
+    const lastDate  = h.callDate ? new Date(h.callDate + 'T12:00:00') : new Date(h.ts);
+    const daysSince = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
+    const cadenceColor = daysSince > 14 ? '#ef4444' : daysSince > 7 ? '#e8a020' : '#22c55e';
+    const cadenceLabel = daysSince === 0 ? 'Today' : daysSince === 1 ? '1 day ago' : `${daysSince} days ago`;
+    // Stage velocity + deal age
+    const callsAtStage = hist.filter(c => c.stage === h.stage).length;
+    const oldest   = hist[hist.length - 1];
+    const firstDate = oldest?.callDate ? new Date(oldest.callDate+'T12:00:00') : new Date(oldest?.ts||Date.now());
+    const dealAge   = Math.floor((Date.now() - firstDate.getTime()) / 86400000);
+    // Weakest dimension
+    let weakestDim = null, weakestScore = Infinity;
+    if (h.dimensions) Object.entries(h.dimensions).forEach(([n,d]) => { if ((d.score??100) < weakestScore) { weakestScore = d.score??0; weakestDim = n; } });
+    // Open VIGIL items
+    const openItems = pulseSeedTasks(h.prospect||'', hist).filter(t=>!t.done).length;
+
+    const kpi = (label, val, color) => `<div class="di-kpi"><div class="di-kpi-val" style="color:${color};">${val}</div><div class="di-kpi-label">${label}</div></div>`;
+    const row = (icon, label, val, color, detail) => `<div class="di-row"><span class="di-row-icon" style="color:${color};">${icon}</span><div class="di-row-body"><span class="di-row-label">${label}</span><span class="di-row-val" style="color:${color};">${val}</span>${detail?`<div class="di-row-detail">${detail}</div>`:''}</div></div>`;
+
+    return `
+      <div class="di-kpi-strip">
+        ${kpi('Health',    healthLabel,                    healthColor)}
+        ${kpi('Momentum',  momentumLabel,                  momentumColor)}
+        ${kpi('SPICED',    `${spicedTouch}/${spicedTotal}`,spicedColor)}
+        ${kpi('Open Items',openItems>0?`${openItems}`:'Clear', openItems>0?'#e8a020':'#22c55e')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:10px;">
+        <div>
+          <div class="di-section-label">DEAL METRICS</div>
+          ${row('◷','Last Call',  cadenceLabel, cadenceColor)}
+          ${row('◈','Stage',      h.stage||'—', 'rgba(255,255,255,.7)', `${callsAtStage} call${callsAtStage!==1?'s':''} at this stage`)}
+          ${row('⬡','Deal Age',   `${dealAge}d`, 'rgba(255,255,255,.55)', `${hist.length} total call${hist.length!==1?'s':''}`)}
+          ${row('★','Call Score', `${h.letter_grade||''} · ${score}`, score>=80?'#22c55e':score>=65?'#e8a020':'#ef4444')}
+        </div>
+        <div>
+          <div class="di-section-label">RISK &amp; STRENGTH</div>
+          ${h.top_priority  ? row('▼','Top Gap',      '', '#e8a020', escHtml(h.top_priority))  : ''}
+          ${spicedGaps.length ? row('◌','SPICED Gaps', '', '#e8a020', spicedGaps.join(' · ')) : row('◌','SPICED Gaps','None','#22c55e')}
+          ${weakestDim      ? row('↘','Weakest Dim',  weakestDim, '#ef4444', `${weakestScore}/100`) : ''}
+          ${daysSince > 14  ? row('⚑','Cadence Risk', 'Stale', '#ef4444', `No call in ${daysSince} days`) : ''}
+          ${h.top_strength  ? row('▲','Strength',     '', '#22c55e', escHtml(h.top_strength)) : ''}
+        </div>
+      </div>`;
+  }
+
   function pulseRenderFeed() {
     const feed = document.getElementById('pulseActionFeed');
     if (!feed) return;
@@ -467,6 +535,10 @@
               <div class="pulse-feed-sub-title">Recommended Deliverables</div>
               ${delivHtml || '<div style="font-size:12px;color:rgba(255,255,255,.25);">None suggested.</div>'}
             </div>
+          </div>
+          <div class="pulse-feed-deal-intel">
+            <div class="pulse-feed-sub-title" style="margin-top:16px;margin-bottom:10px;">Deal Intel</div>
+            ${vigilBuildDealIntel(a.latest, a.calls)}
           </div>
         </div>
       </div>`;

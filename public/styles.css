@@ -1476,6 +1476,7 @@
   .pulse-feed-body { display: none; padding: 0 18px 16px; }
   .pulse-feed-body.open { display: block; }
   .pulse-feed-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pulse-feed-deal-intel { border-top: 1px solid rgba(255,255,255,.07); padding-top: 4px; margin-top: 4px; }
   @media (max-width:700px) { .pulse-feed-cols { grid-template-columns:1fr; } }
   .pulse-feed-sub-title { font-size: 9px; font-weight:700; letter-spacing:.14em; color:rgba(255,255,255,.25); text-transform:uppercase; margin-bottom:10px; }
   .pulse-feed-step { display:flex; align-items:flex-start; gap:9px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.04); }
