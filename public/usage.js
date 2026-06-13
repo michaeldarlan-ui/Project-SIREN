@@ -3,7 +3,7 @@
 // Data source: /api/usage-metrics (per-day, per-model rows metered server-side)
 // plus /api/usage for the console-mirror (month spend + credit balance).
 
-  let _usageDays = 30;
+  let _usageDays = 1;
   let _tokenGroupBy = 'token_type';
 
   window.usageSetPeriod = function(days) {
