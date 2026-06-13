@@ -488,33 +488,31 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
       </div>
     </div>
 
-    <div class="forge-grid">
+    <!-- Context panels row — Open Items + Call Signals side by side -->
+    <div class="forge-ctx-panels" id="forgeCtxPanelsRow">
 
-      <!-- ── Left rail ── -->
-      <div class="forge-rail">
-
-        <!-- Open Items from VIGIL — shown when account has open tasks -->
-        <div class="forge-panel" id="forgeOpenItemsPanel" style="display:none;">
-          <div class="forge-panel-hdr">
-            <span class="forge-panel-title">Open Items · VIGIL</span>
-          </div>
-          <div class="forge-panel-body" id="forgeOpenItemsBody"></div>
+      <!-- Open Items from VIGIL — hidden until account has open tasks -->
+      <div class="forge-panel" id="forgeOpenItemsPanel" style="display:none;">
+        <div class="forge-panel-hdr">
+          <span class="forge-panel-title">Open Items · VIGIL</span>
         </div>
-
-        <!-- Call Signals + Deal Snapshot -->
-        <div class="forge-panel">
-          <div class="forge-panel-hdr">
-            <span class="forge-panel-title" id="forgeSignalsTitle">Call Signals</span>
-          </div>
-          <div class="forge-panel-body" id="forgeSignalsBody">
-            <div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>
-          </div>
-        </div>
-
+        <div class="forge-panel-body" id="forgeOpenItemsBody"></div>
       </div>
 
-      <!-- ── Main canvas ── -->
-      <div class="forge-main">
+      <!-- Call Signals + Deal Snapshot -->
+      <div class="forge-panel forge-signals-panel">
+        <div class="forge-panel-hdr">
+          <span class="forge-panel-title" id="forgeSignalsTitle">Call Signals</span>
+        </div>
+        <div class="forge-panel-body" id="forgeSignalsBody">
+          <div style="padding:4px 0;font-size:11px;color:var(--siren-text-muted);font-style:italic;">Select an account to load call data.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main canvas — full width -->
+    <div class="forge-main">
 
         <!-- Unified workspace: template tabs + toolbar + editor -->
         <div class="forge-report-preview">
@@ -643,8 +641,6 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           </div>
         </div>
 
-
-      </div>
     </div>
   </div>
 </div>

@@ -134,17 +134,23 @@
     forgeLoadCall(_forgeHistory[0]);
   }
 
+  function _forgeSetCtxPanelsClass(hasOpen) {
+    const row = document.getElementById('forgeCtxPanelsRow');
+    if (row) row.classList.toggle('has-open-items', hasOpen);
+  }
+
   function forgeRenderOpenItems(company) {
     const panel = document.getElementById('forgeOpenItemsPanel');
     const body  = document.getElementById('forgeOpenItemsBody');
     if (!panel || !body) return;
-    if (!company) { panel.style.display = 'none'; return; }
+    if (!company) { panel.style.display = 'none'; _forgeSetCtxPanelsClass(false); return; }
 
     const calls = _forgeHistory;
     const tasks = pulseSeedTasks(company, calls).filter(t => !t.done);
-    if (!tasks.length) { panel.style.display = 'none'; return; }
+    if (!tasks.length) { panel.style.display = 'none'; _forgeSetCtxPanelsClass(false); return; }
 
     panel.style.display = '';
+    _forgeSetCtxPanelsClass(true);
     body.innerHTML = tasks.map((t, i) => {
       const safe = escHtml(t.text);
       const safeJs = t.text.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
