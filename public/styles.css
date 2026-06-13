@@ -766,7 +766,7 @@
 .sref-spiced-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
 /* Rep role ceiling grid */
 .sref-role-ceiling-grid { width: 100%; margin-bottom: 4px; }
-.sref-rcg-head, .sref-rcg-row { display: grid; grid-template-columns: 72px repeat(5, 1fr) 64px; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.sref-rcg-head, .sref-rcg-row { display: grid; grid-template-columns: 72px repeat(6, 1fr) 64px; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
 .sref-rcg-head { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.28); padding-bottom: 8px; }
 .sref-rcg-row:last-child { border-bottom: none; }
 .sref-rcg-full { font-family: var(--siren-font-hud); font-size: 12px; font-weight: 700; color: #22c55e; text-align: center; }
@@ -796,6 +796,10 @@
 .sref-mx-reduced > div:first-child { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.3); }
 .sref-mx-reduced > div:last-child { font-size: 11px; color: rgba(255,255,255,.28); line-height: 1.5; }
 .sref-mx-dim { color: rgba(255,255,255,.2) !important; font-size: 11px !important; }
+.sref-mx-na > div:first-child { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.2); }
+.sref-mx-na > div:last-child { font-size: 11px; color: rgba(255,255,255,.2); line-height: 1.5; font-style: italic; }
+.sref-mx-na-pts { font-family: var(--siren-font-hud); font-size: 11px; font-weight: 600; color: rgba(255,255,255,.2); letter-spacing: .03em; }
+.sref-rcg-na { font-family: var(--siren-font-hud); font-size: 11px; font-weight: 600; color: rgba(255,255,255,.2); text-align: center; letter-spacing: .03em; }
 /* Role notes at the bottom of meeting-type cards */
 .sref-role-note { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.05); margin-top: 2px; font-size: 11px; color: rgba(255,255,255,.4); line-height: 1.5; }
 .sref-role-note .sref-role-tag { margin-top: 1px; }

@@ -398,24 +398,24 @@
 
     if (isSDR) {
       if (isCold)
-        guidance += ` SDR on a cold call: this is their primary motion. Grade rigorously on all five dimensions within the cold context — opening strength, handling resistance, and booking a concrete next meeting.`;
+        guidance += ` SDR on a cold call: primary motion. Grade rigorously on discovery, value framing (brief hook only), objection handling, and next-step commitment. Demo delivery is N/A — award 0.`;
       else if (isDiscovery)
-        guidance += ` SDR on a discovery call: grade on question quality and handoff clarity. Do not grade on closing mechanics or deep qualification — those are the AE's responsibility.`;
+        guidance += ` SDR on a discovery call: grade on question quality and handoff clarity. Value framing is expected at a light level. Demo delivery is N/A. Do not grade on deep qualification or close mechanics.`;
       else if (isDemo)
-        guidance += ` SDR on a demo call: SDRs are rarely expected here. Grade only on whether their contributions helped or created noise. No penalty for appropriate silence.`;
+        guidance += ` SDR on a demo: rarely expected. Grade only on whether their contributions helped or created noise. Demo delivery grading belongs to the AE/SE — do not assign demo delivery credit to the SDR.`;
       else if (isTouchpoint)
-        guidance += ` SDR on a touchpoint: not expected. No grading expectations beyond professional conduct.`;
+        guidance += ` SDR on a touchpoint: not expected. No grading expectations beyond professional conduct. Demo delivery is N/A.`;
       else
-        guidance += ` Weight grading toward pipeline generation: opening, qualifying interest, booking the next meeting. Lighter expectations on technical demo delivery or close mechanics. Rigorous on discovery quality and next-step commitment.`;
+        guidance += ` SDR: lighter expectations on demo delivery (N/A unless explicitly assigned) and deep qualification. Full weight on discovery, value framing (brief), objection handling, and next steps.`;
     } else if (isSE) {
       if (isDemo)
-        guidance += ` SE on a demo: this is their primary motion. Grade rigorously on technical accuracy, pain-to-feature linkage, and handling of technical objections. Do not grade on commercial negotiation or close mechanics — those belong to the AE.`;
+        guidance += ` SE on a demo: primary motion. Grade rigorously on demo delivery accuracy, pain-to-feature linkage, and technical objection handling. Value framing is graded on how well they translate technical capability into business value. Do not grade on commercial negotiation or close mechanics.`;
       else if (isProposal)
-        guidance += ` SE on a proposal/close call: grade only on last-mile technical contributions — answering outstanding technical questions, resolving integration concerns. Do not grade on commercial terms or closing pressure.`;
+        guidance += ` SE on a proposal/close: grade only on last-mile technical contributions. Demo delivery reduced — a brief recap only. Do not grade on commercial terms or closing pressure.`;
       else if (isDiscovery)
-        guidance += ` SE on a discovery call: grade on technical listening — did they hear the right signals to inform a targeted demo? Hold lighter expectations on commercial discovery.`;
+        guidance += ` SE on a discovery call: grade on technical listening and value framing of OneAxiom's capability. Demo delivery is N/A. Hold lighter expectations on commercial discovery and qualification.`;
       else
-        guidance += ` Weight grading toward technical demo quality, solution fit accuracy, and translating prospect pain into OneAxiom's technical differentiators. Lighter expectations on commercial negotiation. Rigorous on demo delivery and technical objection handling.`;
+        guidance += ` SE: primary focus is demo delivery and technical value framing. Lighter on commercial discovery, qualification, and close mechanics.`;
     } else if (isManager) {
       if (isProposal)
         guidance += ` Manager on a proposal/close call: grade on executive-level value framing and whether their presence accelerated or stalled the decision. Note any coaching behaviors toward the AE during the call.`;
@@ -444,44 +444,51 @@
   // Returns per-stage max points for each dimension.
   // Reduced dimensions get half their normal max so the schema and the
   // prose instruction agree — the LLM cannot score above what max allows.
+  // ── Dimension key: d=Discovery, vf=Value Framing, dd=Demo Delivery,
+  //                   t=Tactical Empathy, q=Qualification, c=Call Control
+  // Base maxes: d=20, vf=15, dd=10, t=25, q=15, c=15  →  total 100
+
   // Stage ceilings — what's appropriate for this meeting type
   function stageDimCeilings() {
     const stage = (selectedStage || '').toLowerCase();
-    let d = 20, v = 25, t = 25, q = 15, c = 15;
+    // Full weight defaults
+    let d = 20, vf = 15, dd = 10, t = 25, q = 15, c = 15;
     if (stage.includes('cold')) {
-      v = 12; q = 7;
+      vf = 10; dd = 0;  q = 7;   // brief value hook only; no demo; light qualification
     } else if (stage.includes('discovery')) {
-      v = 12;
+      vf = 15; dd = 0;           // value framing at full weight; no demo expected
+    } else if (stage.includes('demo') || stage.includes('solution')) {
+      // all at full weight — demo is the primary purpose
     } else if (stage.includes('proposal') || stage.includes('close')) {
-      d = 10;
+      d = 10; dd = 5;            // discovery reduced; demo reduced (recap only if needed)
     } else if (stage.includes('touchpoint')) {
-      v = 12; q = 7;
+      vf = 10; dd = 0; q = 7;   // light value reinforcement; no demo; no re-qualifying
     }
-    return { d, v, t, q, c };
+    return { d, vf, dd, t, q, c };
   }
 
   // Role ceilings — what's appropriate for this rep's function
   function roleDimCeilings(rep) {
-    if (!rep) return { d: 20, v: 25, t: 25, q: 15, c: 15 };
+    if (!rep) return { d: 20, vf: 15, dd: 10, t: 25, q: 15, c: 15 };
     const role = (rep.role || '').toLowerCase();
-    const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
-    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
-    const isAM      = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
+    const isSDR = role.includes('sdr') || role.includes('bdr') || role.includes('development');
+    const isSE  = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
+    const isAM  = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
 
     if (isSDR) {
-      // Pipeline generation focus: lighter on demo delivery, deep qualification, and close mechanics
-      return { d: 20, v: 12, t: 25, q: 7, c: 15 };
+      // Pipeline focus: can frame value briefly, never expected to demo, lighter on qualification
+      return { d: 20, vf: 10, dd: 0, t: 25, q: 7, c: 15 };
     }
     if (isSE) {
-      // Technical delivery focus: lighter on commercial discovery, deal qualification, and closing
-      return { d: 12, v: 25, t: 25, q: 7, c: 10 };
+      // Technical delivery focus: primary demo owner; lighter on commercial discovery, qual, close
+      return { d: 12, vf: 10, dd: 10, t: 25, q: 7, c: 10 };
     }
     if (isAM) {
-      // Expansion/retention focus: lighter on demo delivery and new-logo qualification mechanics
-      return { d: 20, v: 12, t: 25, q: 10, c: 15 };
+      // Expansion/retention focus: can frame value; rarely demos; lighter on new-logo qualification
+      return { d: 20, vf: 12, dd: 0, t: 25, q: 10, c: 15 };
     }
     // AE, Manager, or unrecognized — full weight on all dimensions
-    return { d: 20, v: 25, t: 25, q: 15, c: 15 };
+    return { d: 20, vf: 15, dd: 10, t: 25, q: 15, c: 15 };
   }
 
   // Combined maxes: most restrictive of stage ceiling and role ceiling
@@ -489,18 +496,19 @@
     const s = stageDimCeilings();
     const r = roleDimCeilings(repObj);
     return {
-      d: Math.min(s.d, r.d),
-      v: Math.min(s.v, r.v),
-      t: Math.min(s.t, r.t),
-      q: Math.min(s.q, r.q),
-      c: Math.min(s.c, r.c),
+      d:  Math.min(s.d,  r.d),
+      vf: Math.min(s.vf, r.vf),
+      dd: Math.min(s.dd, r.dd),
+      t:  Math.min(s.t,  r.t),
+      q:  Math.min(s.q,  r.q),
+      c:  Math.min(s.c,  r.c),
     };
   }
 
-  // Keep old name as alias used in total-ceiling injection (overall call uses stage-only)
+  // Alias for total-ceiling injection — overall call uses stage-only ceilings
   function stageDimMaxes() { return stageDimCeilings(); }
 
-  // Lookup a team member's role ceiling by name for per-rep normalization
+  // Lookup a team member's combined ceiling by name (for per-rep normalization)
   function repDimMaxesByName(name) {
     const team = loadTeam();
     const member = team.find(m => m.name && m.name.toLowerCase() === (name || '').toLowerCase());
@@ -508,16 +516,16 @@
   }
 
   function buildStageDimensions(repObj, feedbackHints) {
-    // Overall call dimensions use stage-only ceilings (not tied to one rep's role)
-    // Rep-specific blocks pass their own repObj
     const m = repObj === '__stage_only__' ? stageDimCeilings() : combinedDimMaxes(repObj);
     const fh = feedbackHints || {};
+    const rep_fb = !!feedbackHints; // true when building per-rep block
     return [
-      `{ "name": "Discovery & needs confirmation",      "max": ${m.d}, "score": 0, "feedback": "${fh.d || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
-      `{ "name": "Value framing & demo delivery",       "max": ${m.v}, "score": 0, "feedback": "${fh.v || '2-3 sentences'}" }`,
-      `{ "name": "Tactical empathy & objection handling","max": ${m.t}, "score": 0, "feedback": "${fh.t || '2-3 sentences — call out specific techniques used or missed'}" }`,
-      `{ "name": "Qualification & deal mechanics",      "max": ${m.q}, "score": 0, "feedback": "${fh.q || '2-3 sentences covering budget, authority, timeline, competitive landscape, winnability'}" }`,
-      `{ "name": "Call control & next steps",           "max": ${m.c}, "score": 0, "feedback": "${fh.c || '2-3 sentences'}" }`
+      `{ "name": "Discovery & needs confirmation", "max": ${m.d},  "score": 0, "feedback": "${fh.d  || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
+      `{ "name": "Value framing",                  "max": ${m.vf}, "score": 0, "feedback": "${fh.vf || '2-3 sentences — how clearly did the rep connect OneAxiom\'s value to the prospect\'s stated pain?'}" }`,
+      `{ "name": "Demo delivery",                  "max": ${m.dd}, "score": 0, "feedback": "${fh.dd || (m.dd === 0 ? 'No demo expected for this meeting type — award 0 and note N/A' : '2-3 sentences — was the demo anchored to stated pain, technically accurate, and free of generic feature touring?')}" }`,
+      `{ "name": "Tactical empathy & objection handling", "max": ${m.t}, "score": 0, "feedback": "${fh.t  || '2-3 sentences — call out specific techniques used or missed'}" }`,
+      `{ "name": "Qualification & deal mechanics", "max": ${m.q},  "score": 0, "feedback": "${fh.q  || '2-3 sentences covering budget, authority, timeline, competitive landscape, winnability'}" }`,
+      `{ "name": "Call control & next steps",      "max": ${m.c},  "score": 0, "feedback": "${fh.c  || '2-3 sentences'}" }`
     ].join(',\n    ');
   }
 
@@ -525,41 +533,46 @@
     const stage = (selectedStage || '').toLowerCase();
 
     if (stage.includes('cold')) return `Dimension weighting for Cold Outreach:
-- Discovery & needs confirmation (20 pts): Full weight. Surface initial pain or curiosity; confirm there is something worth exploring. One sharp question beats five generic ones.
-- Value framing & demo delivery (25 pts): REDUCED. Brief value hook only — one sentence on what OneAxiom solves. No demo expected. Do not penalize absence of a full demo.
-- Tactical empathy & objection handling (25 pts): Full weight. Handling "not interested" or "we already have something" gracefully is the core skill being tested here.
-- Qualification & deal mechanics (15 pts): REDUCED. Light confirmation of fit is acceptable — full BANT qualification is not appropriate on a cold call. Do not penalize for shallow qualification.
-- Call control & next steps (15 pts): Full weight, rigorous. Must end with a specific booked meeting — date, time, named attendees. "I'll send info" is not a next step.`;
+- Discovery & needs confirmation (20 pts): Full weight. Surface initial pain or curiosity; one sharp question beats five generic ones.
+- Value framing (15 pts → 10 pts): REDUCED. Brief value hook only — one sentence on what OneAxiom solves. Do not penalize for lack of depth.
+- Demo delivery (10 pts → 0 pts): NOT APPLICABLE. No demo expected on a cold call. Award 0 and mark N/A in feedback.
+- Tactical empathy & objection handling (25 pts): Full weight. Handling "not interested" gracefully is the core skill tested here.
+- Qualification & deal mechanics (15 pts → 7 pts): REDUCED. Light confirmation of fit only — full BANT is not appropriate.
+- Call control & next steps (15 pts): Full weight. Must end with a specific booked meeting — date, time, named attendees.`;
 
     if (stage.includes('discovery')) return `Dimension weighting for Discovery:
-- Discovery & needs confirmation (20 pts): Full weight, primary focus. Rep must go deep — current environment, specific pain, impact, what they have already tried. Reps who pitch instead of listen lose points here.
-- Value framing & demo delivery (25 pts): REDUCED. Light framing only — connecting pain to OneAxiom's capability. No demo expected unless explicitly pre-agreed. Do not penalize absence of a demo.
-- Tactical empathy & objection handling (25 pts): Full weight. Resistance to questions or early skepticism must be handled with labeling and calibrated questions.
-- Qualification & deal mechanics (15 pts): Full weight. Budget awareness, decision authority, timeline, and competitive context should all be touched — even if not fully resolved.
-- Call control & next steps (15 pts): Full weight. Must close with a defined next step — demo date confirmed, attendees named, preparation steps assigned.`;
+- Discovery & needs confirmation (20 pts): Full weight, primary focus. Rep must go deep — current environment, specific pain, impact, what they have tried. Pitching instead of listening is penalized.
+- Value framing (15 pts): Full weight. Connecting pain to OneAxiom's capability is expected — but pitching the full product is penalized. Framing and pitching are different.
+- Demo delivery (10 pts → 0 pts): NOT APPLICABLE. No demo expected unless explicitly pre-agreed. Award 0 and mark N/A in feedback.
+- Tactical empathy & objection handling (25 pts): Full weight. Early resistance must be handled with labeling and calibrated questions.
+- Qualification & deal mechanics (15 pts): Full weight. Budget, authority, timeline, and competitive context should all be touched.
+- Call control & next steps (15 pts): Full weight. Must close with a defined next step — demo date confirmed, attendees named.`;
 
     if (stage.includes('demo') || stage.includes('solution')) return `Dimension weighting for Demo / Solution Presentation:
-- Discovery & needs confirmation (20 pts): Full weight. Rep must re-confirm pain at the start — "before I show you anything, I want to make sure I have the right story." Skipping this is a grading penalty regardless of demo quality.
-- Value framing & demo delivery (25 pts): Full weight, primary focus. Every feature shown must be anchored to a stated prospect problem. Generic feature tours are penalized. If an SE is present, technical depth and accuracy are graded rigorously.
-- Tactical empathy & objection handling (25 pts): Full weight. Technical objections, "we already have that," and pricing probes all require labeling and calibrated responses — not defensive justification.
-- Qualification & deal mechanics (15 pts): Full weight. Budget and authority must be confirmed. Any gaps from discovery should be closed here.
-- Call control & next steps (15 pts): Full weight. Must end with a proposal date or trial scope defined — not "let us know what you think."`;
+- Discovery & needs confirmation (20 pts): Full weight. Rep must re-confirm pain at the start before showing anything. Skipping this is a grading penalty regardless of demo quality.
+- Value framing (15 pts): Full weight. Every capability shown must be explicitly connected to a stated prospect problem with a clear "this solves X because Y" statement.
+- Demo delivery (10 pts): Full weight, primary technical focus. Penalize generic feature touring. If an SE is present, technical depth and accuracy are graded rigorously.
+- Tactical empathy & objection handling (25 pts): Full weight. Technical objections and pricing probes require labeling and calibrated responses.
+- Qualification & deal mechanics (15 pts): Full weight. Budget and authority must be confirmed. Any discovery gaps should be closed here.
+- Call control & next steps (15 pts): Full weight. Must end with a proposal date or trial scope — not "let us know what you think."`;
 
     if (stage.includes('proposal') || stage.includes('close')) return `Dimension weighting for Proposal / Close:
-- Discovery & needs confirmation (20 pts): REDUCED. Pain should already be established. Grade only on whether the rep re-anchors the proposal to stated pain when presenting pricing — not on new discovery.
-- Value framing & demo delivery (25 pts): Full weight, but no demo. Framing here is about ROI, risk of inaction, and why OneAxiom over the alternative. Rep must justify the investment — not just restate it.
-- Tactical empathy & objection handling (25 pts): Full weight, highest scrutiny. Price objections, "we need to loop in legal," and "let's revisit next quarter" must all be handled. Caving without a counter is a hard grading failure.
-- Qualification & deal mechanics (15 pts): Full weight. Contract terms, procurement process, signatories, and any legal or compliance requirements must be surfaced and handled — not left open.
-- Call control & next steps (15 pts): Full weight, critical. Ends with a signed agreement, a signature date with a named decision-maker, or a specific reason for the gap. "I'll follow up" is not a next step.`;
+- Discovery & needs confirmation (20 pts → 10 pts): REDUCED. Pain is already established. Grade only on whether the rep re-anchors the proposal to stated pain when presenting pricing.
+- Value framing (15 pts): Full weight. Framing here is ROI, risk of inaction, and why OneAxiom over the alternative. Rep must justify the investment — not just restate it.
+- Demo delivery (10 pts → 5 pts): REDUCED. A brief solution recap is acceptable if the prospect requests it. A full re-demo is a red flag. Grade only on any light technical reinforcement present.
+- Tactical empathy & objection handling (25 pts): Full weight, highest scrutiny. Caving on price without extracting a concession is a hard grading failure.
+- Qualification & deal mechanics (15 pts): Full weight. Contract terms, procurement process, and signatories must be confirmed — not left open.
+- Call control & next steps (15 pts): Full weight. Ends with a signed agreement or a signature date with a named decision-maker.`;
 
     if (stage.includes('touchpoint')) return `Dimension weighting for Touchpoint:
-- Discovery & needs confirmation (20 pts): Full weight, but the goal shifts — confirm previously stated pain still holds, surface any new developments such as new stakeholders, budget changes, or internal shifts. Do not grade on re-opening discovery from scratch.
-- Value framing & demo delivery (25 pts): REDUCED. Not applicable unless the prospect explicitly requests a refresher. Re-demoing unprompted is a red flag and should be noted as a missed read.
-- Tactical empathy & objection handling (25 pts): Full weight. Silence or vague answers must be labeled and probed — "it sounds like something has changed" is the model response.
-- Qualification & deal mechanics (15 pts): REDUCED. Re-qualifying every touchpoint is noise. Grade only if new information surfaces that changes deal mechanics.
-- Call control & next steps (15 pts): Full weight. Every touchpoint must end with a specific forward action — even if only confirming the decision timeline is intact.`;
+- Discovery & needs confirmation (20 pts): Full weight, shifted goal — confirm pain still holds and surface new developments such as stakeholder changes or budget shifts.
+- Value framing (15 pts → 10 pts): REDUCED. Light reinforcement of value is acceptable. Re-pitching unprompted is a red flag.
+- Demo delivery (10 pts → 0 pts): NOT APPLICABLE. Re-demoing unprompted is a grading failure. Award 0 and mark N/A in feedback.
+- Tactical empathy & objection handling (25 pts): Full weight. Silence or vague answers must be labeled and probed.
+- Qualification & deal mechanics (15 pts → 7 pts): REDUCED. Re-qualifying is noise. Grade only if new information surfaces that changes deal mechanics.
+- Call control & next steps (15 pts): Full weight. Every touchpoint must end with a specific forward action.`;
 
-    return `Grade all five dimensions at full weight: Discovery & needs confirmation (20 pts), Value framing & demo delivery (25 pts), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts).`;
+    return `Grade all 6 dimensions: Discovery & needs confirmation (20 pts), Value framing (15 pts), Demo delivery (10 pts), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts). Total: 100 pts.`;
   }
 
   function buildHistoryContext(prospect, rep) {
@@ -1032,7 +1045,7 @@ ${buildStageWeighting()}
 
 Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:
 A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%
-Overall call max (stage ceiling): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.
+Overall call max (stage ceiling, 6 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.
 
 Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
 
@@ -1086,8 +1099,9 @@ IMPORTANT — two separate scoring contexts apply:
   }
 }
 
-total (overall call): sum of the top-level dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type. Assign letter_grade based on percentage of this max.
-rep_scores[].total: sum of that rep's dimension scores. Do not exceed the role_max shown in each rep entry. Assign that rep's letter_grade based on percentage of their role_max — not the overall call max.
+total (overall call): sum of all 6 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type. Assign letter_grade based on percentage of this max.
+rep_scores[].total: sum of that rep's 6 dimension scores. Do not exceed the role_max shown in each rep entry. Assign that rep's letter_grade based on percentage of their role_max.
+IMPORTANT — Demo delivery: if max is 0 for this context, the score MUST be 0. Write "N/A — demo not expected for this meeting type" in the feedback field.
 call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
