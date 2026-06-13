@@ -138,3 +138,9 @@
     _dbSaveTeam(_teamCache);
   }
 
+
+// ── Settings: Grading Reference accordion ──
+function srefToggle(hdrEl) {
+  const card = hdrEl.closest('.sref-card');
+  card.classList.toggle('open');
+}
