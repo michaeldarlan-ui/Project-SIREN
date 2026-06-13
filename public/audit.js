@@ -1,5 +1,7 @@
 // ── AUDIT LOG MODULE ──────────────────────────────────────────────────────────
 
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
   let _auditRows = [];
 
   const AUDIT_META = {
@@ -28,7 +30,7 @@
 
       auditRender();
     } catch (e) {
-      listEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Failed to load audit log: ${escHtml(e.message)}</div>`;
+      listEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Failed to load audit log: ${_esc(e.message)}</div>`;
     }
   };
 
@@ -52,7 +54,7 @@
         }
       }
     } catch (e) {
-      if (listEl) listEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Backfill failed: ${escHtml(e.message)}</div>`;
+      if (listEl) listEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Backfill failed: ${_esc(e.message)}</div>`;
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '⬇ Import History'; }
     }
@@ -91,27 +93,27 @@
 
     listEl.innerHTML = groups.map(g => `
       <div style="margin-bottom:20px;">
-        <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:10px;">${escHtml(fmtDay(g.day))}</div>
+        <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:10px;">${_esc(fmtDay(g.day))}</div>
         ${g.rows.map(row => {
           const m = AUDIT_META[row.action] || { label: row.action, color: 'rgba(255,255,255,.4)', bg: 'rgba(255,255,255,.05)', icon: '·' };
           const isBackfilled = row.details?.backfilled === true;
           const gradeChip = row.letter_grade
-            ? `<span style="font-family:var(--siren-font-hud);font-size:11px;font-weight:800;color:${m.color};margin-left:6px;">${escHtml(row.letter_grade)}</span>`
+            ? `<span style="font-family:var(--siren-font-hud);font-size:11px;font-weight:800;color:${m.color};margin-left:6px;">${_esc(row.letter_grade)}</span>`
             : '';
           const scoreChip = row.score
-            ? `<span style="font-size:11px;color:rgba(255,255,255,.35);margin-left:4px;">${escHtml(row.score)}%</span>`
+            ? `<span style="font-size:11px;color:rgba(255,255,255,.35);margin-left:4px;">${_esc(row.score)}%</span>`
             : '';
           const repChip = row.rep
-            ? `<span style="font-size:11px;color:rgba(255,255,255,.45);">${escHtml(row.rep)}</span>`
+            ? `<span style="font-size:11px;color:rgba(255,255,255,.45);">${_esc(row.rep)}</span>`
             : '';
           const stageChip = row.stage
-            ? `<span style="font-size:10px;color:rgba(255,255,255,.25);font-family:var(--siren-font-hud);">${escHtml(row.stage)}</span>`
+            ? `<span style="font-size:10px;color:rgba(255,255,255,.25);font-family:var(--siren-font-hud);">${_esc(row.stage)}</span>`
             : '';
           const backfilledChip = isBackfilled
             ? `<span style="font-size:9px;color:rgba(255,255,255,.2);font-family:var(--siren-font-hud);letter-spacing:.06em;margin-left:4px;">IMPORTED</span>`
             : '';
           const detailTip = row.details?.grade_label
-            ? `<div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;font-style:italic;">${escHtml(row.details.grade_label)}</div>`
+            ? `<div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;font-style:italic;">${_esc(row.details.grade_label)}</div>`
             : (row.details?.count != null
               ? `<div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;">${row.details.count} records removed</div>`
               : (row.details?.batch_total != null
@@ -122,8 +124,8 @@
               <div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:${m.bg};flex-shrink:0;font-size:13px;color:${m.color};font-weight:700;">${m.icon}</div>
               <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <span style="font-size:10px;font-weight:700;letter-spacing:.08em;font-family:var(--siren-font-hud);color:${m.color};background:${m.bg};padding:2px 7px;border-radius:3px;">${escHtml(m.label)}</span>
-                  ${row.entity_label ? `<span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);">${escHtml(row.entity_label)}</span>` : ''}
+                  <span style="font-size:10px;font-weight:700;letter-spacing:.08em;font-family:var(--siren-font-hud);color:${m.color};background:${m.bg};padding:2px 7px;border-radius:3px;">${_esc(m.label)}</span>
+                  ${row.entity_label ? `<span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);">${_esc(row.entity_label)}</span>` : ''}
                   ${gradeChip}${scoreChip}${backfilledChip}
                 </div>
                 <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;">
@@ -131,7 +133,7 @@
                 </div>
                 ${detailTip}
               </div>
-              <div style="font-size:10px;color:rgba(255,255,255,.2);white-space:nowrap;flex-shrink:0;padding-top:2px;">${escHtml(fmtTime(row.created_at))}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.2);white-space:nowrap;flex-shrink:0;padding-top:2px;">${_esc(fmtTime(row.created_at))}</div>
             </div>`;
         }).join('')}
       </div>`).join('');
