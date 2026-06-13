@@ -355,73 +355,138 @@
   }
 
   // ── Deal Intel builder (shared with VIGIL feed) ───────────────
+  const _SPICED_KEYS   = ['situation','pain','impact','critical_event','evolution','decision'];
+  const _SPICED_LABELS = { situation:'Situation', pain:'Pain', impact:'Impact', critical_event:'Critical Event', evolution:'Evolution', decision:'Decision' };
+
   function vigilBuildDealIntel(h, hist) {
-    // Momentum
+    // ── Momentum: delta across last 3 scored calls ──────────────
     const scores = hist.map(c => c.total).filter(s => s > 0);
-    let momentumColor = 'rgba(255,255,255,.4)', momentumLabel = '→ Flat';
+    let momentumColor = 'rgba(255,255,255,.4)', momentumLabel = '→ Flat', momentumDelta = 0;
     if (scores.length >= 2) {
-      const delta = scores[0] - scores[Math.min(2, scores.length - 1)];
-      if (delta >= 5)       { momentumColor = '#22c55e'; momentumLabel = `↑ +${delta} pts`; }
-      else if (delta <= -5) { momentumColor = '#ef4444'; momentumLabel = `↓ ${delta} pts`; }
+      momentumDelta = scores[0] - scores[Math.min(2, scores.length - 1)];
+      if (momentumDelta >= 5)       { momentumColor = '#22c55e'; momentumLabel = `↑ +${momentumDelta} pts`; }
+      else if (momentumDelta <= -5) { momentumColor = '#ef4444'; momentumLabel = `↓ ${momentumDelta} pts`; }
     }
-    // SPICED
-    const spicedKeys  = h.spiced ? Object.keys(h.spiced) : [];
-    const spicedTouch = spicedKeys.filter(k => h.spiced[k].touched).length;
-    const spicedTotal = spicedKeys.length || 6;
-    const spicedPct   = spicedTotal > 0 ? Math.round(spicedTouch / spicedTotal * 100) : 0;
+
+    // ── SPICED: cumulative across ALL calls for this account ────
+    // A dimension is "touched" if any call in the account history touched it
+    const spicedCumulative = {};
+    _SPICED_KEYS.forEach(k => { spicedCumulative[k] = false; });
+    hist.forEach(call => {
+      if (!call.spiced) return;
+      _SPICED_KEYS.forEach(k => { if (call.spiced[k]?.touched) spicedCumulative[k] = true; });
+    });
+    const spicedTouch = _SPICED_KEYS.filter(k => spicedCumulative[k]).length;
+    const spicedTotal = 6;
+    const spicedPct   = Math.round(spicedTouch / spicedTotal * 100);
     const spicedColor = spicedPct >= 70 ? '#22c55e' : spicedPct >= 40 ? '#e8a020' : '#ef4444';
-    const spicedGaps  = spicedKeys.filter(k => !h.spiced[k].touched).map(k => k.charAt(0).toUpperCase()+k.slice(1).replace('_',' '));
-    // Health
+    const spicedGaps  = _SPICED_KEYS.filter(k => !spicedCumulative[k]).map(k => _SPICED_LABELS[k]);
+
+    // ── Health: composite score + SPICED + momentum ─────────────
     const score = h.total || 0;
+    const scoreOk    = score >= 65;
+    const scoreStrong = score >= 80;
+    const spicedOk   = spicedPct >= 40;
+    const spicedStrong = spicedPct >= 60;
+    const momOk      = momentumDelta >= -4; // not clearly declining
+    const momStrong  = momentumDelta >= 0;
     let healthLabel, healthColor;
-    if (score >= 80 && spicedPct >= 60 && momentumColor !== '#ef4444') { healthLabel = 'Strong';   healthColor = '#22c55e'; }
-    else if (score >= 65 && spicedPct >= 40)                            { healthLabel = 'Moderate'; healthColor = '#e8a020'; }
-    else                                                                  { healthLabel = 'At Risk';  healthColor = '#ef4444'; }
-    // Cadence — compare plain date strings as UTC midnight to avoid timezone drift
+    if (scoreStrong && spicedStrong && momStrong) { healthLabel = 'Strong';   healthColor = '#22c55e'; }
+    else if (scoreOk && spicedOk && momOk)        { healthLabel = 'Moderate'; healthColor = '#e8a020'; }
+    else                                            { healthLabel = 'At Risk';  healthColor = '#ef4444'; }
+
+    // Health factor detail — show what's passing/failing
+    const factorLine = (pass, label) =>
+      `<span style="color:${pass?'#22c55e':'#ef4444'};margin-right:10px;">${pass?'✓':'✗'} ${label}</span>`;
+    const healthFactors = `
+      <div style="display:flex;flex-wrap:wrap;margin-top:5px;font-size:10px;font-family:var(--siren-font-hud);letter-spacing:.03em;">
+        ${factorLine(scoreOk,   `Score ${score}`)}
+        ${factorLine(spicedOk,  `SPICED ${spicedPct}%`)}
+        ${factorLine(momOk,     `Momentum`)}
+      </div>`;
+
+    // ── Cadence ─────────────────────────────────────────────────
     const callDateStr = h.callDate || h.ts.slice(0, 10);
-    const callUTC  = new Date(callDateStr + 'T00:00:00Z').getTime();
-    const todayUTC = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime();
-    const daysSince = Math.round((todayUTC - callUTC) / 86400000);
+    const callUTC     = new Date(callDateStr + 'T00:00:00Z').getTime();
+    const todayUTC    = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z').getTime();
+    const daysSince   = Math.round((todayUTC - callUTC) / 86400000);
     const cadenceColor = daysSince > 14 ? '#ef4444' : daysSince > 7 ? '#e8a020' : '#22c55e';
     const cadenceLabel = new Date(callDateStr + 'T00:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-    // Stage velocity + deal age
+
+    // ── Stage velocity + deal age ────────────────────────────────
     const callsAtStage = hist.filter(c => c.stage === h.stage).length;
     const oldest   = hist[hist.length - 1];
-    const firstDate = oldest?.callDate ? new Date(oldest.callDate+'T12:00:00') : new Date(oldest?.ts||Date.now());
-    const dealAge   = Math.floor((Date.now() - firstDate.getTime()) / 86400000);
-    // Weakest dimension
+    const firstDateStr = oldest?.callDate || oldest?.ts?.slice(0,10) || callDateStr;
+    const firstUTC = new Date(firstDateStr + 'T00:00:00Z').getTime();
+    const dealAge  = Math.round((todayUTC - firstUTC) / 86400000);
+
+    // ── Weakest dimension ────────────────────────────────────────
     let weakestDim = null, weakestScore = Infinity;
-    if (h.dimensions) Object.entries(h.dimensions).forEach(([n,d]) => { if ((d.score??100) < weakestScore) { weakestScore = d.score??0; weakestDim = n; } });
-    // Open VIGIL items
+    if (h.dimensions) Object.entries(h.dimensions).forEach(([n,d]) => {
+      if ((d.score??100) < weakestScore) { weakestScore = d.score??0; weakestDim = n; }
+    });
+
+    // ── Open VIGIL items ─────────────────────────────────────────
     const openItems = pulseSeedTasks(h.prospect||'', hist).filter(t=>!t.done).length;
 
-    const kpi = (label, val, color) => `<div class="di-kpi"><div class="di-kpi-val" style="color:${color};">${val}</div><div class="di-kpi-label">${label}</div></div>`;
-    const row = (icon, label, val, color, detail) => `<div class="di-row"><span class="di-row-icon" style="color:${color};">${icon}</span><div class="di-row-body"><span class="di-row-label">${label}</span><span class="di-row-val" style="color:${color};">${val}</span>${detail?`<div class="di-row-detail">${detail}</div>`:''}</div></div>`;
+    // ── Renderers ────────────────────────────────────────────────
+    const kpi = (label, val, color, sub) =>
+      `<div class="di-kpi">
+        <div class="di-kpi-val" style="color:${color};">${val}</div>
+        <div class="di-kpi-label">${label}</div>
+        ${sub ? `<div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;line-height:1.3;">${sub}</div>` : ''}
+      </div>`;
+
+    const row = (icon, label, val, color, detail) =>
+      `<div class="di-row">
+        <span class="di-row-icon" style="color:${color};">${icon}</span>
+        <div class="di-row-body">
+          <span class="di-row-label">${label}</span>
+          <span class="di-row-val" style="color:${color};">${val}</span>
+          ${detail ? `<div class="di-row-detail">${detail}</div>` : ''}
+        </div>
+      </div>`;
+
+    // SPICED dimension grid
+    const spicedGrid = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px;">
+        ${_SPICED_KEYS.map(k => {
+          const touched = spicedCumulative[k];
+          return `<div style="font-size:10px;padding:4px 6px;border-radius:4px;background:${touched?'rgba(34,197,94,.1)':'rgba(255,255,255,.04)'};border:1px solid ${touched?'rgba(34,197,94,.3)':'rgba(255,255,255,.08)'};color:${touched?'#22c55e':'rgba(255,255,255,.3)'};">
+            ${touched?'✓':'○'} ${_SPICED_LABELS[k]}
+          </div>`;
+        }).join('')}
+      </div>`;
 
     return `
-      <div class="di-kpi-strip">
-        ${kpi('Health',    healthLabel,                    healthColor)}
-        ${kpi('Momentum',  momentumLabel,                  momentumColor)}
-        ${kpi('SPICED',    `${spicedTouch}/${spicedTotal}`,spicedColor)}
-        ${kpi('Open Items',openItems>0?`${openItems}`:'Clear', openItems>0?'#e8a020':'#22c55e')}
+      <div class="di-kpi-strip" style="grid-template-columns:repeat(4,1fr);">
+        ${kpi('Deal Health', healthLabel, healthColor)}
+        ${kpi('Momentum',    momentumLabel, momentumColor, scores.length >= 2 ? `last ${Math.min(3,scores.length)} calls` : 'only 1 call')}
+        ${kpi('SPICED',      `${spicedTouch}/${spicedTotal}`, spicedColor, `${spicedPct}% coverage`)}
+        ${kpi('Open Items',  openItems > 0 ? `${openItems}` : 'Clear', openItems > 0 ? '#e8a020' : '#22c55e')}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:10px;">
+
+      ${healthFactors}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:14px;">
         <div>
           <div class="di-section-label">DEAL METRICS</div>
-          ${row('◷','Last Call',  cadenceLabel, cadenceColor)}
+          ${row('◷','Last Call',  cadenceLabel, cadenceColor, daysSince > 0 ? `${daysSince} day${daysSince!==1?'s':''} ago` : 'Today')}
           ${row('◈','Stage',      h.stage||'—', 'rgba(255,255,255,.7)', `${callsAtStage} call${callsAtStage!==1?'s':''} at this stage`)}
           ${row('⬡','Deal Age',   `${dealAge}d`, 'rgba(255,255,255,.55)', `${hist.length} total call${hist.length!==1?'s':''}`)}
-          ${row('★','Call Score', `${h.letter_grade||''} · ${score}`, score>=80?'#22c55e':score>=65?'#e8a020':'#ef4444')}
+          ${row('★','Call Score', `${h.letter_grade||''} · ${score}`, score>=80?'#22c55e':score>=65?'#e8a020':'#ef4444', `threshold: 65 moderate · 80 strong`)}
         </div>
         <div>
           <div class="di-section-label">RISK &amp; STRENGTH</div>
-          ${h.top_priority  ? row('▼','Top Gap',      '', '#e8a020', escHtml(h.top_priority))  : ''}
-          ${spicedGaps.length ? row('◌','SPICED Gaps', '', '#e8a020', spicedGaps.join(' · ')) : row('◌','SPICED Gaps','None','#22c55e')}
-          ${weakestDim      ? row('↘','Weakest Dim',  weakestDim, '#ef4444', `${weakestScore}/100`) : ''}
-          ${daysSince > 14  ? row('⚑','Cadence Risk', `${daysSince}d ago`, '#ef4444', `No call in ${daysSince} days`) : ''}
-          ${h.top_strength  ? row('▲','Strength',     '', '#22c55e', escHtml(h.top_strength)) : ''}
+          ${h.top_priority ? row('▼','Top Gap',     '', '#e8a020', escHtml(h.top_priority)) : ''}
+          ${weakestDim     ? row('↘','Weakest Dim', weakestDim, '#ef4444', `${weakestScore}/100`) : ''}
+          ${daysSince > 14 ? row('⚑','Cadence Risk',`${daysSince}d`, '#ef4444', `No call in ${daysSince} days`) : ''}
+          ${h.top_strength ? row('▲','Strength',    '', '#22c55e', escHtml(h.top_strength)) : ''}
         </div>
-      </div>`;
+      </div>
+
+      <div class="di-section-label" style="margin-top:12px;">SPICED COVERAGE <span style="font-weight:400;color:rgba(255,255,255,.2);font-size:8px;letter-spacing:.04em;">— cumulative across ${hist.length} call${hist.length!==1?'s':''}</span></div>
+      ${spicedGrid}`;
   }
 
   function pulseRenderFeed() {

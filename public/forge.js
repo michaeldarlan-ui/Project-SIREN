@@ -393,9 +393,12 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     const _scores = _hist.map(c => c.total).filter(s => s > 0);
     let _momColor = 'rgba(255,255,255,.4)', _momLabel = '→ Flat';
     if (_scores.length >= 2) { const d = _scores[0] - _scores[Math.min(2,_scores.length-1)]; if (d>=5){_momColor='#22c55e';_momLabel=`↑ +${d}pts`;}else if(d<=-5){_momColor='#ef4444';_momLabel=`↓ ${d}pts`;} }
-    const _spKeys = h.spiced ? Object.keys(h.spiced) : [];
-    const _spTch  = _spKeys.filter(k=>h.spiced[k].touched).length, _spTot = _spKeys.length||6;
-    const _spPct  = _spTot>0 ? Math.round(_spTch/_spTot*100) : 0;
+    // SPICED cumulative across all account calls
+    const _spiced = {};
+    ['situation','pain','impact','critical_event','evolution','decision'].forEach(k => { _spiced[k] = false; });
+    _hist.forEach(c => { if (!c.spiced) return; Object.keys(_spiced).forEach(k => { if (c.spiced[k]?.touched) _spiced[k] = true; }); });
+    const _spTch = Object.values(_spiced).filter(Boolean).length, _spTot = 6;
+    const _spPct = Math.round(_spTch / _spTot * 100);
     const _spCol  = _spPct>=70?'#22c55e':_spPct>=40?'#e8a020':'#ef4444';
     const _sc = h.total||0;
     let _hlLbl = 'At Risk', _hlCol = '#ef4444';
