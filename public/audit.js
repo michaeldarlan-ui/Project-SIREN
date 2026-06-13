@@ -21,8 +21,9 @@
       // Auto-backfill on first load if the log has no grade events yet
       const hasGrades = _auditRows.some(r => r.action === 'grade');
       if (!hasGrades) {
-        await auditBackfill(true);
-        return; // backfill reloads
+        try { await auditBackfill(true); } catch {}
+        // auditBackfill updates _auditRows and calls auditRender — but fall through as a safety net
+        return;
       }
 
       auditRender();

@@ -828,8 +828,8 @@ const server = http.createServer(async (req, res) => {
     const limit  = Math.min(500, Math.max(1, parseInt(params.get('limit')) || 200));
     const action = params.get('action') || null;
     const sql    = action
-      ? 'SELECT * FROM audit_log WHERE action = ? ORDER BY id DESC LIMIT ?'
-      : 'SELECT * FROM audit_log ORDER BY id DESC LIMIT ?';
+      ? 'SELECT * FROM audit_log WHERE action = ? ORDER BY created_at DESC LIMIT ?'
+      : 'SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?';
     const args   = action ? [action, limit] : [limit];
     const rows   = (await client.execute({ sql, args })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
