@@ -20,10 +20,11 @@
     window.scrollTo(0, 0);
     if (page === 'pulse')     renderPulse();
     if (page === 'history')   renderHistory();
+    if (page === 'grader')    renderSavedTranscripts();
     if (page === 'lifecycle') renderLifecyclePage();
     if (page === 'scope')     renderScopePage();
     if (page === 'forge')     forgeInit();
-    if (page === 'vigil')       pulseRenderFeed();
+    if (page === 'vigil')     pulseRenderFeed();
   }
 
   // ── Settings menu ──────────────────────────────────────────

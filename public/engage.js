@@ -2282,11 +2282,17 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   window.renderSavedTranscripts = async function() {
     const el = document.getElementById('savedTranscriptsList');
     if (!el) return;
+    el.style.display = '';  // reset in case bulk regrade hid it
     el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;">Loading…</div>';
     const actionBar = document.getElementById('brgActionBar');
     const progressEl = document.getElementById('brgProgress');
     if (actionBar) actionBar.style.display = 'none';
     if (progressEl) progressEl.style.display = 'none';
+    // Reset loading screen if it was left visible from an interrupted bulk regrade
+    const loadOverlay = document.getElementById('brgLoadOverlay');
+    if (loadOverlay) loadOverlay.style.display = 'none';
+    const loadEl = document.getElementById('loading');
+    if (loadEl && loadEl.style.display !== 'none') { stopRadar(); loadEl.style.display = 'none'; }
     try {
       const rows = await fetch('/api/transcripts').then(r => r.json());
       if (!rows.length) {
