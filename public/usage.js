@@ -52,9 +52,9 @@
     // ── KPI cards ──
     const card = (label, value, sub) => `
       <div class="cd-panel" style="padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--siren-text-faint);margin-bottom:6px;">${label}</div>
-        <div style="font-size:22px;font-weight:800;color:var(--siren-text-primary);">${value}</div>
-        ${sub ? `<div style="font-size:11px;color:var(--siren-text-faint);margin-top:3px;">${sub}</div>` : ''}
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;margin-bottom:6px;">${label}</div>
+        <div style="font-size:22px;font-weight:800;color:#ffffff;">${value}</div>
+        ${sub ? `<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:3px;">${sub}</div>` : ''}
       </div>`;
     const consoleCards = usage.console
       ? card('Spend this month', _fmtCost(usage.console.monthSpend), 'mirrors Claude console') +
