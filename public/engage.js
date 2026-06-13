@@ -2860,7 +2860,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   let _lcNodes          = [];
   let _lcEdges          = [];
   let _lcSelId          = null;
-  let _lcCallsCollapsed = false;
+  let _lcCallsCollapsed       = false;
+  let _lcContactsCollapsed    = false;
+  let _lcStakeholdersCollapsed= false;
+  let _lcCompetitorsCollapsed = false;
+  let _lcTechstackCollapsed   = false;
   let _lcAllEntries     = [];   // full entry list, preserved across collapse
   let _lcCompany        = '';
 
