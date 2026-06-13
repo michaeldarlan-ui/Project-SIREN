@@ -1255,15 +1255,17 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   }
 
   function buildDimsHtml(dimensions) {
-    return dimensions.map(d => {
-      const pct = Math.round((d.score / d.max) * 100);
-      const col = getBarColor(pct);
-      return `<div class="dim-card">
+    return dimensions
+      .filter(d => d.max > 0)  // omit N/A dimensions (max=0 means not graded for this role/stage)
+      .map(d => {
+        const pct = Math.round((d.score / d.max) * 100);
+        const col = getBarColor(pct);
+        return `<div class="dim-card">
         <div class="dim-head"><span class="dim-name">${escHtml(d.name)}</span><span class="dim-score" style="color:${col}">${d.score}/${d.max}</span></div>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col};"></div></div>
         <div class="dim-feedback">${escHtml(d.feedback)}</div>
       </div>`;
-    }).join('');
+      }).join('');
   }
 
   function buildSummaryHtml(s, viewId, isActive, sectionLabel) {
