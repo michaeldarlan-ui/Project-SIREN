@@ -106,7 +106,7 @@
     sel.innerHTML = '<option value="">— Select account —</option>' +
       companies.map(c => {
         const open = vigilCounts.get(c.toLowerCase()) || 0;
-        const flag = open > 0 ? ` ⬤ ${open} open` : '';
+        const flag = open > 0 ? ` 🟠 ${open} open` : '';
         return `<option value="${escHtml(c)}">${escHtml(c)}${flag}</option>`;
       }).join('');
     forgeRenderUserTemplates();
