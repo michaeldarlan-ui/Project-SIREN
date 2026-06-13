@@ -766,7 +766,7 @@
 .sref-spiced-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
 /* Rep role ceiling grid */
 .sref-role-ceiling-grid { width: 100%; margin-bottom: 4px; }
-.sref-rcg-head, .sref-rcg-row { display: grid; grid-template-columns: 72px repeat(6, 1fr) 64px; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.sref-rcg-head, .sref-rcg-row { display: grid; grid-template-columns: 72px repeat(7, 1fr) 64px; gap: 6px; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
 .sref-rcg-head { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.28); padding-bottom: 8px; }
 .sref-rcg-row:last-child { border-bottom: none; }
 .sref-rcg-full { font-family: var(--siren-font-hud); font-size: 12px; font-weight: 700; color: #22c55e; text-align: center; }

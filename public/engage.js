@@ -417,12 +417,15 @@
       else
         guidance += ` SE: primary focus is demo delivery and technical value framing. Lighter on commercial discovery, qualification, and close mechanics.`;
     } else if (isManager) {
+      guidance += ` Managers and executives are graded on a different standard than ICs. Demo delivery is N/A — award 0. Executive Presence & Strategic Positioning replaces it as a scored dimension (max 10 pts): evaluate peer-level credibility with counterpart executives, staying at strategic altitude (business outcomes, not feature details), reinforcing the rep without undermining them, handling escalated objections with authority, and making appropriate forward commitments without over-promising.`;
       if (isProposal)
-        guidance += ` Manager on a proposal/close call: grade on executive-level value framing and whether their presence accelerated or stalled the decision. Note any coaching behaviors toward the AE during the call.`;
+        guidance += ` On a proposal/close: primary value is handling final commercial escalations and executive-to-executive commitment anchoring. Penalize if they re-demo, re-explain features, or take over the AE's closing motion.`;
       else if (isDiscovery)
-        guidance += ` Manager on a discovery call: grade on whether they enhanced or undercut the AE, and whether they identified coaching moments in real time without taking over the call.`;
+        guidance += ` On a discovery call: grade on whether they asked 1-2 high-impact strategic questions and listened — not whether they led discovery. Penalize if they hijack the call flow, answer questions meant for the prospect, or go operational.`;
+      else if (isDemo)
+        guidance += ` On a demo: their role is silent credibility and handling any executive-level objections. Penalize if they interrupt the SE/AE's demo flow or provide unsolicited technical commentary.`;
       else
-        guidance += ` Weight grading toward deal strategy, executive-level value framing, and qualification rigor. Note any coaching or leadership behaviors on joint calls.`;
+        guidance += ` Grade rigorously on executive presence, strategic alignment, and escalation handling. Coaching behaviors toward the AE are a positive signal — note them explicitly.`;
     } else if (isAM) {
       if (isTouchpoint)
         guidance += ` AM on a touchpoint: this is a post-sale or renewal context. Grade on expansion discovery, upsell signals surfaced, relationship depth, and retention mechanics. Do not grade on pipeline generation techniques.`;
@@ -445,50 +448,58 @@
   // Reduced dimensions get half their normal max so the schema and the
   // prose instruction agree — the LLM cannot score above what max allows.
   // ── Dimension key: d=Discovery, vf=Value Framing, dd=Demo Delivery,
-  //                   t=Tactical Empathy, q=Qualification, c=Call Control
-  // Base maxes: d=20, vf=15, dd=10, t=25, q=15, c=15  →  total 100
+  //                   ep=Executive Presence, t=Tactical Empathy,
+  //                   q=Qualification, c=Call Control
+  // Base maxes (AE): d=20, vf=15, dd=10, ep=0, t=25, q=15, c=15  →  total 100
+  // Manager maxes:   d=12, vf=15, dd=0,  ep=10, t=25, q=8,  c=10  →  total 80 (normalized)
 
-  // Stage ceilings — what's appropriate for this meeting type
+  // Stage ceilings — what's appropriate for this meeting type.
+  // ep is always 10 at the stage level; role ceilings gate it to 0 for non-managers.
   function stageDimCeilings() {
     const stage = (selectedStage || '').toLowerCase();
     // Full weight defaults
-    let d = 20, vf = 15, dd = 10, t = 25, q = 15, c = 15;
+    let d = 20, vf = 15, dd = 10, ep = 10, t = 25, q = 15, c = 15;
     if (stage.includes('cold')) {
-      vf = 10; dd = 0;  q = 7;   // brief value hook only; no demo; light qualification
+      vf = 10; dd = 0; q = 7;    // brief value hook only; no demo; light qualification
     } else if (stage.includes('discovery')) {
-      vf = 15; dd = 0;           // value framing at full weight; no demo expected
+      vf = 15; dd = 0;            // value framing at full weight; no demo expected
     } else if (stage.includes('demo') || stage.includes('solution')) {
       // all at full weight — demo is the primary purpose
     } else if (stage.includes('proposal') || stage.includes('close')) {
-      d = 10; dd = 5;            // discovery reduced; demo reduced (recap only if needed)
+      d = 10; dd = 5;             // discovery reduced; demo reduced (recap only if needed)
     } else if (stage.includes('touchpoint')) {
-      vf = 10; dd = 0; q = 7;   // light value reinforcement; no demo; no re-qualifying
+      vf = 10; dd = 0; q = 7;    // light value reinforcement; no demo; no re-qualifying
     }
-    return { d, vf, dd, t, q, c };
+    return { d, vf, dd, ep, t, q, c };
   }
 
   // Role ceilings — what's appropriate for this rep's function
   function roleDimCeilings(rep) {
-    if (!rep) return { d: 20, vf: 15, dd: 10, t: 25, q: 15, c: 15 };
+    if (!rep) return { d: 20, vf: 15, dd: 10, ep: 0, t: 25, q: 15, c: 15 };
     const role = (rep.role || '').toLowerCase();
-    const isSDR = role.includes('sdr') || role.includes('bdr') || role.includes('development');
-    const isSE  = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
-    const isAM  = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
+    const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
+    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
+    const isAM      = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
+    const isManager = (role.includes('manager') && !role.includes('account manager')) || role.includes('director') || role.includes('vp') || role.includes('chief') || role.includes('leader') || role.includes('executive') || role.includes('president');
 
     if (isSDR) {
       // Pipeline focus: can frame value briefly, never expected to demo, lighter on qualification
-      return { d: 20, vf: 10, dd: 0, t: 25, q: 7, c: 15 };
+      return { d: 20, vf: 10, dd: 0, ep: 0, t: 25, q: 7, c: 15 };
     }
     if (isSE) {
       // Technical delivery focus: primary demo owner; lighter on commercial discovery, qual, close
-      return { d: 12, vf: 10, dd: 10, t: 25, q: 7, c: 10 };
+      return { d: 12, vf: 10, dd: 10, ep: 0, t: 25, q: 7, c: 10 };
     }
     if (isAM) {
       // Expansion/retention focus: can frame value; rarely demos; lighter on new-logo qualification
-      return { d: 20, vf: 12, dd: 0, t: 25, q: 10, c: 15 };
+      return { d: 20, vf: 12, dd: 0, ep: 0, t: 25, q: 10, c: 15 };
     }
-    // AE, Manager, or unrecognized — full weight on all dimensions
-    return { d: 20, vf: 15, dd: 10, t: 25, q: 15, c: 15 };
+    if (isManager) {
+      // Executive/strategic force multiplier: never demos; graded on exec presence instead
+      return { d: 12, vf: 15, dd: 0, ep: 10, t: 25, q: 8, c: 10 };
+    }
+    // AE or unrecognized — full balanced weight; no executive presence dimension
+    return { d: 20, vf: 15, dd: 10, ep: 0, t: 25, q: 15, c: 15 };
   }
 
   // Combined maxes: most restrictive of stage ceiling and role ceiling
@@ -499,6 +510,7 @@
       d:  Math.min(s.d,  r.d),
       vf: Math.min(s.vf, r.vf),
       dd: Math.min(s.dd, r.dd),
+      ep: Math.min(s.ep, r.ep),
       t:  Math.min(s.t,  r.t),
       q:  Math.min(s.q,  r.q),
       c:  Math.min(s.c,  r.c),
@@ -518,14 +530,16 @@
   function buildStageDimensions(repObj, feedbackHints) {
     const m = repObj === '__stage_only__' ? stageDimCeilings() : combinedDimMaxes(repObj);
     const fh = feedbackHints || {};
-    const rep_fb = !!feedbackHints; // true when building per-rep block
+    const epNa   = m.ep === 0;
+    const ddNa   = m.dd === 0;
     return [
-      `{ "name": "Discovery & needs confirmation", "max": ${m.d},  "score": 0, "feedback": "${fh.d  || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
-      `{ "name": "Value framing",                  "max": ${m.vf}, "score": 0, "feedback": "${fh.vf || '2-3 sentences — how clearly did the rep connect OneAxiom\'s value to the prospect\'s stated pain?'}" }`,
-      `{ "name": "Demo delivery",                  "max": ${m.dd}, "score": 0, "feedback": "${fh.dd || (m.dd === 0 ? 'No demo expected for this meeting type — award 0 and note N/A' : '2-3 sentences — was the demo anchored to stated pain, technically accurate, and free of generic feature touring?')}" }`,
-      `{ "name": "Tactical empathy & objection handling", "max": ${m.t}, "score": 0, "feedback": "${fh.t  || '2-3 sentences — call out specific techniques used or missed'}" }`,
-      `{ "name": "Qualification & deal mechanics", "max": ${m.q},  "score": 0, "feedback": "${fh.q  || '2-3 sentences covering budget, authority, timeline, competitive landscape, winnability'}" }`,
-      `{ "name": "Call control & next steps",      "max": ${m.c},  "score": 0, "feedback": "${fh.c  || '2-3 sentences'}" }`
+      `{ "name": "Discovery & needs confirmation",        "max": ${m.d},  "score": 0, "feedback": "${fh.d  || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
+      `{ "name": "Value framing",                        "max": ${m.vf}, "score": 0, "feedback": "${fh.vf || '2-3 sentences — how clearly did the rep connect OneAxiom\'s value to the prospect\'s stated pain?'}" }`,
+      `{ "name": "Demo delivery",                        "max": ${m.dd}, "score": 0, "feedback": "${fh.dd || (ddNa ? 'No demo expected for this meeting type or role — award 0 and note N/A' : '2-3 sentences — was the demo anchored to stated pain, technically accurate, and free of generic feature touring?')}" }`,
+      `{ "name": "Executive presence & strategic positioning", "max": ${m.ep}, "score": 0, "feedback": "${fh.ep || (epNa ? 'Not applicable for this rep role — award 0 and note N/A' : '2-3 sentences — did they build peer-level credibility, stay at strategic altitude, and handle escalated concerns with authority without over-committing?')}" }`,
+      `{ "name": "Tactical empathy & objection handling", "max": ${m.t},  "score": 0, "feedback": "${fh.t  || '2-3 sentences — call out specific techniques used or missed'}" }`,
+      `{ "name": "Qualification & deal mechanics",        "max": ${m.q},  "score": 0, "feedback": "${fh.q  || '2-3 sentences covering budget, authority, timeline, competitive landscape, winnability'}" }`,
+      `{ "name": "Call control & next steps",             "max": ${m.c},  "score": 0, "feedback": "${fh.c  || '2-3 sentences'}" }`
     ].join(',\n    ');
   }
 
@@ -572,7 +586,7 @@
 - Qualification & deal mechanics (15 pts → 7 pts): REDUCED. Re-qualifying is noise. Grade only if new information surfaces that changes deal mechanics.
 - Call control & next steps (15 pts): Full weight. Every touchpoint must end with a specific forward action.`;
 
-    return `Grade all 6 dimensions: Discovery & needs confirmation (20 pts), Value framing (15 pts), Demo delivery (10 pts), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts). Total: 100 pts.`;
+    return `Grade all 7 dimensions: Discovery & needs confirmation (20 pts), Value framing (15 pts), Demo delivery (10 pts), Executive presence & strategic positioning (10 pts, Manager/Executive roles only — award 0 for all other roles), Tactical empathy & objection handling (25 pts), Qualification & deal mechanics (15 pts), Call control & next steps (15 pts). AE total ceiling: 100 pts. Manager ceiling: 80 pts (normalized to 100).`;
   }
 
   function buildHistoryContext(prospect, rep) {
@@ -1045,11 +1059,11 @@ ${buildStageWeighting()}
 
 Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:
 A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%
-Overall call max (stage ceiling, 6 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.
+Overall call max (stage ceiling, 7 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.
 
 Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
 
-Grade across these 5 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble.
+Grade across these 7 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble.
 
 IMPORTANT — two separate scoring contexts apply:
 1. The top-level "dimensions" and "total" represent the overall call effectiveness scored against STAGE-ONLY ceilings (meeting type context only, no role adjustment). Max values shown reflect the stage ceiling.
@@ -1099,9 +1113,10 @@ IMPORTANT — two separate scoring contexts apply:
   }
 }
 
-total (overall call): sum of all 6 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type. Assign letter_grade based on percentage of this max.
-rep_scores[].total: sum of that rep's 6 dimension scores. Do not exceed the role_max shown in each rep entry. Assign that rep's letter_grade based on percentage of their role_max.
-IMPORTANT — Demo delivery: if max is 0 for this context, the score MUST be 0. Write "N/A — demo not expected for this meeting type" in the feedback field.
+total (overall call): sum of all 7 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type. Assign letter_grade based on percentage of this max.
+rep_scores[].total: sum of that rep's 7 dimension scores. Do not exceed the role_max shown in each rep entry. Assign that rep's letter_grade based on percentage of their role_max.
+IMPORTANT — Demo delivery: if max is 0 for this context, the score MUST be 0. Write "N/A — demo not expected for this meeting type or role" in the feedback field.
+IMPORTANT — Executive presence & strategic positioning: if max is 0 for a rep, the score MUST be 0. Write "N/A — executive presence dimension applies to Manager/Executive roles only" in the feedback field. For Managers this dimension replaces demo delivery as their primary differentiating evaluation.
 call_summary.positives: 2-4 specific strengths observed in this call.
 call_summary.missed: 2-4 specific opportunities, techniques, or questions that were not attempted but should have been.
 call_summary.improvements: 2-4 concrete, actionable things to do differently on the next call.
