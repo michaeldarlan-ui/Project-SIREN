@@ -2933,7 +2933,13 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const parsed = JSON.parse(raw);
         normalizeResult(parsed, tRepObj);
 
-        // 4. Overwrite the existing history record in-place (same id)
+        // 4. Build results HTML (needed so history cards have content to display)
+        const tRepForHtml = tRepObj || (tRepName ? { name: tRepName, role: '' } : null);
+        const { html: resultsHtml } = buildResultsHtml(parsed, tProspect, '', tRepForHtml, tCallDate, tData.transcript, [], tStage);
+
+        selectedStage = prevStage;
+
+        // 5. Overwrite the existing history record in-place (same id)
         const updatedRecord = {
           id: t.id,
           ts: new Date().toISOString(),
@@ -2948,7 +2954,9 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           grade_label: parsed.grade_label || '',
           top_strength: parsed.top_strength || '',
           top_priority: parsed.top_priority || '',
+          resultsHtml,
           rep_scores: (parsed.rep_scores && parsed.rep_scores.length) ? parsed.rep_scores : undefined,
+          partner_scores: (parsed.partner_scores && parsed.partner_scores.length) ? parsed.partner_scores : undefined,
           spiced: parsed.spiced || undefined,
           is_demo: false,
         };
@@ -2964,11 +2972,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const cacheIdx = _histCache.findIndex(h => String(h.id) === String(t.id));
         if (cacheIdx !== -1) Object.assign(_histCache[cacheIdx], updatedRecord);
 
-        selectedStage = prevStage;
         succeeded++;
         brgLog(`✓ ${label} — ${parsed.letter_grade} (${parsed.normalized_score ?? parsed.total})`, 'ok');
       } catch (err) {
-        selectedStage = selectedStage; // restore silently if error
+        selectedStage = prevStage; // restore on error
         failed++;
         brgLog(`✗ ${label} — ${err.message}`, 'err');
       }
