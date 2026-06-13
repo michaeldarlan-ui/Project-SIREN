@@ -835,6 +835,9 @@
 .devtool-log-row.run { border-left: 3px solid #00c8ff; }
 .devtool-log-ts { color: rgba(255,255,255,.25); white-space: nowrap; }
 .devtool-log-msg { color: rgba(255,255,255,.65); line-height: 1.5; }
+.devtool-countdown-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.devtool-countdown-lbl { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.28); }
+.devtool-countdown { font-family: var(--siren-font-hud); font-size: 15px; font-weight: 800; color: #00c8ff; letter-spacing: .04em; min-width: 48px; }
 
   /* Legend */
   .lc-legend {

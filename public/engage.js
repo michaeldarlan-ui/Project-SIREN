@@ -2653,17 +2653,38 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
     // Hide selector, show progress
     document.getElementById('brgTranscriptList').style.display = 'none';
-    const progEl   = document.getElementById('brgProgress');
-    const barEl    = document.getElementById('brgProgBar');
-    const labelEl  = document.getElementById('brgProgLabel');
-    const fracEl   = document.getElementById('brgProgFrac');
-    const logEl    = document.getElementById('brgLog');
-    const doneBtn  = document.getElementById('brgDoneBtn');
+    const progEl       = document.getElementById('brgProgress');
+    const barEl        = document.getElementById('brgProgBar');
+    const labelEl      = document.getElementById('brgProgLabel');
+    const fracEl       = document.getElementById('brgProgFrac');
+    const logEl        = document.getElementById('brgLog');
+    const doneBtn      = document.getElementById('brgDoneBtn');
+    const countdownEl  = document.getElementById('brgCountdown');
+    const elapsedEl    = document.getElementById('brgElapsed');
     progEl.style.display = 'block';
     logEl.innerHTML = '';
+    countdownEl.textContent = '—';
+    elapsedEl.textContent   = '0:00';
 
     const total = indices.length;
     let done = 0, succeeded = 0, failed = 0;
+    const runStart    = Date.now();
+    const itemTimes   = []; // ms each completed item took
+
+    // Tick the elapsed + ETA every second
+    function fmtSecs(s) {
+      const m = Math.floor(s / 60), ss = Math.floor(s % 60);
+      return m + ':' + String(ss).padStart(2, '0');
+    }
+    const _tickInterval = setInterval(() => {
+      const elapsedSec = (Date.now() - runStart) / 1000;
+      elapsedEl.textContent = fmtSecs(elapsedSec);
+      if (itemTimes.length > 0 && done < total) {
+        const avgMs    = itemTimes.reduce((a, b) => a + b, 0) / itemTimes.length;
+        const remaining = (total - done) * avgMs / 1000;
+        countdownEl.textContent = fmtSecs(remaining);
+      }
+    }, 1000);
 
     function brgLog(msg, status) {
       const ts = new Date().toLocaleTimeString();
@@ -2677,9 +2698,13 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     for (const idx of indices) {
       const t = _brgTranscripts[idx];
       const label = t.label || t.prospect || 'Untitled';
-      labelEl.textContent = `Grading: ${label}`;
+      labelEl.textContent = `Grading ${done + 1} of ${total}: ${label}`;
       fracEl.textContent  = `${done + 1} / ${total}`;
+      countdownEl.textContent = itemTimes.length > 0
+        ? fmtSecs(((itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length) * (total - done)) / 1000)
+        : '—';
       brgLog(`→ Fetching transcript: ${label}`, 'run');
+      const itemStart = Date.now();
 
       try {
         // 1. Fetch full transcript text
@@ -2771,16 +2796,21 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         brgLog(`✗ ${label} — ${err.message}`, 'err');
       }
 
+      itemTimes.push(Date.now() - itemStart);
       done++;
       barEl.style.width = Math.round((done / total) * 100) + '%';
       // Brief pause between calls to be kind to the API
       if (done < total) await new Promise(r => setTimeout(r, 800));
     }
 
-    labelEl.textContent = `Complete — ${succeeded} succeeded, ${failed} failed`;
+    clearInterval(_tickInterval);
+    const totalSec = (Date.now() - runStart) / 1000;
+    countdownEl.textContent = '0:00';
+    elapsedEl.textContent   = fmtSecs(totalSec);
+    labelEl.textContent = `Complete — ${succeeded} succeeded${failed ? ', ' + failed + ' failed' : ''}`;
     fracEl.textContent  = `${done} / ${total}`;
     doneBtn.style.display = 'block';
-    brgLog(`── Bulk re-grade complete: ${succeeded}/${total} updated ──`, succeeded === total ? 'ok' : 'err');
+    brgLog(`── Bulk re-grade complete: ${succeeded}/${total} updated in ${fmtSecs(totalSec)} ──`, succeeded === total ? 'ok' : 'err');
   }
 
   function buildBulkGradePrompt(prospect, rep, callDate, stage) {
