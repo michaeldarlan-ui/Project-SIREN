@@ -125,14 +125,7 @@
     document.getElementById('pkv-grade').textContent = topGrade ? topGrade[0] : '—';
     document.getElementById('pks-grade').textContent = topGrade ? `${topGrade[1]} call${topGrade[1]!==1?'s':''} this month` : 'no calls this month';
     const monthUsage = allTime.month || { cost: 0, calls: 0 };
-    if (allTime.console) {
-      // Console mirror: baseline + metered spend since baseline
-      document.getElementById('pkv-cost').textContent = '$' + allTime.console.monthSpend.toFixed(2);
-      document.getElementById('pks-cost').textContent = `spend this month · credit balance $${allTime.console.balance.toFixed(2)}`;
-    } else {
-      document.getElementById('pkv-cost').textContent = '$' + monthUsage.cost.toFixed(2);
-      document.getElementById('pks-cost').textContent = `this month · set console baseline in Cost & Usage`;
-    }
+    // (API Cost tile removed from PULSE)
 
     // Claude Code dev usage (async — fills in when the scan completes)
     fetch('/api/claude-usage').then(r => r.json()).then(u => {

@@ -1111,9 +1111,10 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
     document.getElementById('val-tokens').textContent = (inputTokens + outputTokens).toLocaleString();
     document.getElementById('val-cost-call').textContent = '$' + callCost.toFixed(4);
-    document.getElementById('val-cost-session').textContent = '$' + sessionCost.toFixed(4);
-    document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
-    document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
+    const _setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    _setText('val-cost-session', '$' + sessionCost.toFixed(4));
+    _setText('val-cost-alltime', '$' + allTime.cost.toFixed(2));
+    _setText('sub-alltime', allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded');
     document.getElementById('lastCallLabel').textContent = 'Last call: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.getElementById('usageDot').style.background = '#00c8ff';
 
@@ -1127,14 +1128,16 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
   function resetAllTime() {
     if (!confirm('Reset all-time totals? This cannot be undone.')) return;
     saveAllTime({ cost: 0, calls: 0 });
-    document.getElementById('val-cost-alltime').textContent = '$0.00';
-    document.getElementById('sub-alltime').textContent = '0 calls graded';
+    const _st = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    _st('val-cost-alltime', '$0.00');
+    _st('sub-alltime', '0 calls graded');
   }
 
   function initUsageBar() {
     const allTime = loadAllTime();
-    document.getElementById('val-cost-alltime').textContent = '$' + allTime.cost.toFixed(2);
-    document.getElementById('sub-alltime').textContent = allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded';
+    const _si = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    _si('val-cost-alltime', '$' + allTime.cost.toFixed(2));
+    _si('sub-alltime', allTime.calls + ' call' + (allTime.calls !== 1 ? 's' : '') + ' graded');
     applyToggles();
     try {
       if (localStorage.getItem('oa_usage_open') !== 'false') {
@@ -1575,8 +1578,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     } else { avgSubEl.textContent = avgNow !== null ? 'no prior baseline' : 'no data yet'; avgSubEl.className='pulse-kpi-sub neutral'; }
     document.getElementById('pkv-grade').textContent = topGrade ? topGrade[0] : '—';
     document.getElementById('pks-grade').textContent = topGrade ? `${topGrade[1]} call${topGrade[1]!==1?'s':''} this month` : 'no calls this month';
-    document.getElementById('pkv-cost').textContent = allTime.cost > 0 ? '$' + allTime.cost.toFixed(2) : '$0.00';
-    document.getElementById('pks-cost').textContent = `all-time · ${allTime.calls} call${allTime.calls!==1?'s':''}`;
+    // (API Cost tile removed from PULSE)
 
     // ── Score Trend (last 8 calls) ──
     const trendPeriod = parseInt(document.getElementById('trendPeriodSel')?.value ?? '10');
