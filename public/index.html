@@ -719,6 +719,42 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
     <!-- Items list -->
     <div id="rdmList"></div>
 
+    <!-- ── Developer Tools ── -->
+    <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin:32px 0 12px;">Developer Tools</div>
+    <div class="devtool-card" id="devBulkRegrade">
+      <div class="devtool-hdr">
+        <div>
+          <div class="devtool-title">Bulk Re-grade Transcripts</div>
+          <div class="devtool-sub">Re-run grading on saved transcripts using the current rubric. Processes oldest → newest to preserve context chain. Use after rubric changes to keep history consistent.</div>
+        </div>
+        <button class="devtool-load-btn" onclick="bulkRegradeLoad()">Load Transcripts</button>
+      </div>
+
+      <!-- Transcript selector -->
+      <div id="brgTranscriptList" style="display:none;">
+        <div class="devtool-list-hdr">
+          <label class="devtool-chk-all"><input type="checkbox" id="brgSelectAll" onchange="brgToggleAll(this.checked)"> Select all</label>
+          <span id="brgSelCount" class="devtool-sel-count">0 selected</span>
+        </div>
+        <div id="brgItems" class="devtool-items"></div>
+        <div class="devtool-actions">
+          <button class="devtool-run-btn" id="brgRunBtn" onclick="bulkRegradeRun()" disabled>Re-grade Selected</button>
+          <span class="devtool-warn">⚠ Each transcript costs an API call. Only run what you need.</span>
+        </div>
+      </div>
+
+      <!-- Progress log -->
+      <div id="brgProgress" style="display:none;">
+        <div class="devtool-prog-hdr">
+          <span id="brgProgLabel">Initializing…</span>
+          <span id="brgProgFrac"></span>
+        </div>
+        <div class="devtool-prog-bar-wrap"><div class="devtool-prog-bar" id="brgProgBar" style="width:0%"></div></div>
+        <div id="brgLog" class="devtool-log"></div>
+        <button class="devtool-load-btn" id="brgDoneBtn" onclick="bulkRegradeReset()" style="display:none;margin-top:12px;">Done — Reload History</button>
+      </div>
+    </div>
+
     <div class="footer">SIREN · Developer roadmap — internal use only</div>
   </div>
 </div>

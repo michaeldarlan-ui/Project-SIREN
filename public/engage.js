@@ -2599,3 +2599,237 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     return out.sort((a,b) => a.localeCompare(b));
   }
 
+  // ── Bulk Re-grade (Developer Tools) ──────────────────────────────────────
+  // State
+  let _brgTranscripts = []; // [{id, label, prospect, stage, rep, call_date}] sorted oldest→newest
+
+  function bulkRegradeLoad() {
+    const listEl = document.getElementById('brgTranscriptList');
+    const itemsEl = document.getElementById('brgItems');
+    fetch('/api/transcripts')
+      .then(r => r.json())
+      .then(rows => {
+        // Sort oldest → newest by call_date, then saved_at as fallback
+        _brgTranscripts = rows.slice().sort((a, b) => {
+          const da = a.call_date || a.saved_at || '';
+          const db = b.call_date || b.saved_at || '';
+          return da.localeCompare(db);
+        });
+        itemsEl.innerHTML = _brgTranscripts.map((t, i) => {
+          const label = t.label || t.prospect || 'Untitled';
+          const meta  = [t.stage, t.rep].filter(Boolean).join(' · ');
+          const date  = t.call_date || (t.saved_at ? t.saved_at.slice(0,10) : '');
+          return `<label class="devtool-item">
+            <input type="checkbox" data-idx="${i}" onchange="brgUpdateCount()">
+            <span class="devtool-item-label">${escHtml(label)}${meta ? ' <span class="devtool-item-meta">— ' + escHtml(meta) + '</span>' : ''}</span>
+            <span class="devtool-item-date">${escHtml(date)}</span>
+          </label>`;
+        }).join('');
+        brgUpdateCount();
+        listEl.style.display = 'block';
+      })
+      .catch(e => alert('Could not load transcripts: ' + e.message));
+  }
+
+  function brgToggleAll(checked) {
+    document.querySelectorAll('#brgItems input[type=checkbox]').forEach(cb => cb.checked = checked);
+    brgUpdateCount();
+  }
+
+  function brgUpdateCount() {
+    const checked = document.querySelectorAll('#brgItems input[type=checkbox]:checked').length;
+    document.getElementById('brgSelCount').textContent = checked + ' selected';
+    document.getElementById('brgRunBtn').disabled = checked === 0;
+  }
+
+  async function bulkRegradeRun() {
+    const indices = [...document.querySelectorAll('#brgItems input[type=checkbox]:checked')]
+      .map(cb => parseInt(cb.dataset.idx));
+    if (!indices.length) return;
+
+    // Hide selector, show progress
+    document.getElementById('brgTranscriptList').style.display = 'none';
+    const progEl   = document.getElementById('brgProgress');
+    const barEl    = document.getElementById('brgProgBar');
+    const labelEl  = document.getElementById('brgProgLabel');
+    const fracEl   = document.getElementById('brgProgFrac');
+    const logEl    = document.getElementById('brgLog');
+    const doneBtn  = document.getElementById('brgDoneBtn');
+    progEl.style.display = 'block';
+    logEl.innerHTML = '';
+
+    const total = indices.length;
+    let done = 0, succeeded = 0, failed = 0;
+
+    function brgLog(msg, status) {
+      const ts = new Date().toLocaleTimeString();
+      const row = document.createElement('div');
+      row.className = 'devtool-log-row ' + (status || 'run');
+      row.innerHTML = `<span class="devtool-log-ts">${ts}</span><span class="devtool-log-msg">${escHtml(msg)}</span>`;
+      logEl.appendChild(row);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    for (const idx of indices) {
+      const t = _brgTranscripts[idx];
+      const label = t.label || t.prospect || 'Untitled';
+      labelEl.textContent = `Grading: ${label}`;
+      fracEl.textContent  = `${done + 1} / ${total}`;
+      brgLog(`→ Fetching transcript: ${label}`, 'run');
+
+      try {
+        // 1. Fetch full transcript text
+        const tResp = await fetch('/api/transcripts/' + encodeURIComponent(t.id));
+        if (!tResp.ok) throw new Error('Transcript fetch failed (' + tResp.status + ')');
+        const tData = await tResp.json();
+
+        // 2. Build grading context — mirror engage() logic but use transcript's saved metadata
+        const tProspect     = tData.prospect || '';
+        const tStage        = tData.stage || '';
+        const tCallDate     = tData.call_date || '';
+        const tRepName      = tData.rep || '';
+        const team          = loadTeam();
+        const tRepObj       = team.find(m => m.name && m.name.toLowerCase() === tRepName.toLowerCase()) || null;
+
+        // Temporarily override selectedStage so ceiling functions use the right stage
+        const prevStage = selectedStage;
+        selectedStage = tStage;
+
+        const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage);
+        const context = [
+          tRepObj   ? 'Primary rep: ' + tRepObj.name + ' (' + tRepObj.role + ')' : (tRepName ? 'Primary rep: ' + tRepName : ''),
+          team.length ? 'OneAxiom sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
+          tProspect ? 'Prospect: ' + tProspect : '',
+          tCallDate ? 'Call date: ' + tCallDate : '',
+          tStage    ? 'Call stage: ' + tStage : '',
+        ].filter(Boolean).join(' | ');
+
+        // 3. Call Claude (non-streaming for batch reliability)
+        const resp = await fetch('/api/claude', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 8192,
+            temperature: 0,
+            stream: false,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: context + '\n\n' + tData.transcript }],
+          }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error?.message || 'API error ' + resp.status);
+        }
+        const apiData = await resp.json();
+        let raw = (apiData.content?.[0]?.text || '').trim()
+          .replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+        const parsed = JSON.parse(raw);
+        normalizeResult(parsed, tRepObj);
+
+        // 4. Overwrite the existing history record in-place (same id)
+        const updatedRecord = {
+          id: t.id,
+          ts: new Date().toISOString(),
+          callDate: tCallDate,
+          rep: tRepObj ? tRepObj.name : tRepName,
+          repRole: tRepObj ? tRepObj.role : '',
+          prospect: tProspect,
+          stage: tStage,
+          total: parsed.total,
+          normalized_score: parsed.normalized_score ?? parsed.total,
+          letter_grade: parsed.letter_grade,
+          grade_label: parsed.grade_label || '',
+          top_strength: parsed.top_strength || '',
+          top_priority: parsed.top_priority || '',
+          rep_scores: (parsed.rep_scores && parsed.rep_scores.length) ? parsed.rep_scores : undefined,
+          spiced: parsed.spiced || undefined,
+          is_demo: false,
+        };
+
+        // Update DB via bulk upsert
+        await fetch('/api/history/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([updatedRecord]),
+        });
+
+        // Update local cache
+        const cacheIdx = _histCache.findIndex(h => String(h.id) === String(t.id));
+        if (cacheIdx !== -1) Object.assign(_histCache[cacheIdx], updatedRecord);
+
+        selectedStage = prevStage;
+        succeeded++;
+        brgLog(`✓ ${label} — ${parsed.letter_grade} (${parsed.normalized_score ?? parsed.total})`, 'ok');
+      } catch (err) {
+        selectedStage = selectedStage; // restore silently if error
+        failed++;
+        brgLog(`✗ ${label} — ${err.message}`, 'err');
+      }
+
+      done++;
+      barEl.style.width = Math.round((done / total) * 100) + '%';
+      // Brief pause between calls to be kind to the API
+      if (done < total) await new Promise(r => setTimeout(r, 800));
+    }
+
+    labelEl.textContent = `Complete — ${succeeded} succeeded, ${failed} failed`;
+    fracEl.textContent  = `${done} / ${total}`;
+    doneBtn.style.display = 'block';
+    brgLog(`── Bulk re-grade complete: ${succeeded}/${total} updated ──`, succeeded === total ? 'ok' : 'err');
+  }
+
+  function buildBulkGradePrompt(prospect, rep, callDate, stage) {
+    const prevStage = selectedStage;
+    selectedStage = stage;
+    const prompt = `You are an expert sales coach specializing in MSSP and B2B security sales.\n\n` +
+      `${buildLibraryPrompt()}${buildDocsPrompt()}` +
+      `\n\nYou are grading a ${stage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}\n\n` +
+      `${buildStageWeighting()}\n\n` +
+      `Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:\n` +
+      `A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%\n` +
+      `Overall call max (stage ceiling, 7 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.\n\n` +
+      `Speaker resolution: Resolve generic speaker labels ("Speaker 1", etc.) to real names using all available context. Apply resolved names consistently throughout, including rep_scores.\n\n` +
+      `Grade across these 7 dimensions and return ONLY valid JSON, no markdown, no backticks, no preamble.\n\n` +
+      `IMPORTANT — two separate scoring contexts apply:\n` +
+      `1. The top-level "dimensions" and "total" represent the overall call effectiveness scored against STAGE-ONLY ceilings.\n` +
+      `2. Each entry in "rep_scores" is scored against that individual rep's role ceiling compounded with the stage ceiling. The "role_max" field in each rep entry tells you the adjusted maximum for that rep — do not exceed it.\n\n` +
+      `{\n  "dimensions": [\n    ${buildStageDimensions('__stage_only__')}\n  ],\n` +
+      `  "total": 0,\n  "letter_grade": "B",\n  "grade_label": "short evocative phrase",\n` +
+      `  "top_strength": "one specific sentence",\n  "top_priority": "single most important fix for next call",\n` +
+      `  "call_summary": { "positives": [], "missed": [], "improvements": [] },\n` +
+      `  "recommended_books": [],\n` +
+      `  "rep_scores": [\n    {\n      "name": "Rep Name",\n      "role_max": ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)},\n` +
+      `      "dimensions": [\n        ${buildStageDimensions(rep)}\n      ],\n` +
+      `      "total": 0, "letter_grade": "B", "grade_label": "", "top_strength": "", "top_priority": "",\n` +
+      `      "call_summary": { "positives": [], "missed": [], "improvements": [] }\n    }\n  ],\n` +
+      `  "spiced": {\n    "situation": { "touched": true, "summary": "" },\n    "pain": { "touched": true, "summary": "" },\n` +
+      `    "impact": { "touched": false, "summary": "" },\n    "critical_event": { "touched": false, "summary": "" },\n` +
+      `    "evolution": { "touched": false, "summary": "" },\n    "decision": { "touched": true, "summary": "" }\n  }\n}\n\n` +
+      `total (overall call): sum of all 7 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type.\n` +
+      `rep_scores[].total: sum of that rep's 7 dimension scores. Do not exceed the role_max shown in each rep entry.\n` +
+      `IMPORTANT — Demo delivery: if max is 0 for this context, score MUST be 0. Write "N/A" in the feedback field.\n` +
+      `IMPORTANT — Executive presence & strategic positioning: if max is 0 for a rep, score MUST be 0. Write "N/A" in the feedback field.`;
+    selectedStage = prevStage;
+    return prompt;
+  }
+
+  function bulkRegradeReset() {
+    // Reload history then navigate to history page
+    fetch('/api/history')
+      .then(r => r.json())
+      .then(data => {
+        _histCache = Array.isArray(data) ? data : (data.records || []);
+        navTo('history');
+        // Reset UI state
+        document.getElementById('brgProgress').style.display = 'none';
+        document.getElementById('brgTranscriptList').style.display = 'none';
+        document.getElementById('brgDoneBtn').style.display = 'none';
+        document.getElementById('brgProgBar').style.width = '0%';
+        document.getElementById('brgLog').innerHTML = '';
+        document.getElementById('brgSelectAll').checked = false;
+        _brgTranscripts = [];
+      })
+      .catch(() => navTo('history'));
+  }
+

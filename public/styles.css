@@ -804,6 +804,38 @@
 .sref-role-note { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.05); margin-top: 2px; font-size: 11px; color: rgba(255,255,255,.4); line-height: 1.5; }
 .sref-role-note .sref-role-tag { margin-top: 1px; }
 
+/* ── Developer Tools ── */
+.devtool-card { background: var(--siren-bg-card); border: 1px solid var(--siren-border); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+.devtool-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.devtool-title { font-family: var(--siren-font-hud); font-size: 13px; font-weight: 700; color: var(--siren-text-primary); letter-spacing: .04em; margin-bottom: 4px; }
+.devtool-sub { font-size: 12px; color: var(--siren-text-muted); line-height: 1.6; max-width: 560px; }
+.devtool-load-btn { flex-shrink: 0; background: rgba(0,200,255,.1); border: 1px solid rgba(0,200,255,.28); color: #00c8ff; font-family: var(--siren-font-hud); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 7px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.devtool-load-btn:hover { background: rgba(0,200,255,.18); }
+.devtool-list-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 8px; border-top: 1px solid var(--siren-border); margin-top: 16px; }
+.devtool-chk-all { font-size: 12px; color: var(--siren-text-muted); display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.devtool-sel-count { font-family: var(--siren-font-hud); font-size: 11px; color: #00c8ff; }
+.devtool-items { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow-y: auto; margin-bottom: 14px; }
+.devtool-item { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: rgba(255,255,255,.03); border: 1px solid transparent; cursor: pointer; }
+.devtool-item:hover { background: rgba(0,200,255,.05); border-color: rgba(0,200,255,.12); }
+.devtool-item input[type=checkbox] { accent-color: #00c8ff; width: 14px; height: 14px; cursor: pointer; }
+.devtool-item-label { font-size: 12px; color: var(--siren-text-primary); }
+.devtool-item-meta { font-family: var(--siren-font-hud); font-size: 10px; color: var(--siren-text-muted); white-space: nowrap; }
+.devtool-item-date { font-family: var(--siren-font-hud); font-size: 10px; color: rgba(0,200,255,.5); white-space: nowrap; }
+.devtool-actions { display: flex; align-items: center; gap: 14px; padding-top: 4px; border-top: 1px solid var(--siren-border); }
+.devtool-run-btn { background: #00c8ff; color: #040f14; font-family: var(--siren-font-hud); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; }
+.devtool-run-btn:disabled { background: rgba(0,200,255,.2); color: rgba(0,200,255,.4); cursor: not-allowed; }
+.devtool-warn { font-size: 11px; color: rgba(232,160,32,.7); }
+.devtool-prog-hdr { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--siren-border); margin-top: 16px; margin-bottom: 8px; font-size: 12px; color: var(--siren-text-muted); }
+.devtool-prog-bar-wrap { height: 4px; background: rgba(255,255,255,.06); border-radius: 2px; margin-bottom: 12px; }
+.devtool-prog-bar { height: 4px; background: #00c8ff; border-radius: 2px; transition: width .4s ease; }
+.devtool-log { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; font-family: var(--siren-font-hud); font-size: 11px; }
+.devtool-log-row { display: flex; gap: 10px; padding: 5px 8px; border-radius: 5px; background: rgba(255,255,255,.02); }
+.devtool-log-row.ok  { border-left: 3px solid #22c55e; }
+.devtool-log-row.err { border-left: 3px solid #ef4444; }
+.devtool-log-row.run { border-left: 3px solid #00c8ff; }
+.devtool-log-ts { color: rgba(255,255,255,.25); white-space: nowrap; }
+.devtool-log-msg { color: rgba(255,255,255,.65); line-height: 1.5; }
+
   /* Legend */
   .lc-legend {
     display: flex; align-items: center; gap: 14px;
