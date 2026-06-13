@@ -834,18 +834,47 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   // ── Auto-populate from grading ────────────────────────────────
   // Called after every grade with the atlas_data block Claude extracted.
   // Merges new data into the existing profile without overwriting manual edits.
+  // ── Base-name extractor for fuzzy dedup ──────────────────────────
+  // "Gusto (payroll)" and "Gusto (payroll/HR payments)" → "gusto"
+  // "ActiveNet (payments, scheduling)" and "ActiveNet (client payments)" → "activenet"
+  function _baseName(s) {
+    return (s || '').toLowerCase()
+      .replace(/\s*\(.*?\)/g, '')   // strip parenthetical notes
+      .replace(/[,;\/\-].*/,'')     // stop at delimiter
+      .trim();
+  }
+  // Dedup an array of strings by base name, keeping first occurrence
+  function _dedupeStrArr(arr) {
+    const seen = new Set();
+    return arr.filter(s => {
+      const b = _baseName(typeof s === 'string' ? s : (s?.name || ''));
+      if (!b || seen.has(b)) return false;
+      seen.add(b); return true;
+    });
+  }
+  // Dedup an array of {name, title} objects by base name
+  function _dedupePeopleArr(arr) {
+    const seen = new Set();
+    return arr.filter(p => {
+      const b = _baseName(p?.name || '');
+      if (!b || seen.has(b)) return false;
+      seen.add(b); return true;
+    });
+  }
+
   window.atlasAutoPopulate = function(company, atlasData) {
     if (!company || !atlasData) return;
     const prof = loadAccountProfile(company);
     let changed = false;
 
     const norm = s => (s || '').trim().toLowerCase();
+    const baseNorm = s => _baseName(s);
 
-    // Contacts — add if name not already present
+    // Contacts — add if base-name not already present
     const newContacts = Array.isArray(atlasData.contacts) ? atlasData.contacts : [];
     newContacts.forEach(c => {
       if (!c.name || !c.name.trim()) return;
-      const already = (prof.contacts || []).some(x => norm(x.name) === norm(c.name));
+      const already = (prof.contacts || []).some(x => baseNorm(x.name) === baseNorm(c.name));
       if (!already) {
         prof.contacts = prof.contacts || [];
         prof.contacts.push({ name: c.name.trim(), title: (c.title || '').trim() });
@@ -853,31 +882,32 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
       }
     });
 
-    // Champion — only set if none exists and champion has a non-empty name
+    // Champion — only set if none exists
     const champ = atlasData.champion;
     if (champ && champ.name && champ.name.trim() && !prof.champion) {
       prof.champion = { name: champ.name.trim(), title: (champ.title || '').trim() };
       changed = true;
     }
 
-    // Stakeholders — add if name not already present across contacts + stakeholders
+    // Stakeholders — add if base-name not already present across contacts + stakeholders
     const newStakeholders = Array.isArray(atlasData.stakeholders) ? atlasData.stakeholders : [];
     newStakeholders.forEach(s => {
       if (!s.name || !s.name.trim()) return;
-      const inContacts = (prof.contacts || []).some(x => norm(x.name) === norm(s.name));
-      const inStake    = (prof.stakeholders || []).some(x => norm(x.name) === norm(s.name));
-      if (!inContacts && !inStake) {
+      const inContacts = (prof.contacts    || []).some(x => baseNorm(x.name) === baseNorm(s.name));
+      const inStake    = (prof.stakeholders|| []).some(x => baseNorm(x.name) === baseNorm(s.name));
+      const isChamp    = prof.champion && baseNorm(prof.champion.name) === baseNorm(s.name);
+      if (!inContacts && !inStake && !isChamp) {
         prof.stakeholders = prof.stakeholders || [];
         prof.stakeholders.push({ name: s.name.trim(), title: (s.title || '').trim() });
         changed = true;
       }
     });
 
-    // Competitors — add if not already present (case-insensitive)
+    // Competitors — add if base-name not already present
     const newCompetitors = Array.isArray(atlasData.competitors) ? atlasData.competitors : [];
     newCompetitors.forEach(c => {
       if (!c || !c.trim()) return;
-      const already = (prof.competitors || []).some(x => norm(x) === norm(c));
+      const already = (prof.competitors || []).some(x => baseNorm(x) === baseNorm(c));
       if (!already) {
         prof.competitors = prof.competitors || [];
         prof.competitors.push(c.trim());
@@ -885,11 +915,11 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
       }
     });
 
-    // Tech stack — add if not already present
+    // Tech stack — add if base-name not already present
     const newTech = Array.isArray(atlasData.tech_stack) ? atlasData.tech_stack : [];
     newTech.forEach(t => {
       if (!t || !t.trim()) return;
-      const already = (prof.techstack || []).some(x => norm(x) === norm(t));
+      const already = (prof.techstack || []).some(x => baseNorm(x) === baseNorm(t));
       if (!already) {
         prof.techstack = prof.techstack || [];
         prof.techstack.push(t.trim());
@@ -969,10 +999,15 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   function updateLcGraphNodes(company) {
     const prof        = loadAccountProfile(company);
     const champion    = prof.champion;
-    const contacts    = (prof.contacts     || []).filter(c => !champion || c.name.trim().toLowerCase() !== champion.name.trim().toLowerCase());
-    const stakeholders= (prof.stakeholders || []).filter(s => !champion || s.name.trim().toLowerCase() !== champion.name.trim().toLowerCase());
-    const competitors = prof.competitors || [];
-    const techstack   = prof.techstack   || [];
+    // Dedup at render time — cleans up any existing stored duplicates
+    const contacts    = _dedupePeopleArr(
+      (prof.contacts || []).filter(c => !champion || _baseName(c.name) !== _baseName(champion.name))
+    );
+    const stakeholders= _dedupePeopleArr(
+      (prof.stakeholders || []).filter(s => !champion || _baseName(s.name) !== _baseName(champion.name))
+    );
+    const competitors = _dedupeStrArr(prof.competitors || []);
+    const techstack   = _dedupeStrArr(prof.techstack   || []);
 
     // ── Remove all child nodes (keep account, category nodes, calls, opportunity) ──
     const keepTypes = new Set(['account','cat-people','cat-competition','cat-technology','opportunity','call','calls-summary']);
@@ -1068,7 +1103,46 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
       });
     }
 
+    resolveCollisions('account', 12);
     drawLcGraph();
+  }
+
+  // ── Collision resolution ────────────────────────────────────────────
+  // Each node occupies a circle = visual radius + generous label clearance.
+  // resolveCollisions pushes overlapping nodes apart; 'lockedId' never moves.
+  function _nodeCollisionR(nd) {
+    const r = (NODE_DEFS[nd.type] || NODE_DEFS.call).r;
+    return r + 58; // node radius + padding for label text below (2 lines ≈ 30px + margin)
+  }
+
+  function resolveCollisions(lockedId, iterations) {
+    const ALWAYS_FIXED = new Set(['account']);
+    for (let iter = 0; iter < iterations; iter++) {
+      let anyMoved = false;
+      for (let i = 0; i < _lcNodes.length; i++) {
+        for (let j = i + 1; j < _lcNodes.length; j++) {
+          const a = _lcNodes[i], b = _lcNodes[j];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+          const minD  = _nodeCollisionR(a) + _nodeCollisionR(b);
+          if (dist >= minD) continue;
+          const overlap = minD - dist;
+          const ux = dx / dist, uy = dy / dist;
+          const aLocked = ALWAYS_FIXED.has(a.id) || a.id === lockedId;
+          const bLocked = ALWAYS_FIXED.has(b.id) || b.id === lockedId;
+          if (!aLocked && !bLocked) {
+            a.x -= ux * overlap * 0.5; a.y -= uy * overlap * 0.5;
+            b.x += ux * overlap * 0.5; b.y += uy * overlap * 0.5;
+          } else if (!aLocked) {
+            a.x -= ux * overlap; a.y -= uy * overlap;
+          } else if (!bLocked) {
+            b.x += ux * overlap; b.y += uy * overlap;
+          }
+          anyMoved = true;
+        }
+      }
+      if (!anyMoved) break;
+    }
   }
 
   function lcCloseSidebar() {
@@ -1106,6 +1180,7 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
         if (nd) {
           nd.x = _lcNodeDrag.nx + dx;
           nd.y = _lcNodeDrag.ny + dy;
+          resolveCollisions(_lcNodeDrag.nodeId, 6); // push others away, keep dragged locked
           drawLcGraph();
         }
       }
