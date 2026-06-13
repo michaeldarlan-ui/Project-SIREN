@@ -764,6 +764,12 @@
 .sref-spiced-letter { flex-shrink: 0; width: 28px; height: 28px; border-radius: 6px; background: rgba(0,200,255,.12); border: 1px solid rgba(0,200,255,.25); display: flex; align-items: center; justify-content: center; font-family: var(--siren-font-hud); font-size: 14px; font-weight: 900; color: #00c8ff; }
 .sref-spiced-name { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.85); margin-bottom: 3px; }
 .sref-spiced-desc { font-size: 11px; color: rgba(255,255,255,.45); line-height: 1.5; }
+/* SPICED lifecycle timing */
+.sref-spiced-when { display: flex; align-items: center; gap: 8px; margin: 4px 0 5px; font-size: 11px; color: rgba(255,255,255,.35); }
+.sref-when-tag { font-family: var(--siren-font-hud); font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+.sref-when-early { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #22c55e; }
+.sref-when-mid   { background: rgba(251,191,36,.1);  border: 1px solid rgba(251,191,36,.28); color: #fbbf24; }
+.sref-when-late  { background: rgba(239,68,68,.1);   border: 1px solid rgba(239,68,68,.28);  color: #ef4444; }
 /* Role rows (inside old Rep Role Weighting card — kept for compat) */
 .sref-role-row { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
 .sref-role-row:last-child { border-bottom: none; }
