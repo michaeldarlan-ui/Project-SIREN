@@ -484,14 +484,18 @@
   function _coachRenderChips(calls) {
     const sEl = document.getElementById('cdStrengthChips');
     const fEl = document.getElementById('cdFocusChips');
+    const repName = (_coachCurrentRep || '').toLowerCase();
 
-    const tally = (field, minCount = 1) => {
+    const tally = (field) => {
       const map = {};
       calls.forEach(h => {
-        const v = (h[field] || '').trim();
+        // Use per-rep value from rep_scores when available; fall back to call-level field
+        const rs = _parseRepScores(h.rep_scores);
+        const repEntry = rs.find(r => (r.name || '').toLowerCase() === repName);
+        const v = ((repEntry && repEntry[field]) || h[field] || '').trim();
         if (v) map[v] = (map[v] || 0) + 1;
       });
-      return Object.entries(map).filter(([,c]) => c >= minCount).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
     };
 
     const renderChips = (el, entries, colorClass) => {
