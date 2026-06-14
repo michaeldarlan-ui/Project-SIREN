@@ -2,6 +2,7 @@
 
   let _coachRaf = null;
   let _coachCurrentRep = null;
+  const _coachInsightCache = {}; // keyed by rep name: { strengthsHtml, focusHtml }
   let _coachFeedbackRecord = null;
   let _coachFeedbackMd = '';
   let _coachRecogMd = '';
@@ -486,6 +487,15 @@
     const sEl = document.getElementById('cdStrengthChips');
     const fEl = document.getElementById('cdFocusChips');
     const repName = (_coachCurrentRep || '').toLowerCase();
+    const cacheKey = repName + '|' + _coachPeriodDays;
+
+    // Restore cached HTML if available — skip AI calls
+    const cached = _coachInsightCache[cacheKey];
+    if (cached) {
+      if (sEl) sEl.innerHTML = cached.strengthsHtml;
+      if (fEl) fEl.innerHTML = cached.focusHtml;
+      return;
+    }
 
     const positives = [], improvements = [];
     calls.forEach(h => {
@@ -517,10 +527,15 @@
       }</ul>`;
     };
 
+    // Initialise cache entry — will be populated as each section resolves
+    if (!_coachInsightCache[cacheKey]) _coachInsightCache[cacheKey] = { strengthsHtml: '', focusHtml: '' };
+
     // Focus areas: rephrase raw improvement notes as genuine development areas via AI
     const dedupedImprovements = dedup(improvements);
     if (!dedupedImprovements.length) {
-      if (fEl) fEl.innerHTML = '<div class="cd-inner-empty">—</div>';
+      const html = '<div class="cd-inner-empty">—</div>';
+      if (fEl) fEl.innerHTML = html;
+      _coachInsightCache[cacheKey].focusHtml = html;
     } else {
       if (fEl) fEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#e8a020;"><div class="cd-insight-bar"></div><span>Analyzing focus areas…</span></div>';
       _coachAsk(
@@ -532,15 +547,19 @@
           .filter(Boolean)
           .slice(0, 6);
         renderList(fEl, lines, '#e8a020');
+        _coachInsightCache[cacheKey].focusHtml = fEl ? fEl.innerHTML : '';
       }).catch(() => {
         renderList(fEl, dedupedImprovements, '#e8a020');
+        _coachInsightCache[cacheKey].focusHtml = fEl ? fEl.innerHTML : '';
       });
     }
 
     // Strengths: rephrase raw observations as genuine capabilities via AI
     const dedupedPositives = dedup(positives);
     if (!dedupedPositives.length) {
-      if (sEl) sEl.innerHTML = '<div class="cd-inner-empty">—</div>';
+      const html = '<div class="cd-inner-empty">—</div>';
+      if (sEl) sEl.innerHTML = html;
+      _coachInsightCache[cacheKey].strengthsHtml = html;
       return;
     }
     if (sEl) sEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#4ade80;"><div class="cd-insight-bar"></div><span>Analyzing strengths…</span></div>';
@@ -553,8 +572,10 @@
         .filter(Boolean)
         .slice(0, 6);
       renderList(sEl, lines, '#4ade80');
+      _coachInsightCache[cacheKey].strengthsHtml = sEl ? sEl.innerHTML : '';
     }).catch(() => {
       renderList(sEl, dedupedPositives, '#4ade80');
+      _coachInsightCache[cacheKey].strengthsHtml = sEl ? sEl.innerHTML : '';
     });
   }
 
