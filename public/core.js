@@ -68,6 +68,33 @@
   }
   window.escHtml = escHtml;
 
+  // ── Dev model selector ─────────────────────────────────────
+  const DEV_MODELS = [
+    { id: 'claude-haiku-4-5-20251001',  label: 'Haiku 4.5',  hint: 'Fast · low cost' },
+    { id: 'claude-sonnet-4-6',          label: 'Sonnet 4.6', hint: 'Balanced · default' },
+    { id: 'claude-opus-4-8',            label: 'Opus 4.8',   hint: 'Most capable' },
+  ];
+  const DEV_MODEL_KEY = 'siren_dev_model';
+  window.getDevModel = function(fallback) {
+    return localStorage.getItem(DEV_MODEL_KEY) || fallback;
+  };
+  window.setDevModel = function(id) {
+    if (id) localStorage.setItem(DEV_MODEL_KEY, id);
+    else localStorage.removeItem(DEV_MODEL_KEY);
+    _renderDevModelSelector();
+  };
+  function _renderDevModelSelector() {
+    const wrap = document.getElementById('devModelSelector');
+    if (!wrap) return;
+    const current = localStorage.getItem(DEV_MODEL_KEY) || '';
+    wrap.innerHTML = DEV_MODELS.map(m => `
+      <button onclick="setDevModel('${m.id}')" title="${m.hint}"
+        style="flex:1;padding:4px 6px;font-size:10px;font-weight:700;border-radius:4px;border:1px solid ${current===m.id?'rgba(0,200,255,.6)':'rgba(255,255,255,.1)'};background:${current===m.id?'rgba(0,200,255,.12)':'transparent'};color:${current===m.id?'#00c8ff':'rgba(255,255,255,.5)'};cursor:pointer;white-space:nowrap;">
+        ${m.label}
+      </button>`).join('');
+  }
+  document.addEventListener('DOMContentLoaded', _renderDevModelSelector);
+
   // ── Dev Sync modal ────────────────────────────────────────────
   function openDevSyncModal() {
     const m = document.getElementById('devSyncModal');

@@ -169,7 +169,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         source: 'COACH',
-        model: 'claude-sonnet-4-6',
+        model: getDevModel('claude-sonnet-4-6'),
         max_tokens: 4096,
         temperature: 0,
         stream: false,
@@ -1177,7 +1177,7 @@ Write in second person ("you"), be direct and specific, and base all feedback on
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           source: 'COACH',
-          model: 'claude-sonnet-4-6',
+          model: getDevModel('claude-sonnet-4-6'),
           max_tokens: 512,
           temperature: 0.7,
           stream: false,
@@ -1342,7 +1342,7 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           source: 'COACH',
-          model: 'claude-sonnet-4-6', max_tokens: 1024, temperature: 0,
+          model: getDevModel('claude-sonnet-4-6'), max_tokens: 1024, temperature: 0,
           system: systemMsg,
           messages: [
             ...history,

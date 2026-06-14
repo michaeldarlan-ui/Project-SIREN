@@ -269,7 +269,7 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             source: 'FORGE',
-            model: 'claude-haiku-4-5',
+            model: getDevModel('claude-haiku-4-5'),
           max_tokens: 400,
           stream: true,
           system: 'You are a concise sales intelligence researcher. Provide practical, specific insights. No fluff.',
@@ -660,7 +660,7 @@ INSTRUCTIONS:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             source: 'FORGE',
-            model: 'claude-haiku-4-5',
+            model: getDevModel('claude-haiku-4-5'),
           max_tokens: 600,
           stream: true,
           system: 'You are a Solutions Engineer writing concise, professional sales emails.',
@@ -800,7 +800,7 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             source: 'FORGE',
-            model: 'claude-haiku-4-5',
+            model: getDevModel('claude-haiku-4-5'),
           max_tokens: 700,
           stream: true,
           system: systemPrompts[mode],
