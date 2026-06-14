@@ -2,7 +2,24 @@
 
   let _coachRaf = null;
   let _coachCurrentRep = null;
-  const _coachInsightCache = {}; // keyed by rep name: { strengthsHtml, focusHtml }
+
+  // ── Insight persistence (localStorage) ───────────────────────────────────────
+  const _INSIGHT_PFX = 'siren_coach_insights_';
+  function _insightKey(rep, days) {
+    return _INSIGHT_PFX + (rep || '').toLowerCase().replace(/\s+/g, '_') + '_' + (days ?? 'all');
+  }
+  function _insightFingerprint(calls) {
+    return calls.map(h => h.id).sort().join(',');
+  }
+  function _insightLoad(rep, days) {
+    try { return JSON.parse(localStorage.getItem(_insightKey(rep, days))); } catch { return null; }
+  }
+  function _insightSave(rep, days, data) {
+    try { localStorage.setItem(_insightKey(rep, days), JSON.stringify(data)); } catch {}
+  }
+  function _insightClear(rep, days) {
+    localStorage.removeItem(_insightKey(rep, days));
+  }
   let _coachFeedbackRecord = null;
   let _coachFeedbackMd = '';
   let _coachRecogMd = '';
@@ -483,18 +500,20 @@
   }
 
   // ── Strength & focus panels ───────────────────────────────────────────────────
-  function _coachRenderChips(calls) {
+  function _coachRenderChips(calls, forceRegen) {
     const sEl = document.getElementById('cdStrengthChips');
     const fEl = document.getElementById('cdFocusChips');
     const repName = (_coachCurrentRep || '').toLowerCase();
-    const cacheKey = repName + '|' + _coachPeriodDays;
+    const fingerprint = _insightFingerprint(calls);
 
-    // Restore cached HTML if available — skip AI calls
-    const cached = _coachInsightCache[cacheKey];
-    if (cached) {
-      if (sEl) sEl.innerHTML = cached.strengthsHtml;
-      if (fEl) fEl.innerHTML = cached.focusHtml;
-      return;
+    // Restore from localStorage if fingerprint matches and not forcing regen
+    if (!forceRegen) {
+      const saved = _insightLoad(_coachCurrentRep, _coachPeriodDays);
+      if (saved && saved.fingerprint === fingerprint) {
+        if (sEl) sEl.innerHTML = saved.strengthsHtml;
+        if (fEl) fEl.innerHTML = saved.focusHtml;
+        return;
+      }
     }
 
     const positives = [], improvements = [];
@@ -519,6 +538,13 @@
       }).slice(0, 6);
     };
 
+    // Accumulator — saved once both sections finish
+    const pending = { fingerprint, strengthsHtml: '', focusHtml: '', done: 0 };
+    const maybeSave = () => {
+      pending.done++;
+      if (pending.done === 2) _insightSave(_coachCurrentRep, _coachPeriodDays, pending);
+    };
+
     const renderList = (el, items, colorVar) => {
       if (!el) return;
       if (!items.length) { el.innerHTML = '<div class="cd-inner-empty">—</div>'; return; }
@@ -527,30 +553,26 @@
       }</ul>`;
     };
 
-    // Initialise cache entry — will be populated as each section resolves
-    if (!_coachInsightCache[cacheKey]) _coachInsightCache[cacheKey] = { strengthsHtml: '', focusHtml: '' };
-
     // Focus areas: rephrase raw improvement notes as genuine development areas via AI
     const dedupedImprovements = dedup(improvements);
     if (!dedupedImprovements.length) {
       const html = '<div class="cd-inner-empty">—</div>';
       if (fEl) fEl.innerHTML = html;
-      _coachInsightCache[cacheKey].focusHtml = html;
+      pending.focusHtml = html;
+      maybeSave();
     } else {
       if (fEl) fEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#e8a020;"><div class="cd-insight-bar"></div><span>Analyzing focus areas…</span></div>';
       _coachAsk(
         `You are a sales coach summarizing a rep's reoccurring development areas. Convert each observation into one concise sentence describing a skill or behavior this rep consistently needs to improve — framed as a genuine area for growth, not a directive. Write as if describing what the rep tends to struggle with or overlook. Do not use imperative verbs like "do" or "make sure". No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedImprovements.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`,
         'coach_focus'
       ).then(raw => {
-        const lines = raw.split('\n')
-          .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
-          .filter(Boolean)
-          .slice(0, 6);
+        const lines = raw.split('\n').map(l => l.replace(/^\d+[\.\)]\s*/, '').trim()).filter(Boolean).slice(0, 6);
         renderList(fEl, lines, '#e8a020');
-        _coachInsightCache[cacheKey].focusHtml = fEl ? fEl.innerHTML : '';
       }).catch(() => {
         renderList(fEl, dedupedImprovements, '#e8a020');
-        _coachInsightCache[cacheKey].focusHtml = fEl ? fEl.innerHTML : '';
+      }).finally(() => {
+        pending.focusHtml = fEl ? fEl.innerHTML : '';
+        maybeSave();
       });
     }
 
@@ -559,7 +581,8 @@
     if (!dedupedPositives.length) {
       const html = '<div class="cd-inner-empty">—</div>';
       if (sEl) sEl.innerHTML = html;
-      _coachInsightCache[cacheKey].strengthsHtml = html;
+      pending.strengthsHtml = html;
+      maybeSave();
       return;
     }
     if (sEl) sEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#4ade80;"><div class="cd-insight-bar"></div><span>Analyzing strengths…</span></div>';
@@ -567,17 +590,21 @@
       `You are a sales coach summarizing a rep's reoccurring strengths. Convert each observation into one concise sentence describing a skill or behavior this rep consistently demonstrates well — framed as a genuine strength, not a recommendation. Do not use future tense or action verbs like "continue" or "keep". Write as if describing what the rep is naturally good at. No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedPositives.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`,
       'coach_strengths'
     ).then(raw => {
-      const lines = raw.split('\n')
-        .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
-        .filter(Boolean)
-        .slice(0, 6);
+      const lines = raw.split('\n').map(l => l.replace(/^\d+[\.\)]\s*/, '').trim()).filter(Boolean).slice(0, 6);
       renderList(sEl, lines, '#4ade80');
-      _coachInsightCache[cacheKey].strengthsHtml = sEl ? sEl.innerHTML : '';
     }).catch(() => {
       renderList(sEl, dedupedPositives, '#4ade80');
-      _coachInsightCache[cacheKey].strengthsHtml = sEl ? sEl.innerHTML : '';
+    }).finally(() => {
+      pending.strengthsHtml = sEl ? sEl.innerHTML : '';
+      maybeSave();
     });
   }
+
+  // Manual regeneration — clears saved cache for current rep/period and re-runs
+  window.coachRefreshInsights = function() {
+    _insightClear(_coachCurrentRep, _coachPeriodDays);
+    _coachRenderChips(_coachGetPeriodCalls(_coachCurrentRep, _coachPeriodDays), true);
+  };
 
   // ── Overview panel (right side, no call selected) ────────────────────────────
   function _coachRenderOverviewPanel() {

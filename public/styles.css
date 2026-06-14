@@ -1130,6 +1130,12 @@
     letter-spacing: .07em; color: #ffffff;
   }
   .cd-panel-hint { font-size: 10px; color: rgba(255,255,255,0.6); opacity: 1; }
+  .cd-insight-refresh-btn {
+    background: none; border: none; color: rgba(255,255,255,.25); font-size: 13px;
+    cursor: pointer; padding: 0 2px; line-height: 1; margin-left: auto;
+    transition: color .15s;
+  }
+  .cd-insight-refresh-btn:hover { color: rgba(255,255,255,.6); }
   .cd-inner-empty { font-size: 12px; color: var(--siren-text-faint); opacity: .6; padding: 6px 0; }
 
   .cd-chart-wrap { position: relative; min-height: 90px; }
@@ -1147,6 +1153,20 @@
   .cd-stage-count { font-size: 11px; font-weight: 700; color: var(--siren-text-primary); width: 18px; text-align: right; }
 
   .cd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* ── Dev model picker ── */
+  .dev-model-wrap { display:inline-flex; align-items:center; margin-left:auto; }
+  .dev-model-sel {
+    font-size:10px; font-weight:600; color:rgba(255,255,255,.45);
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+    border-radius:4px; padding:2px 5px; cursor:pointer; outline:none;
+    appearance:none; -webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='rgba(255,255,255,.3)'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 5px center;
+    padding-right:16px;
+  }
+  .dev-model-sel:hover { border-color:rgba(255,255,255,.25); color:rgba(255,255,255,.7); }
+  .dev-model-sel option { background:#1a1f2e; color:#fff; }
+
   .cd-insight-loading {
     display: flex; flex-direction: column; gap: 8px; padding: 4px 0;
   }
