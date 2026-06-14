@@ -516,8 +516,28 @@
       }</ul>`;
     };
 
-    renderList(sEl, dedup(positives), '#4ade80');
+    // Focus areas are already guidance-style — render immediately
     renderList(fEl, dedup(improvements), '#e8a020');
+
+    // Strengths: rephrase raw observations as forward-looking guidance via AI
+    const dedupedPositives = dedup(positives);
+    if (!dedupedPositives.length) {
+      if (sEl) sEl.innerHTML = '<div class="cd-inner-empty">—</div>';
+      return;
+    }
+    if (sEl) sEl.innerHTML = '<div class="cd-inner-empty" style="opacity:.5;">Synthesizing…</div>';
+    _coachAsk(
+      `You are a sales coach. Convert each of these behavioral observations about a rep into a single concise coaching guideline (one sentence each) that starts with an action verb and applies as transferable guidance across any call — no references to specific deals, prospects, or names.\n\nObservations:\n${dedupedPositives.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
+    ).then(raw => {
+      const lines = raw.split('\n')
+        .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
+        .filter(Boolean)
+        .slice(0, 6);
+      renderList(sEl, lines, '#4ade80');
+    }).catch(() => {
+      // Fallback to raw observations if AI call fails
+      renderList(sEl, dedupedPositives, '#4ade80');
+    });
   }
 
   // ── Overview panel (right side, no call selected) ────────────────────────────
