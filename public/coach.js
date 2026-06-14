@@ -527,7 +527,7 @@
     }
     if (sEl) sEl.innerHTML = '<div class="cd-inner-empty" style="opacity:.5;">Synthesizing…</div>';
     _coachAsk(
-      `You are a sales coach. Convert each of these behavioral observations about a rep into a single concise coaching guideline (one sentence each) that starts with an action verb and applies as transferable guidance across any call — no references to specific deals, prospects, or names.\n\nObservations:\n${dedupedPositives.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
+      `You are a sales coach summarizing a rep's reoccurring strengths. Convert each observation into one concise sentence describing a skill or behavior this rep consistently demonstrates well — framed as a genuine strength, not a recommendation. Do not use future tense or action verbs like "continue" or "keep". Write as if describing what the rep is naturally good at. No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedPositives.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
     ).then(raw => {
       const lines = raw.split('\n')
         .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
