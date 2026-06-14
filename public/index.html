@@ -287,35 +287,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
     </div>
 
     <!-- Usage bar -->
-    <div class="panel" id="usagePanel">
-      <div class="panel-header" onclick="toggleUsage()">
-        <div class="panel-left">
-          <span class="live-dot" id="usageDot" style="background:var(--siren-neutral);"></span>
-          <span class="panel-title">API Usage</span>
-        </div>
-        <span class="panel-chevron" id="usageChevron">▼</span>
-      </div>
-      <div class="panel-body" id="usageBody" style="display:none;">
-        <div class="usage-metrics">
-          <div class="usage-metric" id="metric-tokens">
-            <div class="usage-metric-label">Tokens this call</div>
-            <div class="usage-metric-value" id="val-tokens">—</div>
-            <div class="usage-metric-sub">input + output</div>
-            <button class="metric-toggle on" id="toggle-tokens" onclick="toggleMetric('tokens',event)"></button>
-          </div>
-          <div class="usage-metric" id="metric-cost-call">
-            <div class="usage-metric-label">Cost this call</div>
-            <div class="usage-metric-value" id="val-cost-call">—</div>
-            <div class="usage-metric-sub">USD</div>
-            <button class="metric-toggle on" id="toggle-cost-call" onclick="toggleMetric('cost-call',event)"></button>
-          </div>
-        </div>
-        <div class="usage-actions">
-          <span class="usage-last-call" id="lastCallLabel"></span>
-          <button class="usage-reset" onclick="resetAllTime()">Reset all-time totals</button>
-        </div>
-      </div>
-    </div>
+
 
     <div class="card" id="inputCard">
       <div class="card-title">API Key</div>
