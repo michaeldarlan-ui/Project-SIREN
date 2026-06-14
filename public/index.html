@@ -425,10 +425,14 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
     <!-- Saved Transcripts panel -->
     <div class="card" style="margin-top:18px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;cursor:pointer;user-select:none;" onclick="(function(){ const b=document.getElementById('savedTranscriptsBody'); const c=document.getElementById('savedTranscriptsChevron'); const open=b.style.display!=='none'; b.style.display=open?'none':''; c.textContent=open?'▶':'▼'; })()">
         <div class="section-label" style="margin:0;">Saved Transcripts</div>
-        <button class="pdf-btn pdf-btn-sm" onclick="renderSavedTranscripts()" style="font-size:11px;">&#8635; Refresh</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="pdf-btn pdf-btn-sm" onclick="event.stopPropagation();renderSavedTranscripts()" style="font-size:11px;">&#8635; Refresh</button>
+          <span id="savedTranscriptsChevron" style="color:rgba(255,255,255,.35);font-size:11px;">▼</span>
+        </div>
       </div>
+      <div id="savedTranscriptsBody" style="margin-top:12px;">
       <div id="savedTranscriptsList"><div style="color:rgba(255,255,255,.2);font-size:13px;padding:8px 0;">Loading…</div></div>
 
       <!-- Bulk Re-grade action bar (shown after transcripts load) -->
@@ -459,6 +463,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         <div id="brgLog" class="devtool-log"></div>
         <button class="devtool-load-btn" id="brgDoneBtn" onclick="bulkRegradeReset()" style="display:none;margin-top:12px;">Done — Reload History</button>
       </div>
+      </div><!-- /savedTranscriptsBody -->
     </div>
 
     <div class="footer">SIREN · Key is never logged or stored beyond this session</div>
