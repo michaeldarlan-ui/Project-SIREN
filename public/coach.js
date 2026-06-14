@@ -485,13 +485,13 @@
     const sEl = document.getElementById('cdStrengthChips');
     const fEl = document.getElementById('cdFocusChips');
 
-    const tally = (field) => {
+    const tally = (field, minCount = 1) => {
       const map = {};
       calls.forEach(h => {
         const v = (h[field] || '').trim();
         if (v) map[v] = (map[v] || 0) + 1;
       });
-      return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
+      return Object.entries(map).filter(([,c]) => c >= minCount).sort((a,b) => b[1]-a[1]).slice(0, 8);
     };
 
     const renderChips = (el, entries, colorClass) => {
@@ -502,7 +502,7 @@
       ).join('');
     };
 
-    renderChips(sEl, tally('top_strength'), 'cd-chip-strength');
+    renderChips(sEl, tally('top_strength', 2), 'cd-chip-strength');
     renderChips(fEl, tally('top_priority'), 'cd-chip-focus');
   }
 
