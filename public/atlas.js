@@ -671,7 +671,8 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5',
+            source: 'ATLAS',
+            model: 'claude-haiku-4-5',
           max_tokens: 4096,
           temperature: 0,
           stream: false,

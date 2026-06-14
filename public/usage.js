@@ -35,11 +35,12 @@
   }
 
   async function renderUsagePage() {
-    let metrics, usage;
+    let metrics, usage, featureRows;
     try {
-      [metrics, usage] = await Promise.all([
+      [metrics, usage, featureRows] = await Promise.all([
         fetch('/api/usage-metrics?days=' + _usageDays).then(r => r.json()),
         fetch('/api/usage').then(r => r.json()),
+        fetch('/api/usage/by-feature?days=' + _usageDays).then(r => r.json()),
       ]);
     } catch (e) {
       document.getElementById('usageKpis').innerHTML =
@@ -170,6 +171,35 @@
         <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.6);margin-top:6px;">
           <span>${fmtDay(dayList[0].day)}</span><span>${fmtDay(dayList[dayList.length - 1].day)}</span>
         </div>`;
+    }
+
+    // ── By-feature breakdown ──
+    const featureEl = document.getElementById('usageFeatureChart');
+    if (featureEl) {
+      const FEAT_COLORS = [
+        '#00c8ff','#4ade80','#fb923c','#a78bfa','#f472b6','#facc15','#34d399','#f87171',
+      ];
+      const features = Array.isArray(featureRows) ? featureRows : [];
+      const totalFeatCost = features.reduce((s, r) => s + r.cost, 0);
+      if (!features.length || totalFeatCost === 0) {
+        featureEl.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.25);padding:8px 0;">No feature-tagged calls in this period yet — metrics accrue as features are used.</div>';
+      } else {
+        const maxFeatCost = features[0].cost;
+        featureEl.innerHTML = features.map((r, i) => {
+          const color = FEAT_COLORS[i % FEAT_COLORS.length];
+          const pct = totalFeatCost > 0 ? (r.cost / totalFeatCost * 100).toFixed(1) : '0.0';
+          const barW = maxFeatCost > 0 ? Math.max(2, Math.round(r.cost / maxFeatCost * 100)) : 0;
+          return `
+            <div style="display:grid;grid-template-columns:90px 1fr 80px 70px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+              <div style="font-size:12px;font-weight:700;color:${color};">${escHtml(r.feature)}</div>
+              <div style="background:rgba(255,255,255,.06);border-radius:3px;height:8px;overflow:hidden;">
+                <div style="width:${barW}%;height:100%;background:${color};border-radius:3px;"></div>
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,.7);text-align:right;">${pct}% · ${r.calls} req</div>
+              <div style="font-size:12px;font-weight:700;color:#e8a020;text-align:right;">${_fmtCost(r.cost)}</div>
+            </div>`;
+        }).join('');
+      }
     }
 
     // ── By-model table ──

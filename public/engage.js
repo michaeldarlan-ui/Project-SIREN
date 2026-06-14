@@ -832,7 +832,8 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+            source: 'ENGAGE',
+            model: 'claude-haiku-4-5-20251001',
           max_tokens: 500,
           stream: false,
           system: 'You identify call participants. Return ONLY valid JSON, no markdown.',
@@ -1194,7 +1195,8 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+            source: 'ENGAGE',
+            model: 'claude-sonnet-4-6',
           max_tokens: 8192,
           temperature: 0,
           stream: true,
@@ -2241,7 +2243,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+            source: 'ENGAGE',
+            model: 'claude-sonnet-4-6',
           max_tokens: 8192,
           temperature: 0,
           stream: true,
@@ -2463,7 +2466,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+            source: 'ENGAGE',
+            model: 'claude-haiku-4-5-20251001',
           max_tokens: 400,
           stream: false,
           system: 'You are a sales follow-up assistant. Return ONLY a valid JSON array of strings — no markdown, no explanation.',
@@ -3054,7 +3058,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
+              source: 'ENGAGE',
+              model: 'claude-sonnet-4-6',
             max_tokens: 8192,
             temperature: 0,
             stream: true,

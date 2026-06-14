@@ -168,6 +168,7 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        source: 'COACH',
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         temperature: 0,
@@ -516,8 +517,24 @@
       }</ul>`;
     };
 
-    // Focus areas are already guidance-style — render immediately
-    renderList(fEl, dedup(improvements), '#e8a020');
+    // Focus areas: rephrase raw improvement notes as genuine development areas via AI
+    const dedupedImprovements = dedup(improvements);
+    if (!dedupedImprovements.length) {
+      if (fEl) fEl.innerHTML = '<div class="cd-inner-empty">—</div>';
+    } else {
+      if (fEl) fEl.innerHTML = '<div class="cd-inner-empty" style="opacity:.5;">Synthesizing…</div>';
+      _coachAsk(
+        `You are a sales coach summarizing a rep's reoccurring development areas. Convert each observation into one concise sentence describing a skill or behavior this rep consistently needs to improve — framed as a genuine area for growth, not a directive. Write as if describing what the rep tends to struggle with or overlook. Do not use imperative verbs like "do" or "make sure". No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedImprovements.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
+      ).then(raw => {
+        const lines = raw.split('\n')
+          .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
+          .filter(Boolean)
+          .slice(0, 6);
+        renderList(fEl, lines, '#e8a020');
+      }).catch(() => {
+        renderList(fEl, dedupedImprovements, '#e8a020');
+      });
+    }
 
     // Strengths: rephrase raw observations as forward-looking guidance via AI
     const dedupedPositives = dedup(positives);
@@ -1160,6 +1177,7 @@ Write in second person ("you"), be direct and specific, and base all feedback on
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          source: 'COACH',
           model: 'claude-sonnet-4-6',
           max_tokens: 512,
           temperature: 0.7,
@@ -1324,6 +1342,7 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          source: 'COACH',
           model: 'claude-sonnet-4-6', max_tokens: 1024, temperature: 0,
           system: systemMsg,
           messages: [

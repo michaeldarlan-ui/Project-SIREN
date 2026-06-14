@@ -69,6 +69,12 @@ await client.batch([
       cache_write INTEGER DEFAULT 0, cache_read INTEGER DEFAULT 0,
       PRIMARY KEY (day, model)
     )` },
+  { sql: `CREATE TABLE IF NOT EXISTS usage_feature (
+      day TEXT, feature TEXT,
+      cost REAL DEFAULT 0, calls INTEGER DEFAULT 0,
+      tokens_in INTEGER DEFAULT 0, tokens_out INTEGER DEFAULT 0,
+      PRIMARY KEY (day, feature)
+    )` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -224,7 +230,7 @@ async function bulkUpsert(records) {
 
 function _usageMonthKey() { return 'm' + new Date().toISOString().slice(0, 7); }
 
-async function meterApiCall(model, usage) {
+async function meterApiCall(model, usage, feature) {
   if (!usage) return;
   const p = _ccPrice(model);
   const inTok  = usage.input_tokens || 0;
@@ -243,18 +249,27 @@ async function meterApiCall(model, usage) {
                       tokens_out  = usage_daily.tokens_out + excluded.tokens_out,
                       cache_write = usage_daily.cache_write + excluded.cache_write,
                       cache_read  = usage_daily.cache_read + excluded.cache_read`;
+  const sqlFeature = `INSERT INTO usage_feature (day, feature, cost, calls, tokens_in, tokens_out)
+                      VALUES (?, ?, ?, 1, ?, ?)
+                      ON CONFLICT(day, feature) DO UPDATE SET
+                        cost      = usage_feature.cost + excluded.cost,
+                        calls     = usage_feature.calls + 1,
+                        tokens_in = usage_feature.tokens_in + excluded.tokens_in,
+                        tokens_out= usage_feature.tokens_out + excluded.tokens_out`;
   const day = new Date().toISOString().slice(0, 10);
+  const feat = (feature || 'Other').trim();
   try {
     await client.batch([
       { sql, args: ['global', cost] },
       { sql, args: [_usageMonthKey(), cost] },
       { sql: sqlDaily, args: [day, model || 'unknown', cost, inTok, outTok, cacheW, cacheR] },
+      { sql: sqlFeature, args: [day, feat, cost, inTok, outTok] },
     ], 'write');
   } catch (e) { console.error('[meter] write failed:', e.message); }
 }
 
 // Extract usage from a buffered Anthropic response (JSON or SSE stream)
-function meterFromResponse(reqModel, raw) {
+function meterFromResponse(reqModel, raw, feature) {
   try {
     let model = reqModel, usage = null;
     const trimmed = raw.trimStart();
@@ -283,7 +298,7 @@ function meterFromResponse(reqModel, raw) {
       }
       if (seen) usage = { input_tokens: inTok, output_tokens: outTok, cache_creation_input_tokens: cacheW, cache_read_input_tokens: cacheR };
     }
-    if (usage) meterApiCall(model, usage);
+    if (usage) meterApiCall(model, usage, feature);
   } catch (e) { console.error('[meter] parse failed:', e.message); }
 }
 
@@ -404,8 +419,8 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
-      let reqModel = '';
-      try { reqModel = JSON.parse(body).model || ''; } catch {}
+      let reqModel = '', reqFeature = '';
+      try { const parsed = JSON.parse(body); reqModel = parsed.model || ''; reqFeature = parsed.source || ''; } catch {}
       const options = {
         hostname: 'api.anthropic.com',
         path: '/v1/messages',
@@ -428,7 +443,7 @@ const server = http.createServer(async (req, res) => {
         proxyRes.on('end', () => {
           res.end();
           if (proxyRes.statusCode >= 200 && proxyRes.statusCode < 300) {
-            meterFromResponse(reqModel, respBuf);
+            meterFromResponse(reqModel, respBuf, reqFeature);
           }
         });
       });
@@ -726,6 +741,28 @@ const server = http.createServer(async (req, res) => {
       });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
+    return;
+  }
+
+  // ── Usage by feature API ──────────────────────────────────
+  if (req.method === 'GET' && req.url.startsWith('/api/usage/by-feature')) {
+    try {
+      const params = new URL(req.url, 'http://x').searchParams;
+      const days = Math.min(parseInt(params.get('days') || '30', 10), 365);
+      const cutoff = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+      const rows = (await client.execute({
+        sql: 'SELECT feature, SUM(cost) as cost, SUM(calls) as calls, SUM(tokens_in) as tokens_in, SUM(tokens_out) as tokens_out FROM usage_feature WHERE day >= ? GROUP BY feature ORDER BY cost DESC',
+        args: [cutoff],
+      })).rows;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(rows.map(r => ({
+        feature: String(r.feature),
+        cost: Number(r.cost) || 0,
+        calls: Number(r.calls) || 0,
+        tokens_in: Number(r.tokens_in) || 0,
+        tokens_out: Number(r.tokens_out) || 0,
+      }))));
+    } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
     return;
   }
 
