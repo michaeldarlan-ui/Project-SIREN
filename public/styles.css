@@ -1108,10 +1108,11 @@
   .cd-kpi-placeholder .cd-kpi-val { color: var(--siren-text-faint); }
 
   .cd-layout {
-    display: grid; grid-template-columns: 340px 1fr; gap: 14px;
+    display: grid; grid-template-columns: 1fr 1.35fr; gap: 14px;
     align-items: start;
   }
   @media (max-width: 900px) { .cd-layout { grid-template-columns: 1fr; } }
+  .cd-insight-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
   .cd-left { display: flex; flex-direction: column; gap: 12px; }
   .cd-right { min-width: 0; }
