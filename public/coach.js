@@ -502,7 +502,7 @@
       ).join('');
     };
 
-    renderChips(sEl, tally('top_strength', 2), 'cd-chip-strength');
+    renderChips(sEl, tally('top_strength'), 'cd-chip-strength');
     renderChips(fEl, tally('top_priority'), 'cd-chip-focus');
   }
 
