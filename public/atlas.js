@@ -672,7 +672,7 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             source: 'ATLAS',
-            model: getDevModel('claude-haiku-4-5'),
+            model: getDevModel('atlas', 'claude-haiku-4-5-20251001'),
           max_tokens: 4096,
           temperature: 0,
           stream: false,

@@ -68,11 +68,6 @@
         Dev Sync
       </button>
       <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;"></div>
-      <div style="padding:6px 12px;">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:5px;">AI Model</div>
-        <div id="devModelSelector" style="display:flex;gap:4px;"></div>
-      </div>
-      <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;"></div>
       <button class="settings-item" onclick="setDemoEnabled(!isDemoEnabled())">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><circle cx="12" cy="12" r="3"/></svg>
         Demo Data
@@ -357,7 +352,10 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
       <div class="card-title" style="margin-bottom:8px;">Transcript or notes</div>
       <textarea id="callNotes" placeholder="Paste your transcript, call notes, or a detailed summary here."></textarea>
 
-      <button class="submit-btn" id="submitBtn" onclick="gradeCall()">Grade this call</button>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:0;">
+        <button class="submit-btn" id="submitBtn" onclick="gradeCall()" style="margin-bottom:0;">Grade this call</button>
+        <span class="dev-model-wrap" data-key="engage_grade" data-default="claude-sonnet-4-6"></span>
+      </div>
       <div id="loading" style="display:none;">
         <div class="load-stream-l"></div>
         <div class="load-stream-r"></div>
@@ -599,6 +597,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
               <button class="forge-audience-btn" id="forgeAudClient" onclick="forgeSetAudience('client')">CLIENT</button>
             </div>
             <button class="forge-report-btn" id="forgeCopyBtn" onclick="forgeCopy()" disabled>Copy</button>
+            <span class="dev-model-wrap" data-key="forge_brief" data-default="claude-haiku-4-5-20251001"></span>
             <button class="forge-report-btn primary" id="forgeGenBtn" onclick="forgeGenerate()" disabled>Generate →</button>
           </div>
           <div class="forge-report-body" id="forgeReportBody">
@@ -656,6 +655,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                 <div class="forge-report-section-label" style="margin:0;">Research</div>
                 <div style="display:flex;gap:6px;align-items:center;">
+                  <span class="dev-model-wrap" data-key="forge_research" data-default="claude-haiku-4-5-20251001"></span>
                   <button id="forgeResearchBtn" onclick="forgeRunResearch()" style="background:rgba(0,200,255,.12);border:1px solid rgba(0,200,255,.25);color:#00c8ff;border-radius:6px;font-size:11px;font-weight:600;padding:3px 10px;cursor:pointer;letter-spacing:.04em;">Research →</button>
                   <button onclick="forgeResearchToggle()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;cursor:pointer;padding:0 2px;" id="forgeResearchChevron">▶</button>
                 </div>
@@ -675,6 +675,9 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
             <!-- Email composer — shown only when Follow-Up Email template is active -->
             <div id="fr-email-section" style="display:none;">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+                <span class="dev-model-wrap" data-key="forge_email" data-default="claude-haiku-4-5-20251001"></span>
+              </div>
               <div class="fr-email-meta">
                 <div class="fr-email-meta-row">
                   <span class="fr-email-label">TO</span>
@@ -1151,6 +1154,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         <!-- Top bar -->
         <div class="lc-graph-topbar" onmousedown="event.stopPropagation()">
           <span class="lc-graph-topbar-title">ATLAS</span>
+          <span class="dev-model-wrap" data-key="atlas" data-default="claude-haiku-4-5-20251001"></span>
           <div class="lc-deal-filter">
             <button class="lc-deal-filter-btn active" data-filter="open"   onclick="atlasSetDealFilter('open')">Open</button>
             <button class="lc-deal-filter-btn"        data-filter="closed" onclick="atlasSetDealFilter('closed')">Closed</button>
@@ -1474,13 +1478,19 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
       <!-- Reoccurring Strengths: full-width -->
       <div class="cd-panel" style="margin-bottom:14px;">
-        <div class="cd-panel-hdr"><div class="cd-panel-title">Reoccurring Strengths</div></div>
+        <div class="cd-panel-hdr">
+          <div class="cd-panel-title">Reoccurring Strengths</div>
+          <span class="dev-model-wrap" data-key="coach_strengths" data-default="claude-sonnet-4-6"></span>
+        </div>
         <div id="cdStrengthChips" class="cd-chips"><div class="cd-inner-empty">—</div></div>
       </div>
 
       <!-- Priority Focus Areas: full-width -->
       <div class="cd-panel" style="margin-bottom:14px;">
-        <div class="cd-panel-hdr"><div class="cd-panel-title">Priority Focus Areas</div></div>
+        <div class="cd-panel-hdr">
+          <div class="cd-panel-title">Priority Focus Areas</div>
+          <span class="dev-model-wrap" data-key="coach_focus" data-default="claude-sonnet-4-6"></span>
+        </div>
         <div id="cdFocusChips" class="cd-chips"><div class="cd-inner-empty">—</div></div>
       </div>
 
@@ -1517,6 +1527,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
             <div class="cd-panel cd-overview-panel" id="cdOverviewCard">
               <div class="cd-panel-hdr" style="margin-bottom:14px;flex-wrap:wrap;gap:8px;">
                 <div class="cd-panel-title">Coaching Report</div>
+                <span class="dev-model-wrap" data-key="coach_report" data-default="claude-sonnet-4-6"></span>
                 <div class="cd-period-row" id="cdPeriodRow" style="display:none;">
                   <div class="cd-period-selector">
                     <button class="cd-period-btn" onclick="coachSetPeriod(30)">30d</button>
@@ -1563,6 +1574,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
             <div class="cd-panel cd-coaching-panel">
               <div class="cd-panel-hdr" style="margin-bottom:6px;">
                 <div id="coachFeedbackCallLabel" style="font-size:13px;font-weight:600;color:var(--siren-text-primary);"></div>
+                <span class="dev-model-wrap" data-key="coach_feedback" data-default="claude-sonnet-4-6"></span>
               </div>
               <!-- Loading HUD -->
               <div id="coachFeedbackLoading" style="display:none;">
@@ -1594,6 +1606,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         <div class="cd-intel-hdr">
           <span class="cd-intel-title">INTEL</span>
           <span class="cd-intel-sub">Ask anything about this rep's performance</span>
+          <span class="dev-model-wrap" data-key="coach_intel" data-default="claude-sonnet-4-6" style="margin-left:auto;margin-right:8px;"></span>
           <button class="cd-intel-clear-btn" onclick="coachIntelClear()" id="cdIntelClearBtn" style="display:none;">Clear</button>
         </div>
 
@@ -1622,7 +1635,10 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
       <!-- Scenario config (shown when not in session) -->
       <div id="arenaConfig">
-        <div class="section-label" style="margin-bottom:14px;">Configure Training Scenario</div>
+        <div class="section-label" style="margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+          Configure Training Scenario
+          <span class="dev-model-wrap" data-key="coach_arena" data-default="claude-sonnet-4-6"></span>
+        </div>
         <div class="arena-config-grid">
 
           <div class="arena-config-block">
