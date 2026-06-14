@@ -480,41 +480,44 @@
         </div>`).join('');
   }
 
-  // ── Strength & focus chips ────────────────────────────────────────────────────
+  // ── Strength & focus panels ───────────────────────────────────────────────────
   function _coachRenderChips(calls) {
     const sEl = document.getElementById('cdStrengthChips');
     const fEl = document.getElementById('cdFocusChips');
     const repName = (_coachCurrentRep || '').toLowerCase();
 
-    // Tally dimension names that appear as top-strength or top-focus across calls
-    const strengthMap = {}, focusMap = {};
+    const positives = [], improvements = [];
     calls.forEach(h => {
       const rs = _parseRepScores(h.rep_scores);
       const repEntry = rs.find(r => (r.name || '').toLowerCase() === repName);
-      const dims = (repEntry && repEntry.dimensions) || [];
-      const scored = dims.filter(d => d.max > 0);
-      if (!scored.length) return;
-      // Best dimension = highest score/max ratio
-      const best = scored.reduce((a, b) => (b.score / b.max > a.score / a.max ? b : a));
-      strengthMap[best.name] = (strengthMap[best.name] || 0) + 1;
-      // Weakest dimension = lowest score/max ratio
-      const worst = scored.reduce((a, b) => (b.score / b.max < a.score / a.max ? b : a));
-      focusMap[worst.name] = (focusMap[worst.name] || 0) + 1;
+      const cs = repEntry && repEntry.call_summary;
+      if (cs) {
+        (cs.positives || []).forEach(s => { if (s) positives.push(s.trim()); });
+        (cs.improvements || []).forEach(s => { if (s) improvements.push(s.trim()); });
+      }
     });
 
-    const toEntries = (map) =>
-      Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
-
-    const renderChips = (el, entries, colorClass) => {
-      if (!el) return;
-      if (!entries.length) { el.innerHTML = '<div class="cd-inner-empty">—</div>'; return; }
-      el.innerHTML = entries.map(([label, count]) =>
-        `<span class="cd-chip ${colorClass}">${escHtml(label)}<span class="cd-chip-count">${count}</span></span>`
-      ).join('');
+    // Deduplicate by normalised prefix (first 40 chars lowercased)
+    const dedup = (arr) => {
+      const seen = new Set();
+      return arr.filter(s => {
+        const key = s.toLowerCase().slice(0, 40);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, 6);
     };
 
-    renderChips(sEl, toEntries(strengthMap), 'cd-chip-strength');
-    renderChips(fEl, toEntries(focusMap), 'cd-chip-focus');
+    const renderList = (el, items, colorVar) => {
+      if (!el) return;
+      if (!items.length) { el.innerHTML = '<div class="cd-inner-empty">—</div>'; return; }
+      el.innerHTML = `<ul class="cd-insight-list" style="--insight-color:${colorVar};">${
+        items.map(s => `<li>${escHtml(s)}</li>`).join('')
+      }</ul>`;
+    };
+
+    renderList(sEl, dedup(positives), '#4ade80');
+    renderList(fEl, dedup(improvements), '#e8a020');
   }
 
   // ── Overview panel (right side, no call selected) ────────────────────────────

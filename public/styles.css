@@ -1147,6 +1147,18 @@
   .cd-stage-count { font-size: 11px; font-weight: 700; color: var(--siren-text-primary); width: 18px; text-align: right; }
 
   .cd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cd-insight-list {
+    list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .cd-insight-list li {
+    font-size: 12px; line-height: 1.55; color: var(--siren-text-body);
+    padding-left: 14px; position: relative;
+  }
+  .cd-insight-list li::before {
+    content: '›'; position: absolute; left: 0;
+    color: var(--insight-color, #4ade80); font-weight: 700; font-size: 13px;
+  }
   .cd-chip {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 12px;
