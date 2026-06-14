@@ -486,17 +486,24 @@
     const fEl = document.getElementById('cdFocusChips');
     const repName = (_coachCurrentRep || '').toLowerCase();
 
-    const tally = (field) => {
-      const map = {};
-      calls.forEach(h => {
-        // Use per-rep value from rep_scores when available; fall back to call-level field
-        const rs = _parseRepScores(h.rep_scores);
-        const repEntry = rs.find(r => (r.name || '').toLowerCase() === repName);
-        const v = ((repEntry && repEntry[field]) || h[field] || '').trim();
-        if (v) map[v] = (map[v] || 0) + 1;
-      });
-      return Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
-    };
+    // Tally dimension names that appear as top-strength or top-focus across calls
+    const strengthMap = {}, focusMap = {};
+    calls.forEach(h => {
+      const rs = _parseRepScores(h.rep_scores);
+      const repEntry = rs.find(r => (r.name || '').toLowerCase() === repName);
+      const dims = (repEntry && repEntry.dimensions) || [];
+      const scored = dims.filter(d => d.max > 0);
+      if (!scored.length) return;
+      // Best dimension = highest score/max ratio
+      const best = scored.reduce((a, b) => (b.score / b.max > a.score / a.max ? b : a));
+      strengthMap[best.name] = (strengthMap[best.name] || 0) + 1;
+      // Weakest dimension = lowest score/max ratio
+      const worst = scored.reduce((a, b) => (b.score / b.max < a.score / a.max ? b : a));
+      focusMap[worst.name] = (focusMap[worst.name] || 0) + 1;
+    });
+
+    const toEntries = (map) =>
+      Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 8);
 
     const renderChips = (el, entries, colorClass) => {
       if (!el) return;
@@ -506,8 +513,8 @@
       ).join('');
     };
 
-    renderChips(sEl, tally('top_strength'), 'cd-chip-strength');
-    renderChips(fEl, tally('top_priority'), 'cd-chip-focus');
+    renderChips(sEl, toEntries(strengthMap), 'cd-chip-strength');
+    renderChips(fEl, toEntries(focusMap), 'cd-chip-focus');
   }
 
   // ── Overview panel (right side, no call selected) ────────────────────────────
