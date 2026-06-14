@@ -1159,7 +1159,16 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
       const nodeId = e.target.getAttribute('data-id');
       const nd = _lcNodes.find(n => n.id === nodeId);
       if (nd) {
-        _lcNodeDrag = { nodeId, ox: e.clientX, oy: e.clientY, nx: nd.x, ny: nd.y, moved: false };
+        // If dragging a category node, snapshot child positions so they travel with it
+        const childSnaps = {};
+        const CAT_IDS = new Set(['cat-people','cat-competition','cat-technology']);
+        if (CAT_IDS.has(nodeId)) {
+          const childIds = new Set(_lcEdges.filter(e => e.from === nodeId).map(e => e.to));
+          _lcNodes.forEach(c => {
+            if (childIds.has(c.id)) childSnaps[c.id] = { x: c.x, y: c.y };
+          });
+        }
+        _lcNodeDrag = { nodeId, ox: e.clientX, oy: e.clientY, nx: nd.x, ny: nd.y, moved: false, childSnaps };
         e.stopPropagation();
         return;
       }
@@ -1180,7 +1189,26 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
         if (nd) {
           nd.x = _lcNodeDrag.nx + dx;
           nd.y = _lcNodeDrag.ny + dy;
-          resolveCollisions(_lcNodeDrag.nodeId, 6); // push others away, keep dragged locked
+          // Move children with their parent category node
+          const snaps = _lcNodeDrag.childSnaps || {};
+          Object.entries(snaps).forEach(([cid, orig]) => {
+            const cn = _lcNodes.find(n => n.id === cid);
+            if (cn) { cn.x = orig.x + dx; cn.y = orig.y + dy; }
+          });
+          // Only repel non-child nodes so children stay in formation
+          const childSet = new Set(Object.keys(snaps));
+          childSet.add(_lcNodeDrag.nodeId);
+          const savedPos = {};
+          childSet.forEach(id => {
+            const n = _lcNodes.find(n => n.id === id);
+            if (n) savedPos[id] = { x: n.x, y: n.y };
+          });
+          resolveCollisions(_lcNodeDrag.nodeId, 6);
+          // Restore child positions — repulsion should not scatter them
+          childSet.forEach(id => {
+            const n = _lcNodes.find(n => n.id === id);
+            if (n && savedPos[id]) { n.x = savedPos[id].x; n.y = savedPos[id].y; }
+          });
           drawLcGraph();
         }
       }
