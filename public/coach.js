@@ -536,8 +536,24 @@
       });
     }
 
-    // Strengths: render raw positives directly
-    renderList(sEl, dedup(positives), '#4ade80');
+    // Strengths: rephrase raw observations as genuine capabilities via AI
+    const dedupedPositives = dedup(positives);
+    if (!dedupedPositives.length) {
+      if (sEl) sEl.innerHTML = '<div class="cd-inner-empty">—</div>';
+      return;
+    }
+    if (sEl) sEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#4ade80;"><div class="cd-insight-bar"></div><span>Analyzing strengths…</span></div>';
+    _coachAsk(
+      `You are a sales coach summarizing a rep's reoccurring strengths. Convert each observation into one concise sentence describing a skill or behavior this rep consistently demonstrates well — framed as a genuine strength, not a recommendation. Do not use future tense or action verbs like "continue" or "keep". Write as if describing what the rep is naturally good at. No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedPositives.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
+    ).then(raw => {
+      const lines = raw.split('\n')
+        .map(l => l.replace(/^\d+[\.\)]\s*/, '').trim())
+        .filter(Boolean)
+        .slice(0, 6);
+      renderList(sEl, lines, '#4ade80');
+    }).catch(() => {
+      renderList(sEl, dedupedPositives, '#4ade80');
+    });
   }
 
   // ── Overview panel (right side, no call selected) ────────────────────────────
