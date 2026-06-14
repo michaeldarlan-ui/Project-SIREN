@@ -1147,6 +1147,23 @@
   .cd-stage-count { font-size: 11px; font-weight: 700; color: var(--siren-text-primary); width: 18px; text-align: right; }
 
   .cd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cd-insight-loading {
+    display: flex; flex-direction: column; gap: 8px; padding: 4px 0;
+  }
+  .cd-insight-loading span {
+    font-size: 11px; color: rgba(255,255,255,.35); letter-spacing: .04em;
+  }
+  .cd-insight-bar {
+    height: 3px; border-radius: 3px;
+    background: linear-gradient(90deg, rgba(255,255,255,.06) 0%, var(--insight-color, #4ade80) 40%, rgba(255,255,255,.06) 100%);
+    background-size: 200% 100%;
+    animation: insight-sweep 1.4s ease-in-out infinite;
+  }
+  @keyframes insight-sweep {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
   .cd-insight-list {
     list-style: none; margin: 0; padding: 0;
     display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px;

@@ -522,7 +522,7 @@
     if (!dedupedImprovements.length) {
       if (fEl) fEl.innerHTML = '<div class="cd-inner-empty">—</div>';
     } else {
-      if (fEl) fEl.innerHTML = '<div class="cd-inner-empty" style="opacity:.5;">Synthesizing…</div>';
+      if (fEl) fEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#e8a020;"><div class="cd-insight-bar"></div><span>Analyzing focus areas…</span></div>';
       _coachAsk(
         `You are a sales coach summarizing a rep's reoccurring development areas. Convert each observation into one concise sentence describing a skill or behavior this rep consistently needs to improve — framed as a genuine area for growth, not a directive. Write as if describing what the rep tends to struggle with or overlook. Do not use imperative verbs like "do" or "make sure". No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedImprovements.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
       ).then(raw => {
@@ -542,7 +542,7 @@
       if (sEl) sEl.innerHTML = '<div class="cd-inner-empty">—</div>';
       return;
     }
-    if (sEl) sEl.innerHTML = '<div class="cd-inner-empty" style="opacity:.5;">Synthesizing…</div>';
+    if (sEl) sEl.innerHTML = '<div class="cd-insight-loading" style="--insight-color:#4ade80;"><div class="cd-insight-bar"></div><span>Analyzing strengths…</span></div>';
     _coachAsk(
       `You are a sales coach summarizing a rep's reoccurring strengths. Convert each observation into one concise sentence describing a skill or behavior this rep consistently demonstrates well — framed as a genuine strength, not a recommendation. Do not use future tense or action verbs like "continue" or "keep". Write as if describing what the rep is naturally good at. No references to specific deals, prospects, or names.\n\nObservations:\n${dedupedPositives.map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nReturn ONLY a numbered list in the same order. Nothing else.`
     ).then(raw => {
