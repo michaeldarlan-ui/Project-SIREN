@@ -419,8 +419,16 @@ const server = http.createServer(async (req, res) => {
     let body = '';
     req.on('data', chunk => { body += chunk; });
     req.on('end', () => {
-      let reqModel = '', reqFeature = '';
-      try { const parsed = JSON.parse(body); reqModel = parsed.model || ''; reqFeature = parsed.source || ''; } catch {}
+      let reqModel = '', reqFeature = '', proxyBody = body;
+      try {
+        const parsed = JSON.parse(body);
+        reqModel = parsed.model || '';
+        reqFeature = parsed.source || '';
+        if (parsed.source !== undefined) {
+          const { source, ...rest } = parsed;
+          proxyBody = JSON.stringify(rest);
+        }
+      } catch {}
       const options = {
         hostname: 'api.anthropic.com',
         path: '/v1/messages',
@@ -429,7 +437,7 @@ const server = http.createServer(async (req, res) => {
           'Content-Type': 'application/json',
           'x-api-key': API_KEY,
           'anthropic-version': '2023-06-01',
-          'Content-Length': Buffer.byteLength(body),
+          'Content-Length': Buffer.byteLength(proxyBody),
         },
       };
       const proxyReq = https.request(options, proxyRes => {
@@ -451,7 +459,7 @@ const server = http.createServer(async (req, res) => {
         if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: { message: 'Proxy error: ' + err.message } }));
       });
-      proxyReq.write(body);
+      proxyReq.write(proxyBody);
       proxyReq.end();
     });
     return;
