@@ -503,7 +503,7 @@
   function _coachRenderChips(calls, forceRegen) {
     const sEl = document.getElementById('cdStrengthChips');
     const fEl = document.getElementById('cdFocusChips');
-    const repName = (_coachCurrentRep || '').toLowerCase();
+    const repNameLc = (_coachCurrentRep || '').toLowerCase();
     const fingerprint = _insightFingerprint(calls);
 
     // Restore from localStorage if fingerprint matches and not forcing regen
@@ -519,7 +519,7 @@
     const positives = [], improvements = [];
     calls.forEach(h => {
       const rs = _parseRepScores(h.rep_scores);
-      const repEntry = rs.find(r => (r.name || '').toLowerCase() === repName);
+      const repEntry = rs.find(r => (r.name || '').toLowerCase() === repNameLc);
       const cs = repEntry && repEntry.call_summary;
       if (cs) {
         (cs.positives || []).forEach(s => { if (s) positives.push(s.trim()); });
