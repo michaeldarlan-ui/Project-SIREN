@@ -18,14 +18,20 @@
 
   function renderLifecyclePage() {
     const allCompanies = _getAllAtlasCompanies();
-    // Filter companies by deal status
-    const companies = allCompanies.filter(c => {
-      if (_atlasFilter === 'all') return true;
+    const _applyFilter = (list, f) => list.filter(c => {
+      if (f === 'all') return true;
       const status = (loadAccountProfile(c).deal_status) || 'active';
-      if (_atlasFilter === 'open')   return status === 'active';
-      if (_atlasFilter === 'closed') return status === 'won' || status === 'lost';
+      if (f === 'open')   return status === 'active';
+      if (f === 'closed') return status === 'won' || status === 'lost';
       return true;
     });
+    // If the active filter would hide everything, silently fall back to 'all'
+    let companies = _applyFilter(allCompanies, _atlasFilter);
+    if (!companies.length && allCompanies.length) {
+      _atlasFilter = 'all';
+      document.querySelectorAll('.lc-deal-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === 'all'));
+      companies = allCompanies;
+    }
     const sel = document.getElementById('lcCompanySelect');
     const prev = sel.value;
     sel.innerHTML = '<option value="">— Select an account —</option>' +
