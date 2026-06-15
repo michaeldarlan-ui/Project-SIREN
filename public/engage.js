@@ -1825,9 +1825,10 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   function toggleUsage() {
     const body = document.getElementById('usageBody');
     const chevron = document.getElementById('usageChevron');
+    if (!body) return;
     const open = body.style.display === 'none';
     body.style.display = open ? 'block' : 'none';
-    chevron.classList.toggle('open', open);
+    if (chevron) chevron.classList.toggle('open', open);
     try { localStorage.setItem('oa_usage_open', open); } catch {}
   }
 
@@ -1839,19 +1840,21 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     const callCost = inputTokens * PRICE_IN + outputTokens * PRICE_OUT;
     sessionCost += callCost;
 
-    document.getElementById('val-tokens').textContent = (inputTokens + outputTokens).toLocaleString();
-    document.getElementById('val-cost-call').textContent = '$' + callCost.toFixed(4);
+    _setEl('val-tokens', (inputTokens + outputTokens).toLocaleString());
+    _setEl('val-cost-call', '$' + callCost.toFixed(4));
     _setEl('val-cost-session', '$' + sessionCost.toFixed(4));
-    document.getElementById('lastCallLabel').textContent = 'Last call: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    document.getElementById('usageDot').style.background = '#00c8ff';
+    _setEl('lastCallLabel', 'Last call: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    const usageDotEl = document.getElementById('usageDot');
+    if (usageDotEl) usageDotEl.style.background = '#00c8ff';
 
     // Server metering completes just after the stream ends — refresh shortly after
     setTimeout(_refreshUsageDisplay, 800);
 
-    const body = document.getElementById('usageBody');
-    if (body.style.display === 'none') {
-      body.style.display = 'block';
-      document.getElementById('usageChevron').classList.add('open');
+    const body2 = document.getElementById('usageBody');
+    if (body2 && body2.style.display === 'none') {
+      body2.style.display = 'block';
+      const chev2 = document.getElementById('usageChevron');
+      if (chev2) chev2.classList.add('open');
     }
   }
 
