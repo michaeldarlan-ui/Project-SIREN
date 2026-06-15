@@ -52,7 +52,6 @@ const HISTORY_COLS = `
 
 await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS history_prod (${HISTORY_COLS})` },
-  { sql: `CREATE TABLE IF NOT EXISTS history_demo (${HISTORY_COLS})` },
   { sql: `CREATE TABLE IF NOT EXISTS prospects (name TEXT PRIMARY KEY, industry TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS third_parties (name TEXT PRIMARY KEY, role TEXT, organization TEXT, notes TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS transcripts (id TEXT PRIMARY KEY, label TEXT NOT NULL, prospect TEXT, stage TEXT, rep TEXT, call_date TEXT, transcript TEXT NOT NULL, saved_at TEXT NOT NULL)` },
@@ -89,27 +88,15 @@ await client.batch([
     console.log('[db] Renamed history → history_prod');
   }
 
-  // Add partner_scores / rep_scores columns if missing
-  for (const tbl of ['history_prod', 'history_demo']) {
-    if (!tables.includes(tbl)) continue;
-    const cols = (await client.execute(`PRAGMA table_info(${tbl})`)).rows.map(r => String(r.name));
-    if (!cols.includes('partner_scores')) {
-      await client.execute(`ALTER TABLE ${tbl} ADD COLUMN partner_scores TEXT`);
-      console.log(`[db] Added partner_scores column to ${tbl}`);
-    }
-    if (!cols.includes('rep_scores')) {
-      await client.execute(`ALTER TABLE ${tbl} ADD COLUMN rep_scores TEXT`);
-      console.log(`[db] Added rep_scores column to ${tbl}`);
-    }
-    if (!cols.includes('spiced')) {
-      await client.execute(`ALTER TABLE ${tbl} ADD COLUMN spiced TEXT`);
-      console.log(`[db] Added spiced column to ${tbl}`);
-    }
+  // Add partner_scores / rep_scores / spiced / normalized_score columns to history_prod if missing
+  if (tables.includes('history_prod')) {
+    const cols = (await client.execute('PRAGMA table_info(history_prod)')).rows.map(r => String(r.name));
+    if (!cols.includes('partner_scores')) { await client.execute('ALTER TABLE history_prod ADD COLUMN partner_scores TEXT'); }
+    if (!cols.includes('rep_scores'))     { await client.execute('ALTER TABLE history_prod ADD COLUMN rep_scores TEXT'); }
+    if (!cols.includes('spiced'))         { await client.execute('ALTER TABLE history_prod ADD COLUMN spiced TEXT'); }
     if (!cols.includes('normalized_score')) {
-      await client.execute(`ALTER TABLE ${tbl} ADD COLUMN normalized_score INTEGER DEFAULT 0`);
-      // Back-fill: existing records with no role/stage context treat total as already 0–100
-      await client.execute(`UPDATE ${tbl} SET normalized_score = total WHERE normalized_score = 0 AND total > 0`);
-      console.log(`[db] Added normalized_score column to ${tbl} and back-filled from total`);
+      await client.execute('ALTER TABLE history_prod ADD COLUMN normalized_score INTEGER DEFAULT 0');
+      await client.execute('UPDATE history_prod SET normalized_score = total WHERE normalized_score = 0 AND total > 0');
     }
   }
 
@@ -145,9 +132,7 @@ const DB_PARAMS = `?, ?, ?, ?, ?, ?, ?, ?,
   ?, ?, ?, ?, ?,
   ?, ?, ?, ?, ?, ?, ?, ?, ?`;
 
-function isDemo(r) { return !!(r.is_demo) || String(r.id || '').startsWith('demo-'); }
-
-function dbRowToRecord(row, demoFlag) {
+function dbRowToRecord(row) {
   const j = k => { const v = row[k]; return v ? JSON.parse(String(v)) : undefined; };
   const s = k => { const v = row[k]; return v != null ? String(v) : ''; };
   return {
@@ -166,7 +151,6 @@ function dbRowToRecord(row, demoFlag) {
     top_strength: s('top_strength'),
     top_priority: s('top_priority'),
     resultsHtml:  s('results_html'),
-    is_demo:      !!demoFlag,
     participants:   j('participants'),
     dimensions:     j('dimensions'),
     next_steps:     j('next_steps'),
@@ -206,9 +190,8 @@ function recordToArgs(r) {
 }
 
 async function upsertOne(r) {
-  const tbl = isDemo(r) ? 'history_demo' : 'history_prod';
   await client.execute({
-    sql:  `INSERT OR REPLACE INTO ${tbl} (${DB_COLS}) VALUES (${DB_PARAMS})`,
+    sql:  `INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   });
 }
@@ -216,7 +199,7 @@ async function upsertOne(r) {
 async function bulkUpsert(records) {
   if (!records.length) return;
   await client.batch(records.map(r => ({
-    sql:  `INSERT OR REPLACE INTO ${isDemo(r) ? 'history_demo' : 'history_prod'} (${DB_COLS}) VALUES (${DB_PARAMS})`,
+    sql:  `INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   })), 'write');
 }
@@ -470,11 +453,8 @@ const server = http.createServer(async (req, res) => {
   // GET /api/history
   if (req.method === 'GET' && req.url.startsWith('/api/history') &&
       !req.url.startsWith('/api/history/')) {
-    const real = (await client.execute('SELECT * FROM history_prod ORDER BY ts DESC')).rows
-                   .map(r => dbRowToRecord(r, false));
-    const demo = (await client.execute('SELECT * FROM history_demo ORDER BY ts DESC')).rows
-                   .map(r => dbRowToRecord(r, true));
-    const all  = [...real, ...demo].sort((a, b) => (b.ts > a.ts ? 1 : -1));
+    const all = (await client.execute('SELECT * FROM history_prod ORDER BY ts DESC')).rows
+                  .map(r => dbRowToRecord(r));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(all));
     return;
@@ -506,7 +486,6 @@ const server = http.createServer(async (req, res) => {
       const { oldName, newName } = await readBody(req);
       await client.batch([
         { sql: 'UPDATE history_prod SET prospect = ? WHERE prospect = ?', args: [newName, oldName] },
-        { sql: 'UPDATE history_demo SET prospect = ? WHERE prospect = ?', args: [newName, oldName] },
         { sql: 'UPDATE prospects SET name = ? WHERE name = ?',           args: [newName, oldName] },
       ], 'write');
       res.writeHead(200); res.end();
@@ -540,21 +519,11 @@ const server = http.createServer(async (req, res) => {
       if (sets.length) {
         const setClause = `SET ${sets.join(', ')} WHERE id = ?`;
         const args = [...vals, id];
-        const [r1, r2] = await Promise.all([
-          client.execute({ sql: `UPDATE history_prod ${setClause}`, args }),
-          client.execute({ sql: `UPDATE history_demo ${setClause}`, args }),
-        ]);
-        if (!r1.rowsAffected && !r2.rowsAffected) console.warn(`[PUT] id not found: ${id}`);
+        const r1 = await client.execute({ sql: `UPDATE history_prod ${setClause}`, args });
+        if (!r1.rowsAffected) console.warn(`[PUT] id not found: ${id}`);
       }
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
-    return;
-  }
-
-  // DELETE /api/history/demo
-  if (req.method === 'DELETE' && req.url === '/api/history/demo') {
-    await client.execute('DELETE FROM history_demo');
-    res.writeHead(200); res.end();
     return;
   }
 
@@ -568,10 +537,7 @@ const server = http.createServer(async (req, res) => {
   // DELETE /api/history/:id
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
-    await client.batch([
-      { sql: 'DELETE FROM history_prod WHERE id = ?', args: [id] },
-      { sql: 'DELETE FROM history_demo WHERE id = ?', args: [id] },
-    ], 'write');
+    await client.execute({ sql: 'DELETE FROM history_prod WHERE id = ?', args: [id] });
     res.writeHead(200); res.end();
     return;
   }
@@ -918,13 +884,8 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && req.url === '/api/audit/backfill') {
     try {
-      // Fetch all history records from both tables
-      const [prodRows, demoRows] = await Promise.all([
-        client.execute('SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_prod ORDER BY ts ASC'),
-        client.execute('SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_demo ORDER BY ts ASC'),
-      ]);
-      const allRows = [...prodRows.rows, ...demoRows.rows]
-        .sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+      const prodRows = await client.execute('SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_prod ORDER BY ts ASC');
+      const allRows = prodRows.rows.slice();
 
       // Get entity_ids already in audit_log (action='grade') to avoid duplicates
       const existingRes = await client.execute("SELECT entity_id FROM audit_log WHERE action = 'grade'");

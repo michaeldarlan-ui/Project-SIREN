@@ -158,10 +158,7 @@
     drawIndustryBreakdown(history);
 
     // ── Partner Performance ──
-    // Use real records; fall back to including demo records if no real partner data exists
-    const realPartnerHistory = history.filter(h => Array.isArray(h.partner_scores) && h.partner_scores.length);
-    const partnerHistory = realPartnerHistory.length ? history : loadHistory(true);
-    drawPartnerTile(partnerHistory);
+    drawPartnerTile(history);
 
     // ── Apply tile layout (order + spans) ──
     applyPulseLayout();

@@ -35,28 +35,9 @@
     if (page === 'audit')       typeof auditLoad === 'function' && auditLoad();
   }
 
-  // ── Demo mode ──────────────────────────────────────────────
-  function isDemoEnabled() {
-    return localStorage.getItem('oa_demo_enabled') === 'true';
-  }
-  function setDemoEnabled(val) {
-    localStorage.setItem('oa_demo_enabled', val ? 'true' : 'false');
-    _updateDemoIndicator();
-    navTo(currentPage);
-  }
-  function _updateDemoIndicator() {
-    const ind = document.getElementById('demoToggleIndicator');
-    if (!ind) return;
-    const on = isDemoEnabled();
-    ind.textContent = on ? 'ON' : 'OFF';
-    ind.style.background = on ? '#1a3a1a' : '#3a1a1a';
-    ind.style.color = on ? '#4caf50' : '#e05050';
-  }
-
   // ── Settings menu ──────────────────────────────────────────
   function toggleSettingsMenu(e) {
     e.stopPropagation();
-    _updateDemoIndicator();
     document.getElementById('settingsDropdown').classList.toggle('open');
   }
   function closeSettingsMenu() {

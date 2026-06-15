@@ -52,12 +52,6 @@ async function _dbDeleteRecord(id) {
   } catch (e) { console.error('[db] delete failed:', e.message); }
 }
 
-async function _dbClearDemo() {
-  try {
-    await fetch('/api/history/demo', { method: 'DELETE' });
-  } catch (e) { console.error('[db] clear demo failed:', e.message); }
-}
-
 async function _dbClearReal() {
   try {
     await fetch('/api/history/real', { method: 'DELETE' });

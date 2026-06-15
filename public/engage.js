@@ -1940,13 +1940,6 @@ Michael Darlan (8:10): Perfect. Jason, thanks for your time today. We'll get you
 Jason Pruitt (8:16): Sounds good. Talk then.`;
 
   const callNotesEl = document.getElementById('callNotes');
-  if (isDemoEnabled()) {
-    callNotesEl.value = SAMPLE_TRANSCRIPT;
-    callNotesEl.addEventListener('focus', function onFocus() {
-      if (callNotesEl.value === SAMPLE_TRANSCRIPT) callNotesEl.value = '';
-      callNotesEl.removeEventListener('focus', onFocus);
-    });
-  }
 
   // ── Reference documents ────────────────────────────────────
   const DOC_CHAR_LIMIT = 10000;
@@ -2040,11 +2033,10 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // ── End reference documents ────────────────────────────────
 
   // ── History ────────────────────────────────────────────────
-  function loadHistory(raw) {
+  function loadHistory() {
     try {
       const data = _histCache.map(h => ({ ...h }));
       data.forEach(h => { if (typeof h.total === 'number' && h.total > 0) h.letter_grade = scoreToGrade(h.total); });
-      if (!raw && !isDemoEnabled()) return data.filter(h => !h.is_demo);
       return data;
     } catch { return []; }
   }
@@ -2302,7 +2294,6 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         rep_scores: (parsed.rep_scores && parsed.rep_scores.length) ? parsed.rep_scores : undefined,
         partner_scores: (parsed.partner_scores && parsed.partner_scores.length) ? parsed.partner_scores : undefined,
         spiced: parsed.spiced || undefined,
-        is_demo: false,
       };
 
       await fetch('/api/history/bulk', {
@@ -2784,7 +2775,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const display = document.getElementById('hist-rep-display-' + id);
     if (!display) return;
     const team = loadTeam();
-    const hist = loadHistory(true);
+    const hist = loadHistory();
     const rec = hist.find(h => String(h.id) === String(id));
     const current = rec ? rec.rep || '' : '';
 
@@ -3128,8 +3119,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           rep_scores: (parsed.rep_scores && parsed.rep_scores.length) ? parsed.rep_scores : undefined,
           partner_scores: (parsed.partner_scores && parsed.partner_scores.length) ? parsed.partner_scores : undefined,
           spiced: parsed.spiced || undefined,
-          is_demo: false,
-        };
+          };
 
         // Update DB via bulk upsert
         await fetch('/api/history/bulk', {

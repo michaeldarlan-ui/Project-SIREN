@@ -65,15 +65,7 @@
   await _loadUsageFromDB();
   await initAccountProfiles();
 
-  // ── 3. Demo version check — reseed if stale or incomplete ────
-  const demoCount = _histCache.filter(h => h.is_demo).length;
-  if (localStorage.getItem('oa_demo_version') !== DEMO_VERSION || demoCount < 12) {
-    localStorage.removeItem('oa_demo_seeded');
-    await seedDemoData();
-    localStorage.setItem('oa_demo_version', DEMO_VERSION);
-  }
-
-  // ── 4. Boot UI ────────────────────────────────────────────────
+  // ── 3. Boot UI ────────────────────────────────────────────────
   initKeyUI();
   renderMemberList();
   renderLibrary();
@@ -84,6 +76,6 @@
   forgeInit();
   renderScopePage();
 
-  // ── 5. Navigate to pulse ──────────────────────────────────────
+  // ── 4. Navigate to pulse ──────────────────────────────────────
   navTo('pulse');
 })();
