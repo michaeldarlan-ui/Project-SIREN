@@ -80,6 +80,54 @@ await client.batch([
       is_primary INTEGER NOT NULL DEFAULT 0,
       total INTEGER DEFAULT 0,
       letter_grade TEXT,
+      role_max INTEGER DEFAULT 0,
+      grade_label TEXT,
+      top_strength TEXT,
+      top_priority TEXT,
+      normalized_score INTEGER DEFAULT 0,
+      PRIMARY KEY (call_id, name)
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS call_dimensions (
+      call_id TEXT NOT NULL,
+      rep_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      max INTEGER DEFAULT 0,
+      score INTEGER DEFAULT 0,
+      feedback TEXT,
+      PRIMARY KEY (call_id, rep_name, name)
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS call_next_steps (
+      call_id TEXT NOT NULL,
+      idx INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      PRIMARY KEY (call_id, idx)
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS call_spiced (
+      call_id TEXT NOT NULL,
+      aspect TEXT NOT NULL,
+      touched INTEGER NOT NULL DEFAULT 0,
+      summary TEXT,
+      PRIMARY KEY (call_id, aspect)
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS call_rep_summary (
+      call_id TEXT NOT NULL,
+      rep_name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      idx INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      PRIMARY KEY (call_id, rep_name, type, idx)
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS call_partners (
+      call_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      is_primary INTEGER NOT NULL DEFAULT 0,
+      total INTEGER DEFAULT 0,
+      letter_grade TEXT,
+      role_max INTEGER DEFAULT 0,
+      grade_label TEXT,
+      top_strength TEXT,
+      top_priority TEXT,
+      normalized_score INTEGER DEFAULT 0,
       PRIMARY KEY (call_id, name)
     )` },
 ], 'write');
@@ -108,38 +156,93 @@ await client.batch([
     }
   }
 
-  // Backfill call_reps from existing history_prod rep_scores (runs once when table is empty)
+  // Add new columns to call_reps if missing (table already existed before these were added)
   {
-  const callRepsCount = Number((await client.execute('SELECT COUNT(*) as n FROM call_reps')).rows[0].n);
-  if (callRepsCount === 0) {
-    const rows = (await client.execute('SELECT id, rep, rep_scores FROM history_prod')).rows;
-    const inserts = [];
-    for (const row of rows) {
-      const callId = String(row.id);
-      const primaryRep = row.rep ? String(row.rep).trim() : null;
-      let rs = [];
-      try { rs = JSON.parse(String(row.rep_scores || '[]')); } catch {}
-      const seen = new Set();
-      for (const r of rs) {
-        if (!r.name) continue;
-        const name = String(r.name).trim();
-        seen.add(name.toLowerCase());
-        inserts.push({
-          sql: `INSERT OR IGNORE INTO call_reps (call_id, name, is_primary, total, letter_grade) VALUES (?,?,?,?,?)`,
-          args: [callId, name, primaryRep && name.toLowerCase() === primaryRep.toLowerCase() ? 1 : 0,
-                 r.total || 0, r.letter_grade || null],
-        });
-      }
-      if (primaryRep && !seen.has(primaryRep.toLowerCase())) {
-        inserts.push({
-          sql: `INSERT OR IGNORE INTO call_reps (call_id, name, is_primary, total, letter_grade) VALUES (?,?,?,?,?)`,
-          args: [callId, primaryRep, 1, 0, null],
-        });
-      }
-    }
-    if (inserts.length) await client.batch(inserts, 'write');
-    console.log(`[db] Backfilled call_reps with ${inserts.length} rows`);
+    const crCols = (await client.execute('PRAGMA table_info(call_reps)')).rows.map(r => String(r.name));
+    if (!crCols.includes('role_max'))        await client.execute('ALTER TABLE call_reps ADD COLUMN role_max INTEGER DEFAULT 0');
+    if (!crCols.includes('grade_label'))     await client.execute('ALTER TABLE call_reps ADD COLUMN grade_label TEXT');
+    if (!crCols.includes('top_strength'))    await client.execute('ALTER TABLE call_reps ADD COLUMN top_strength TEXT');
+    if (!crCols.includes('top_priority'))    await client.execute('ALTER TABLE call_reps ADD COLUMN top_priority TEXT');
+    if (!crCols.includes('normalized_score')) await client.execute('ALTER TABLE call_reps ADD COLUMN normalized_score INTEGER DEFAULT 0');
   }
+
+  // Backfill all normalized call tables from rep_scores/partner_scores/spiced/next_steps JSON
+  {
+    const [repCount, dimCount, stepsCount, spicedCount] = await Promise.all([
+      client.execute('SELECT COUNT(*) as n FROM call_reps'),
+      client.execute('SELECT COUNT(*) as n FROM call_dimensions'),
+      client.execute('SELECT COUNT(*) as n FROM call_next_steps'),
+      client.execute('SELECT COUNT(*) as n FROM call_spiced'),
+    ]);
+    const needsBackfill = Number(dimCount.rows[0].n) === 0 || Number(repCount.rows[0].n) === 0;
+    if (needsBackfill) {
+      const rows = (await client.execute('SELECT id, rep, rep_scores, partner_scores, spiced, next_steps FROM history_prod')).rows;
+      const stmts = [];
+      for (const row of rows) {
+        const callId = String(row.id);
+        const primaryRep = row.rep ? String(row.rep).trim() : null;
+        let rs = []; try { rs = JSON.parse(String(row.rep_scores || '[]')); } catch {}
+        let ps = []; try { ps = JSON.parse(String(row.partner_scores || '[]')); } catch {}
+        let spiced = null; try { spiced = JSON.parse(String(row.spiced || 'null')); } catch {}
+        let nextSteps = []; try { nextSteps = JSON.parse(String(row.next_steps || '[]')); } catch {}
+
+        // call_reps
+        const seenReps = new Set();
+        for (const r of rs) {
+          if (!r.name) continue;
+          const name = String(r.name).trim();
+          seenReps.add(name.toLowerCase());
+          stmts.push({ sql: `INSERT OR REPLACE INTO call_reps (call_id,name,is_primary,total,letter_grade,role_max,grade_label,top_strength,top_priority,normalized_score) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+            args: [callId, name, primaryRep && name.toLowerCase()===primaryRep.toLowerCase() ? 1 : 0,
+                   r.total||0, r.letter_grade||null, r.role_max||0, r.grade_label||null,
+                   r.top_strength||null, r.top_priority||null, r.normalized_score||0] });
+          // call_dimensions
+          for (const d of (r.dimensions||[])) {
+            stmts.push({ sql: `INSERT OR IGNORE INTO call_dimensions (call_id,rep_name,name,max,score,feedback) VALUES (?,?,?,?,?,?)`,
+              args: [callId, name, d.name||'', d.max||0, d.score||0, d.feedback||null] });
+          }
+          // call_rep_summary
+          const cs = r.call_summary || {};
+          for (const type of ['positives','missed','improvements']) {
+            (cs[type]||[]).forEach((text, idx) => {
+              stmts.push({ sql: `INSERT OR IGNORE INTO call_rep_summary (call_id,rep_name,type,idx,text) VALUES (?,?,?,?,?)`,
+                args: [callId, name, type, idx, text] });
+            });
+          }
+        }
+        if (primaryRep && !seenReps.has(primaryRep.toLowerCase())) {
+          stmts.push({ sql: `INSERT OR IGNORE INTO call_reps (call_id,name,is_primary,total,letter_grade,role_max,grade_label,top_strength,top_priority,normalized_score) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+            args: [callId, primaryRep, 1, 0, null, 0, null, null, null, 0] });
+        }
+
+        // call_partners
+        for (const p of ps) {
+          if (!p.name) continue;
+          stmts.push({ sql: `INSERT OR REPLACE INTO call_partners (call_id,name,is_primary,total,letter_grade,role_max,grade_label,top_strength,top_priority,normalized_score) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+            args: [callId, String(p.name).trim(), 0, p.total||0, p.letter_grade||null, p.role_max||0, p.grade_label||null, p.top_strength||null, p.top_priority||null, p.normalized_score||0] });
+        }
+
+        // call_spiced
+        if (spiced && typeof spiced === 'object') {
+          for (const [aspect, val] of Object.entries(spiced)) {
+            if (val && typeof val === 'object') {
+              stmts.push({ sql: `INSERT OR IGNORE INTO call_spiced (call_id,aspect,touched,summary) VALUES (?,?,?,?)`,
+                args: [callId, aspect, val.touched ? 1 : 0, val.summary||null] });
+            }
+          }
+        }
+
+        // call_next_steps
+        if (Array.isArray(nextSteps)) {
+          nextSteps.forEach((text, idx) => {
+            stmts.push({ sql: `INSERT OR IGNORE INTO call_next_steps (call_id,idx,text) VALUES (?,?,?)`,
+              args: [callId, idx, String(text)] });
+          });
+        }
+      }
+      if (stmts.length) await client.batch(stmts, 'write');
+      console.log(`[db] Backfilled normalized call tables with ${stmts.length} rows`);
+    }
   }
 
   // Migrate old transcripts table (history_id PK) to new standalone schema
@@ -231,35 +334,70 @@ function recordToArgs(r) {
   ];
 }
 
-function callRepRows(r) {
+async function syncNormalizedTables(r) {
   const callId = String(r.id);
   const primaryRep = r.rep ? String(r.rep).trim() : null;
-  const rs = Array.isArray(r.rep_scores) ? r.rep_scores : [];
-  const rows = [];
-  const seen = new Set();
+  const rs  = Array.isArray(r.rep_scores)     ? r.rep_scores     : [];
+  const ps  = Array.isArray(r.partner_scores) ? r.partner_scores : [];
+  const nextSteps = Array.isArray(r.next_steps) ? r.next_steps : [];
+  const spiced    = r.spiced && typeof r.spiced === 'object' ? r.spiced : null;
+
+  const stmts = [
+    { sql: `DELETE FROM call_reps       WHERE call_id = ?`, args: [callId] },
+    { sql: `DELETE FROM call_partners   WHERE call_id = ?`, args: [callId] },
+    { sql: `DELETE FROM call_dimensions WHERE call_id = ?`, args: [callId] },
+    { sql: `DELETE FROM call_rep_summary WHERE call_id = ?`, args: [callId] },
+    { sql: `DELETE FROM call_next_steps WHERE call_id = ?`, args: [callId] },
+    { sql: `DELETE FROM call_spiced     WHERE call_id = ?`, args: [callId] },
+  ];
+
+  const seenReps = new Set();
   for (const entry of rs) {
     if (!entry.name) continue;
     const name = String(entry.name).trim();
-    seen.add(name.toLowerCase());
-    rows.push({ callId, name, isPrimary: primaryRep && name.toLowerCase() === primaryRep.toLowerCase() ? 1 : 0,
-                total: entry.total || 0, letterGrade: entry.letter_grade || null });
+    seenReps.add(name.toLowerCase());
+    stmts.push({ sql: `INSERT INTO call_reps (call_id,name,is_primary,total,letter_grade,role_max,grade_label,top_strength,top_priority,normalized_score) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      args: [callId, name, primaryRep && name.toLowerCase()===primaryRep.toLowerCase() ? 1 : 0,
+             entry.total||0, entry.letter_grade||null, entry.role_max||0,
+             entry.grade_label||null, entry.top_strength||null, entry.top_priority||null, entry.normalized_score||0] });
+    for (const d of (entry.dimensions||[])) {
+      stmts.push({ sql: `INSERT INTO call_dimensions (call_id,rep_name,name,max,score,feedback) VALUES (?,?,?,?,?,?)`,
+        args: [callId, name, d.name||'', d.max||0, d.score||0, d.feedback||null] });
+    }
+    const cs = entry.call_summary || {};
+    for (const type of ['positives','missed','improvements']) {
+      (cs[type]||[]).forEach((text, idx) => {
+        stmts.push({ sql: `INSERT INTO call_rep_summary (call_id,rep_name,type,idx,text) VALUES (?,?,?,?,?)`,
+          args: [callId, name, type, idx, String(text)] });
+      });
+    }
   }
-  if (primaryRep && !seen.has(primaryRep.toLowerCase())) {
-    rows.push({ callId, name: primaryRep, isPrimary: 1, total: 0, letterGrade: null });
+  if (primaryRep && !seenReps.has(primaryRep.toLowerCase())) {
+    stmts.push({ sql: `INSERT INTO call_reps (call_id,name,is_primary,total,letter_grade,role_max,grade_label,top_strength,top_priority,normalized_score) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      args: [callId, primaryRep, 1, 0, null, 0, null, null, null, 0] });
   }
-  return rows;
-}
 
-async function syncCallReps(r) {
-  const rows = callRepRows(r);
-  const callId = String(r.id);
-  const stmts = [{ sql: `DELETE FROM call_reps WHERE call_id = ?`, args: [callId] }];
-  for (const row of rows) {
-    stmts.push({
-      sql: `INSERT INTO call_reps (call_id, name, is_primary, total, letter_grade) VALUES (?,?,?,?,?)`,
-      args: [row.callId, row.name, row.isPrimary, row.total, row.letterGrade],
-    });
+  for (const p of ps) {
+    if (!p.name) continue;
+    stmts.push({ sql: `INSERT INTO call_partners (call_id,name,is_primary,total,letter_grade,role_max,grade_label,top_strength,top_priority,normalized_score) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      args: [callId, String(p.name).trim(), 0, p.total||0, p.letter_grade||null, p.role_max||0,
+             p.grade_label||null, p.top_strength||null, p.top_priority||null, p.normalized_score||0] });
   }
+
+  if (spiced) {
+    for (const [aspect, val] of Object.entries(spiced)) {
+      if (val && typeof val === 'object') {
+        stmts.push({ sql: `INSERT INTO call_spiced (call_id,aspect,touched,summary) VALUES (?,?,?,?)`,
+          args: [callId, aspect, val.touched ? 1 : 0, val.summary||null] });
+      }
+    }
+  }
+
+  nextSteps.forEach((text, idx) => {
+    stmts.push({ sql: `INSERT INTO call_next_steps (call_id,idx,text) VALUES (?,?,?)`,
+      args: [callId, idx, String(text)] });
+  });
+
   await client.batch(stmts, 'write');
 }
 
@@ -268,7 +406,7 @@ async function upsertOne(r) {
     sql:  `INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   });
-  await syncCallReps(r);
+  await syncNormalizedTables(r);
 }
 
 async function bulkUpsert(records) {
@@ -277,7 +415,7 @@ async function bulkUpsert(records) {
     sql:  `INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   })), 'write');
-  for (const r of records) await syncCallReps(r);
+  for (const r of records) await syncNormalizedTables(r);
 }
 
 // ── API call metering ─────────────────────────────────────────
@@ -455,6 +593,16 @@ async function getClaudeUsage() {
 }
 
 // ── Utilities ─────────────────────────────────────────────────
+function _groupBy(rows, key) {
+  const out = {};
+  for (const row of rows) {
+    const k = String(row[key]);
+    if (!out[k]) out[k] = [];
+    out[k].push(row);
+  }
+  return out;
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let b = '';
@@ -529,8 +677,81 @@ const server = http.createServer(async (req, res) => {
   // GET /api/history
   if (req.method === 'GET' && req.url.startsWith('/api/history') &&
       !req.url.startsWith('/api/history/')) {
-    const all = (await client.execute('SELECT * FROM history_prod ORDER BY ts DESC')).rows
-                  .map(r => dbRowToRecord(r));
+    const [histRows, repRows, dimRows, summaryRows, stepRows, spicedRows, partnerRows] = await Promise.all([
+      client.execute('SELECT * FROM history_prod ORDER BY ts DESC'),
+      client.execute('SELECT * FROM call_reps'),
+      client.execute('SELECT * FROM call_dimensions'),
+      client.execute('SELECT * FROM call_rep_summary ORDER BY idx'),
+      client.execute('SELECT * FROM call_next_steps ORDER BY idx'),
+      client.execute('SELECT * FROM call_spiced'),
+      client.execute('SELECT * FROM call_partners'),
+    ]);
+
+    // Index normalized rows by call_id
+    const repsByCall     = _groupBy(repRows.rows,     'call_id');
+    const dimsByCall     = _groupBy(dimRows.rows,     'call_id');
+    const summaryByCall  = _groupBy(summaryRows.rows, 'call_id');
+    const stepsByCall    = _groupBy(stepRows.rows,    'call_id');
+    const spicedByCall   = _groupBy(spicedRows.rows,  'call_id');
+    const partnersByCall = _groupBy(partnerRows.rows,  'call_id');
+
+    const all = histRows.rows.map(row => {
+      const base = dbRowToRecord(row);
+      const callId = base.id;
+
+      // Reassemble rep_scores from normalized tables
+      const reps = repsByCall[callId] || [];
+      const dims = dimsByCall[callId] || [];
+      const summaries = summaryByCall[callId] || [];
+
+      base.rep_scores = reps.map(rep => {
+        const repDims = dims.filter(d => String(d.rep_name) === String(rep.name));
+        const repSums = summaries.filter(s => String(s.rep_name) === String(rep.name));
+        const cs = {};
+        for (const type of ['positives','missed','improvements']) {
+          const items = repSums.filter(s => String(s.type) === type).map(s => String(s.text));
+          if (items.length) cs[type] = items;
+        }
+        return {
+          name:          String(rep.name),
+          is_primary:    Number(rep.is_primary) === 1,
+          total:         Number(rep.total) || 0,
+          letter_grade:  rep.letter_grade ? String(rep.letter_grade) : null,
+          role_max:      Number(rep.role_max) || 0,
+          grade_label:   rep.grade_label ? String(rep.grade_label) : null,
+          top_strength:  rep.top_strength ? String(rep.top_strength) : null,
+          top_priority:  rep.top_priority ? String(rep.top_priority) : null,
+          normalized_score: Number(rep.normalized_score) || 0,
+          dimensions:    repDims.map(d => ({ name: String(d.name), max: Number(d.max)||0, score: Number(d.score)||0, feedback: d.feedback ? String(d.feedback) : null })),
+          ...(Object.keys(cs).length ? { call_summary: cs } : {}),
+        };
+      });
+
+      // Reassemble partner_scores
+      const partners = partnersByCall[callId] || [];
+      base.partner_scores = partners.length ? partners.map(p => ({
+        name: String(p.name), total: Number(p.total)||0, letter_grade: p.letter_grade ? String(p.letter_grade) : null,
+        role_max: Number(p.role_max)||0, grade_label: p.grade_label ? String(p.grade_label) : null,
+        top_strength: p.top_strength ? String(p.top_strength) : null, top_priority: p.top_priority ? String(p.top_priority) : null,
+        normalized_score: Number(p.normalized_score)||0,
+      })) : undefined;
+
+      // Reassemble next_steps
+      const steps = (stepsByCall[callId] || []).map(s => String(s.text));
+      if (steps.length) base.next_steps = steps;
+
+      // Reassemble spiced
+      const spicedRows2 = spicedByCall[callId] || [];
+      if (spicedRows2.length) {
+        base.spiced = {};
+        for (const s of spicedRows2) {
+          base.spiced[String(s.aspect)] = { touched: Number(s.touched) === 1, summary: s.summary ? String(s.summary) : null };
+        }
+      }
+
+      return base;
+    });
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(all));
     return;
