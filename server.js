@@ -108,8 +108,10 @@ await client.batch([
     }
   }
 
-  // Backfill call_reps from existing history_prod rep_scores
-  if (!tables.includes('call_reps')) {
+  // Backfill call_reps from existing history_prod rep_scores (runs once when table is empty)
+  {
+  const callRepsCount = Number((await client.execute('SELECT COUNT(*) as n FROM call_reps')).rows[0].n);
+  if (callRepsCount === 0) {
     const rows = (await client.execute('SELECT id, rep, rep_scores FROM history_prod')).rows;
     const inserts = [];
     for (const row of rows) {
@@ -137,6 +139,7 @@ await client.batch([
     }
     if (inserts.length) await client.batch(inserts, 'write');
     console.log(`[db] Backfilled call_reps with ${inserts.length} rows`);
+  }
   }
 
   // Migrate old transcripts table (history_id PK) to new standalone schema
