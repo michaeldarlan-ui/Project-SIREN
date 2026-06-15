@@ -477,6 +477,29 @@
         </div>` : ''}
       </div>`;
 
+      // ── Stored Reports ──
+      const storedReports = Array.isArray(prof.reports) ? prof.reports : [];
+      if (storedReports.length) {
+        html += `<div class="lc-profile-divider"></div>
+        <div class="lc-sb-section">
+          <div class="lc-sb-section-label" style="margin-bottom:10px;">Stored Reports</div>
+          ${storedReports.map((r, i) => {
+            const dt = r.savedAt ? new Date(r.savedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            const rSafe = JSON.stringify(r.content || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+              <div style="min-width:0;">
+                <div style="font-size:12px;color:rgba(255,255,255,.8);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(r.title || 'Report')}</div>
+                <div style="font-size:11px;color:var(--siren-text-faint);">${escHtml(dt)}${r.callStage ? ' · ' + escHtml(r.callStage) : ''}</div>
+              </div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button class="pdf-btn pdf-btn-sm" onclick="atlasViewReport('${cSafe}',${i})" style="padding:3px 8px;font-size:11px;">View</button>
+                <button class="hist-delete-btn" onclick="atlasDeleteReport('${cSafe}',${i})" style="padding:3px 8px;font-size:11px;">&#10005;</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
       // ── Next Meeting Prep ──
       html += `<div class="lc-profile-divider"></div>
       <div class="lc-sb-section lc-meeting-prep-section">
@@ -781,6 +804,37 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   window.atlasGenerateDealReport = atlasGenerateDealReport;
 
   // ── Next Meeting Prep ─────────────────────────────────────────────────────────
+  window.atlasViewReport = function(company, idx) {
+    const prof = loadAccountProfile(company);
+    const r = (prof.reports || [])[idx];
+    if (!r) return;
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const dt = r.savedAt ? new Date(r.savedAt).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+    const meta = [company, r.callStage, dt].filter(Boolean).join(' · ');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(r.title || 'Report')}</title><style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:#0d0f14;color:#d4d8e2;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:13px;line-height:1.7;padding:2rem}
+      h1{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:.5rem}
+      .meta{font-size:12px;color:#7a8499;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,.08)}
+      pre{white-space:pre-wrap;word-break:break-word;color:#c9d1e0}
+    </style></head><body>
+    <h1>${esc(r.title || 'Report')}</h1>
+    <div class="meta">${esc(meta)}</div>
+    <pre>${esc(r.content || '')}</pre>
+    </body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    window.open(URL.createObjectURL(blob), '_blank');
+  };
+
+  window.atlasDeleteReport = function(company, idx) {
+    if (!confirm('Delete this stored report?')) return;
+    const prof = loadAccountProfile(company);
+    if (!Array.isArray(prof.reports)) return;
+    prof.reports.splice(idx, 1);
+    saveAccountProfile(company, prof);
+    lcSelectNode('account');
+  };
+
   window.atlasGenerateMeetingPrep = async function(company) {
     const outEl = document.getElementById('atlasMeetingPrepOut');
     if (!outEl) return;

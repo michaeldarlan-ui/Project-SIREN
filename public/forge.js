@@ -568,6 +568,26 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     return out;
   }
 
+  function _forgeIsReportable(name) {
+    const n = (name || '').toLowerCase();
+    return n.includes('success') || n.includes('mortem');
+  }
+
+  function _forgeSaveReportToProfile(content, title) {
+    const company = (_forgeCall && _forgeCall.prospect) ? _forgeCall.prospect.trim() : '';
+    if (!company || !content) return;
+    const prof = loadAccountProfile(company);
+    if (!Array.isArray(prof.reports)) prof.reports = [];
+    prof.reports.unshift({
+      title: title || 'Report',
+      content,
+      savedAt: new Date().toISOString(),
+      callDate: _forgeCall.callDate || '',
+      callStage: _forgeCall.stage || '',
+    });
+    saveAccountProfile(company, prof);
+  }
+
   function forgeGenerate() {
     if (!_forgeCall) return;
     const mode = forgeGetMode();
@@ -581,6 +601,14 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
     const genEl = document.getElementById('fr-generated');
     genEl.textContent = text;
     document.getElementById('fr-generated-section').style.display = '';
+
+    // Auto-save success reports and post-mortems to the prospect's account profile
+    const tmplLabel = _forgeCustomTemplate
+      ? (_forgeCustomTemplate.name || _forgeCustomTemplate.reportType || '')
+      : '';
+    if (_forgeIsReportable(tmplLabel)) {
+      _forgeSaveReportToProfile(text, _forgeCustomTemplate.name || tmplLabel);
+    }
 
     // Show template file attachments if any
     const filesEl = document.getElementById('fr-template-files');
@@ -726,6 +754,14 @@ INSTRUCTIONS:
 
       btn.disabled = false;
       btn.textContent = 'Re-draft';
+
+      // Auto-save success reports and post-mortems to the prospect's account profile
+      const emailLabel = _forgeCustomTemplate
+        ? (_forgeCustomTemplate.name || _forgeCustomTemplate.reportType || 'follow-up')
+        : 'follow-up';
+      if (_forgeIsReportable(emailLabel) && accumulated) {
+        _forgeSaveReportToProfile(accumulated, _forgeCustomTemplate?.name || emailLabel);
+      }
     } catch (err) {
       spinner.style.display = 'none';
       bodyEl.textContent = 'Error: ' + (err.message || String(err));
@@ -843,6 +879,14 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
 
       btn.disabled = false;
       btn.textContent = 'Regenerate';
+
+      // Auto-save success reports and post-mortems to the prospect's account profile
+      const aiLabel = _forgeCustomTemplate
+        ? (_forgeCustomTemplate.name || _forgeCustomTemplate.reportType || mode)
+        : mode;
+      if (_forgeIsReportable(aiLabel) && accumulated) {
+        _forgeSaveReportToProfile(accumulated, _forgeCustomTemplate?.name || aiLabel);
+      }
     } catch (err) {
       spinner.style.display = 'none';
       bodyEl.textContent = 'Error: ' + (err.message || String(err));
