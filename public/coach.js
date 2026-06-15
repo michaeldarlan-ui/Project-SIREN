@@ -29,6 +29,9 @@
   let _arenaMessages = []; // {role, content}
   let _arenaFeedbackMd = '';
   let _arenaRunning = false;
+  let _arenaMode = 'free'; // 'free' | 'mc'
+  let _arenaChoices = []; // MC mode: [{prospectMsg, options, chosenIdx, prospectReply, branches}]
+  let _arenaMcBusy = false;
 
   // ── Radar helper (reusable) ──────────────────────────────────────────────────
   function _coachStartRadar(canvasId) {
@@ -1094,6 +1097,16 @@ Write in second person ("you"), be direct and specific, and base all feedback on
     return { allowed: ['objection','closing','discovery','cold','proposal','followup'], note: '' };
   }
 
+  window.arenaSetMode = function(mode, btn) {
+    _arenaMode = mode;
+    document.querySelectorAll('.arena-mode-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const desc = document.getElementById('arenaModeDesc');
+    if (desc) desc.textContent = mode === 'mc'
+      ? 'Pick from three response options — see how each choice branches the conversation.'
+      : 'Type your own responses freely — most realistic practice.';
+  };
+
   function _arenaApplyRoleFilter() {
     const team = loadTeam();
     const member = _coachCurrentRep ? team.find(m => m.name === _coachCurrentRep) : null;
@@ -1221,15 +1234,21 @@ Write in second person ("you"), be direct and specific, and base all feedback on
 
     _arenaMessages = [];
     _arenaFeedbackMd = '';
+    _arenaChoices = [];
+    _arenaMcBusy = false;
     _arenaRunning = true;
 
     // Switch views
     document.getElementById('arenaConfig').style.display = 'none';
-    document.getElementById('arenaSession').style.display = '';
+    const sessionEl = document.getElementById('arenaSession');
+    sessionEl.style.display = '';
+    sessionEl.classList.toggle('arena-session--mc', _arenaMode === 'mc');
     document.getElementById('arenaFeedback').style.display = 'none';
+    document.getElementById('arenaMcOptions').style.display = 'none';
+    document.getElementById('arenaMcOptions').innerHTML = '';
 
     document.getElementById('arenaSessionLabel').textContent = `${scenarioLabel} · ${personaLabel}`;
-    document.getElementById('arenaSessionSub').textContent = `${industryLabel} · ${diffLabel} prospect`;
+    document.getElementById('arenaSessionSub').textContent = `${industryLabel} · ${diffLabel} prospect · ${_arenaMode === 'mc' ? 'Pick Best Option' : 'Free Response'}`;
 
     const chat = document.getElementById('arenaChat');
     chat.innerHTML = '';
@@ -1247,11 +1266,14 @@ Write in second person ("you"), be direct and specific, and base all feedback on
       _arenaMessages.push({ role: 'assistant', content: opening });
       document.getElementById('opening').querySelector('.arena-bubble-text').textContent = opening;
       document.getElementById('opening').removeAttribute('id');
+      if (_arenaMode === 'mc') {
+        await _arenaMcGenerateOptions(opening);
+      } else {
+        document.getElementById('arenaInput').focus();
+      }
     } catch(e) {
       document.getElementById('opening').querySelector('.arena-bubble-text').textContent = 'Unable to start session. Check your API key.';
     }
-
-    document.getElementById('arenaInput').focus();
   };
 
   function _arenaAddBubble(role, text, id) {
@@ -1318,6 +1340,197 @@ Write in second person ("you"), be direct and specific, and base all feedback on
     document.getElementById('arenaChat').scrollTop = document.getElementById('arenaChat').scrollHeight;
   };
 
+  // ── MC mode helpers ───────────────────────────────────────────────────────────
+
+  async function _arenaMcGenerateOptions(prospectMsg) {
+    if (_arenaMcBusy) return;
+    _arenaMcBusy = true;
+    const wrap = document.getElementById('arenaMcOptions');
+    wrap.innerHTML = '<div class="arena-mc-loading"><span class="load-blink">●</span> Generating options…</div>';
+    wrap.style.display = '';
+
+    const history = _arenaMessages.filter(m => !m.content.startsWith('[SYSTEM:')).map(m =>
+      `${m.role === 'user' ? (_coachCurrentRep || 'Rep') : 'Prospect'}: ${m.content}`
+    ).join('\n');
+
+    const prompt = `You are helping train a sales rep in a role-play. Based on the conversation so far, generate exactly 3 response options the rep could say next.
+- Option A: strong, effective response using good technique
+- Option B: decent but imperfect — misses something or is too vague
+- Option C: weak or counterproductive — a common mistake reps make
+
+Conversation so far:
+${history}
+
+Return ONLY a JSON array, no other text:
+[{"quality":"strong","label":"A","text":"..."},{"quality":"decent","label":"B","text":"..."},{"quality":"weak","label":"C","text":"..."}]
+
+Each option must be under 50 words. Make them meaningfully different in approach. No meta-commentary.`;
+
+    try {
+      const raw = await _coachAsk(prompt, 'coach_arena');
+      const match = raw.match(/\[[\s\S]*?\]/);
+      const options = match ? JSON.parse(match[0]) : null;
+      if (!options || !options.length) throw new Error('parse failed');
+      _arenaChoices.push({ prospectMsg, options, chosenIdx: null, prospectReply: null, branches: null });
+      _arenaMcRenderOptions(options);
+    } catch(e) {
+      wrap.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px;">Could not generate options — try ending and starting a new session.</div>';
+    }
+    _arenaMcBusy = false;
+  }
+
+  function _arenaMcRenderOptions(options) {
+    const qualClass  = { strong: 'arena-mc-opt--strong', decent: 'arena-mc-opt--decent', weak: 'arena-mc-opt--weak' };
+    const qualLabel  = { strong: 'Strong',               decent: 'Decent',               weak: 'Risky'              };
+    const wrap = document.getElementById('arenaMcOptions');
+    wrap.innerHTML = `
+      <div class="arena-mc-label">Choose your response:</div>
+      <div class="arena-mc-opts">
+        ${options.map((o, i) => `
+          <button class="arena-mc-opt ${qualClass[o.quality] || ''}" onclick="arenaMcChoose(${i})">
+            <span class="arena-mc-opt-letter">${o.label || String.fromCharCode(65 + i)}</span>
+            <span class="arena-mc-opt-text">${escHtml(o.text)}</span>
+            <span class="arena-mc-opt-badge">${qualLabel[o.quality] || o.quality}</span>
+          </button>`).join('')}
+      </div>`;
+    wrap.style.display = '';
+    document.getElementById('arenaChat').scrollTop = document.getElementById('arenaChat').scrollHeight;
+  }
+
+  window.arenaMcChoose = async function(idx) {
+    if (!_arenaRunning || _arenaMcBusy) return;
+    const turn = _arenaChoices[_arenaChoices.length - 1];
+    if (!turn || turn.chosenIdx !== null) return;
+    turn.chosenIdx = idx;
+    const chosenText = turn.options[idx].text;
+
+    // Mark chosen option visually then hide
+    const wrap = document.getElementById('arenaMcOptions');
+    wrap.querySelectorAll('.arena-mc-opt').forEach((b, i) => {
+      b.disabled = true;
+      b.classList.toggle('arena-mc-opt--chosen', i === idx);
+      b.classList.toggle('arena-mc-opt--unchosen', i !== idx);
+    });
+    setTimeout(() => { wrap.style.display = 'none'; wrap.innerHTML = ''; }, 600);
+
+    _arenaAddBubble('rep', chosenText);
+    _arenaMessages.push({ role: 'user', content: chosenText });
+
+    const thinkingBubble = _arenaAddBubble('prospect', '…');
+
+    try {
+      const msgs = _arenaMessages.filter((m, i) => i !== 0);
+      const systemPrompt = (_arenaMessages[0]?.content || '').replace('[SYSTEM: ', '').replace(']', '');
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'COACH',
+          model: getDevModel('coach_arena', 'claude-sonnet-4-6'),
+          max_tokens: 300,
+          temperature: 0.7,
+          stream: false,
+          system: systemPrompt,
+          messages: msgs,
+        }),
+      });
+      if (!resp.ok) throw new Error('API error ' + resp.status);
+      const data = await resp.json();
+      const reply = (data.content?.[0]?.text || '').trim();
+      _arenaMessages.push({ role: 'assistant', content: reply });
+      thinkingBubble.querySelector('.arena-bubble-text').textContent = reply;
+      turn.prospectReply = reply;
+
+      await _arenaMcGenerateOptions(reply);
+    } catch(e) {
+      thinkingBubble.querySelector('.arena-bubble-text').textContent = '[Error: ' + e.message + ']';
+    }
+    document.getElementById('arenaChat').scrollTop = document.getElementById('arenaChat').scrollHeight;
+  };
+
+  async function _arenaGenerateBranchGraph() {
+    const graphEl = document.getElementById('arenaBranchGraph');
+    if (!_arenaChoices.length || !graphEl) return;
+
+    graphEl.innerHTML = '<div class="arena-branch-loading"><span class="load-blink">●</span> Building decision tree…</div>';
+    graphEl.style.display = '';
+
+    const turnsText = _arenaChoices.map((t, i) => {
+      const opts = t.options.map((o, oi) => `  Option ${o.label || String.fromCharCode(65 + oi)} (${o.quality}): "${o.text}"`).join('\n');
+      const chosenLetter = t.options[t.chosenIdx]?.label || String.fromCharCode(65 + (t.chosenIdx || 0));
+      return `Turn ${i + 1}:\nProspect said: "${t.prospectMsg}"\n${opts}\nChosen: Option ${chosenLetter}\nActual prospect reply: "${t.prospectReply || 'session ended'}"`;
+    }).join('\n\n');
+
+    const prompt = `You analyzed a sales role-play with multiple-choice options. For each turn, describe in one short sentence (max 15 words) how the prospect would have reacted to EACH option.
+
+${turnsText}
+
+Return ONLY a JSON array:
+[{"turn":1,"branches":["reaction to A","reaction to B","reaction to C"]},...]
+
+For the chosen option, use the actual outcome from the transcript. For unchosen options, predict realistically. Be specific and blunt about whether it helped or hurt.`;
+
+    try {
+      const raw = await _coachAsk(prompt, 'coach_arena');
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (match) {
+        const data = JSON.parse(match[0]);
+        data.forEach(b => {
+          const t = _arenaChoices[b.turn - 1];
+          if (t) t.branches = b.branches;
+        });
+      }
+    } catch(e) { /* render without branches */ }
+
+    _arenaRenderBranchGraph(graphEl);
+  }
+
+  function _arenaRenderBranchGraph(container) {
+    const qColor = { strong: '#4caf50', decent: '#f59e0b', weak: '#ef4444' };
+    const qLabel = { strong: 'Strong', decent: 'Decent', weak: 'Risky' };
+
+    let html = '<div class="bgraph-wrap">';
+    html += '<div class="bgraph-title">Decision Tree — How Each Choice Shaped the Conversation</div>';
+
+    _arenaChoices.forEach((turn, ti) => {
+      html += `<div class="bgraph-turn">`;
+
+      // Prospect node
+      const msg = (turn.prospectMsg || '').slice(0, 140) + ((turn.prospectMsg || '').length > 140 ? '…' : '');
+      html += `<div class="bgraph-prospect"><span class="bgraph-node-lbl">Prospect</span><span class="bgraph-node-txt">${escHtml(msg)}</span></div>`;
+
+      // Connector down
+      html += `<div class="bgraph-connector"></div>`;
+
+      // Options row
+      html += `<div class="bgraph-opts">`;
+      turn.options.forEach((opt, oi) => {
+        const isChosen = oi === turn.chosenIdx;
+        const branch = turn.branches ? turn.branches[oi] : null;
+        const color = qColor[opt.quality] || '#888';
+        const letter = opt.label || String.fromCharCode(65 + oi);
+        html += `<div class="bgraph-opt ${isChosen ? 'bgraph-opt--chosen' : 'bgraph-opt--alt'}" style="--q:${color}">`;
+        html += `<div class="bgraph-opt-hdr"><span class="bgraph-opt-letter">${letter}</span><span class="bgraph-opt-qlabel" style="color:${color}">${qLabel[opt.quality] || opt.quality}</span>${isChosen ? '<span class="bgraph-opt-chosen-tag">chosen</span>' : ''}</div>`;
+        html += `<div class="bgraph-opt-text">${escHtml(opt.text)}</div>`;
+        if (branch) {
+          html += `<div class="bgraph-opt-outcome ${isChosen ? 'bgraph-opt-outcome--chosen' : ''}">${isChosen ? '→' : '⤷'} ${escHtml(branch)}</div>`;
+        }
+        html += `</div>`;
+      });
+      html += `</div>`;
+
+      // Connector to next turn (only if not last)
+      if (ti < _arenaChoices.length - 1) {
+        html += `<div class="bgraph-chosen-path"></div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
   window.arenaEnd = async function() {
     _arenaRunning = false;
     document.getElementById('arenaSession').style.display = 'none';
@@ -1350,6 +1563,9 @@ Write a debrief with these sections:
 
 Be specific — quote directly from the transcript. Address ${_coachCurrentRep||'the rep'} directly.`;
 
+    const branchGraphEl = document.getElementById('arenaBranchGraph');
+    if (branchGraphEl) branchGraphEl.style.display = 'none';
+
     try {
       const md = await _coachRunSteps('afb', 4, () => _coachAsk(prompt, 'coach_feedback'));
       _coachStopRadar();
@@ -1363,15 +1579,27 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
       document.getElementById('arenaFeedbackBody').style.display = '';
       document.getElementById('arenaFeedbackBody').innerHTML = `<div style="color:#ef4444;font-size:13px;">Error: ${escHtml(e.message)}</div>`;
     }
+
+    // MC mode: generate the branch graph after debrief
+    if (_arenaMode === 'mc' && _arenaChoices.length) {
+      await _arenaGenerateBranchGraph();
+    }
   };
 
   window.arenaReset = function() {
     _arenaMessages = [];
     _arenaFeedbackMd = '';
+    _arenaChoices = [];
+    _arenaMcBusy = false;
     _arenaRunning = false;
     document.getElementById('arenaConfig').style.display = '';
     document.getElementById('arenaSession').style.display = 'none';
+    document.getElementById('arenaSession').classList.remove('arena-session--mc');
     document.getElementById('arenaFeedback').style.display = 'none';
+    const bgraph = document.getElementById('arenaBranchGraph');
+    if (bgraph) { bgraph.style.display = 'none'; bgraph.innerHTML = ''; }
+    const mcOpts = document.getElementById('arenaMcOptions');
+    if (mcOpts) { mcOpts.style.display = 'none'; mcOpts.innerHTML = ''; }
   };
 
   window.arenaDownloadFeedback = function() {

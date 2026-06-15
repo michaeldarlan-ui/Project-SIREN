@@ -1618,6 +1618,17 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           Configure Training Scenario
           <span class="dev-model-wrap" data-key="coach_arena" data-default="claude-sonnet-4-6"></span>
         </div>
+
+        <!-- Training mode toggle -->
+        <div style="margin-bottom:20px;">
+          <div class="arena-config-label">Training Mode</div>
+          <div class="arena-mode-btns" style="margin-top:8px;">
+            <button class="arena-mode-btn active" data-mode="free" onclick="arenaSetMode('free',this)">Free Response</button>
+            <button class="arena-mode-btn" data-mode="mc" onclick="arenaSetMode('mc',this)">Pick Best Option</button>
+          </div>
+          <div id="arenaModeDesc" style="font-size:11px;color:var(--siren-text-faint);margin-top:6px;">Type your own responses freely — most realistic practice.</div>
+        </div>
+
         <div class="arena-config-grid">
 
           <div class="arena-config-block">
@@ -1688,11 +1699,14 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 
         <div class="arena-chat" id="arenaChat"></div>
 
+        <!-- MC mode: option picker (hidden in free mode) -->
+        <div id="arenaMcOptions" class="arena-mc-wrap" style="display:none;"></div>
+
         <div class="arena-input-row">
           <textarea id="arenaInput" class="arena-input" placeholder="Type your response as the sales rep…" rows="3" onkeydown="arenaInputKeydown(event)"></textarea>
           <button class="arena-send-btn" onclick="arenaSend()" id="arenaSendBtn">Send</button>
         </div>
-        <div style="font-size:11px;color:var(--siren-text-faint);margin-top:6px;text-align:right;">Shift+Enter for new line &nbsp;·&nbsp; Enter to send</div>
+        <div class="arena-input-hint" style="font-size:11px;color:var(--siren-text-faint);margin-top:6px;text-align:right;">Shift+Enter for new line &nbsp;·&nbsp; Enter to send</div>
       </div>
 
       <!-- Feedback panel (shown after session ends) -->
@@ -1732,6 +1746,9 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
           </div>
         </div>
         <div id="arenaFeedbackBody" class="coach-report-body" style="display:none;"></div>
+
+        <!-- MC mode branch graph (shown after MC session) -->
+        <div id="arenaBranchGraph" style="display:none;"></div>
       </div>
 
     </div><!-- /cmod-arena -->

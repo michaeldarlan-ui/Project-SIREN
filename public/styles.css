@@ -1094,6 +1094,135 @@
   .arena-send-btn:hover { background: rgba(0,200,255,.28); }
   .arena-send-btn:disabled { opacity: .4; cursor: not-allowed; }
 
+  /* ── Arena mode toggle ──────────────────────────────────────────────────── */
+  .arena-mode-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .arena-mode-btn {
+    padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    border: 1px solid var(--siren-border-mid); background: transparent;
+    color: var(--siren-text-faint); cursor: pointer; transition: all .15s; letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .arena-mode-btn:hover { color: var(--siren-cyan); border-color: var(--siren-cyan); }
+  .arena-mode-btn.active {
+    background: rgba(0,200,255,.12); border-color: var(--siren-cyan); color: var(--siren-cyan);
+  }
+
+  /* In MC mode, hide the free-text input row */
+  .arena-session--mc .arena-input-row,
+  .arena-session--mc .arena-input-hint { display: none !important; }
+
+  /* ── Arena MC option picker ──────────────────────────────────────────────── */
+  .arena-mc-wrap {
+    padding: 14px 0 4px;
+    border-top: 1px solid var(--siren-border);
+    margin-top: 4px;
+  }
+  .arena-mc-loading {
+    color: var(--siren-text-faint); font-size: 12px; padding: 8px 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .arena-mc-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--siren-text-faint); margin-bottom: 10px;
+  }
+  .arena-mc-opts { display: flex; flex-direction: column; gap: 8px; }
+  .arena-mc-opt {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border-mid);
+    border-radius: 10px; padding: 12px 14px; cursor: pointer;
+    text-align: left; transition: all .15s; width: 100%;
+  }
+  .arena-mc-opt:hover:not(:disabled) {
+    border-color: var(--siren-cyan); background: rgba(0,200,255,.07);
+  }
+  .arena-mc-opt-letter {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: var(--siren-text-primary);
+  }
+  .arena-mc-opt-text {
+    flex: 1; font-size: 13px; color: var(--siren-text-primary); line-height: 1.5;
+  }
+  .arena-mc-opt-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 3px 8px; border-radius: 4px; white-space: nowrap; align-self: flex-start;
+    background: rgba(255,255,255,.05); color: var(--siren-text-faint);
+  }
+  .arena-mc-opt--strong .arena-mc-opt-badge { background: rgba(76,175,80,.15); color: #4caf50; }
+  .arena-mc-opt--decent .arena-mc-opt-badge { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .arena-mc-opt--weak   .arena-mc-opt-badge { background: rgba(239,68,68,.15);  color: #ef4444; }
+  .arena-mc-opt--chosen {
+    border-color: var(--siren-cyan) !important; background: rgba(0,200,255,.1) !important;
+    opacity: 1 !important;
+  }
+  .arena-mc-opt--unchosen { opacity: .35; }
+  .arena-mc-opt:disabled { cursor: default; }
+
+  /* ── Arena branch / decision graph ────────────────────────────────────────── */
+  .bgraph-wrap { padding: 24px 0 8px; }
+  .bgraph-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--siren-text-faint); margin-bottom: 24px;
+    border-bottom: 1px solid var(--siren-border); padding-bottom: 10px;
+  }
+  .bgraph-turn { display: flex; flex-direction: column; align-items: center; }
+  .bgraph-prospect {
+    display: flex; flex-direction: column; gap: 4px;
+    background: var(--siren-bg-card); border: 1px solid var(--siren-border-mid);
+    border-radius: 10px; padding: 12px 16px; width: 100%; max-width: 640px;
+  }
+  .bgraph-node-lbl {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--siren-text-faint);
+  }
+  .bgraph-node-txt { font-size: 13px; color: var(--siren-text-primary); line-height: 1.5; }
+  .bgraph-connector {
+    width: 2px; height: 20px; background: var(--siren-border-mid); flex-shrink: 0;
+  }
+  .bgraph-chosen-path {
+    width: 2px; height: 24px; background: var(--siren-cyan); opacity: .5; flex-shrink: 0;
+    margin: 4px 0;
+  }
+  .bgraph-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; }
+  .bgraph-opt {
+    border-radius: 10px; border: 1px solid var(--siren-border);
+    padding: 12px; display: flex; flex-direction: column; gap: 6px;
+    background: var(--siren-bg-card);
+  }
+  .bgraph-opt--chosen {
+    border-color: var(--q, #00c8ff); box-shadow: 0 0 0 1px var(--q, #00c8ff) inset;
+    background: rgba(0,200,255,.05);
+  }
+  .bgraph-opt--alt { opacity: .65; }
+  .bgraph-opt-hdr { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .bgraph-opt-letter {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: var(--siren-text-primary); flex-shrink: 0;
+  }
+  .bgraph-opt-qlabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .bgraph-opt-chosen-tag {
+    margin-left: auto; font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; padding: 2px 7px; border-radius: 3px;
+    background: rgba(0,200,255,.15); color: var(--siren-cyan);
+  }
+  .bgraph-opt-text { font-size: 12px; color: var(--siren-text-secondary); line-height: 1.5; }
+  .bgraph-opt-outcome {
+    font-size: 11px; color: var(--siren-text-faint); line-height: 1.4;
+    border-top: 1px solid var(--siren-border); padding-top: 6px; margin-top: 2px;
+    font-style: italic;
+  }
+  .bgraph-opt-outcome--chosen { color: var(--siren-text-secondary); font-style: normal; }
+  .arena-branch-loading {
+    color: var(--siren-text-faint); font-size: 12px; padding: 16px 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  @media (max-width: 700px) {
+    .bgraph-opts { grid-template-columns: 1fr; }
+  }
+
   /* ── Coach Dashboard ──────────────────────────────────────────────────── */
   .cd-kpi-strip {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
