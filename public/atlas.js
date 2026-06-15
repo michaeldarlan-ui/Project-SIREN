@@ -631,7 +631,7 @@
     ].filter(Boolean).join('\n');
 
     const prompt = status === 'won'
-      ? `You are a sales excellence analyst for OneAxiom, a Houston-based MSSP. Write a Closed Won Success Report for the ${company} deal.
+      ? `You are a sales excellence analyst. Write a Closed Won Success Report for the ${company} deal.
 
 Account context:
 ${profileContext || 'No profile data available.'}
@@ -643,12 +643,12 @@ Write a structured success report with these sections:
 1. **Deal Summary** — what was sold, timeline, key metrics (avg score, number of calls)
 2. **What Worked** — 3–5 specific factors that drove the win (reference actual call data)
 3. **Champion & Stakeholder Dynamics** — how internal advocates were identified and leveraged
-4. **Competitive Positioning** — how OneAxiom differentiated against competitors
+4. **Competitive Positioning** — how your company differentiated against competitors
 5. **Replicable Playbook** — 3–5 concrete tactics this rep used that other reps should adopt
 6. **Coaching Notes** — any areas where execution could have been stronger even in a win
 
 Format in clean markdown. Be specific — cite call stages, grades, and actual strengths where available. Avoid generic sales advice.`
-      : `You are a sales excellence analyst for OneAxiom, a Houston-based MSSP. Write a Closed Lost Post Mortem for the ${company} deal.
+      : `You are a sales excellence analyst. Write a Closed Lost Post Mortem for the ${company} deal.
 
 Account context:
 ${profileContext || 'No profile data available.'}
@@ -661,7 +661,7 @@ Write a structured post mortem with these sections:
 2. **Root Cause Analysis** — the 2–3 most likely reasons this deal was lost (reference call data)
 3. **Early Warning Signs** — signals from the call history that predicted the loss
 4. **Where the Rep Got Stuck** — specific execution gaps across the call progression
-5. **Competitive & Positioning Gaps** — where OneAxiom failed to differentiate
+5. **Competitive & Positioning Gaps** — where your company failed to differentiate
 6. **What to Do Differently** — 3–5 specific changes for similar deals in the future
 
 Format in clean markdown. Be specific — cite call stages, grades, and actual weaknesses where available. Do not soften the analysis.`;

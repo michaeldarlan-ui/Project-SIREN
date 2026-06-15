@@ -413,7 +413,7 @@
       else if (isProposal)
         guidance += ` SE on a proposal/close: grade only on last-mile technical contributions. Demo delivery reduced — a brief recap only. Do not grade on commercial terms or closing pressure.`;
       else if (isDiscovery)
-        guidance += ` SE on a discovery call: grade on technical listening and value framing of OneAxiom's capability. Demo delivery is N/A. Hold lighter expectations on commercial discovery and qualification.`;
+        guidance += ` SE on a discovery call: grade on technical listening and value framing of your company's capability. Demo delivery is N/A. Hold lighter expectations on commercial discovery and qualification.`;
       else
         guidance += ` SE: primary focus is demo delivery and technical value framing. Lighter on commercial discovery, qualification, and close mechanics.`;
     } else if (isManager) {
@@ -537,7 +537,7 @@
     const ddNa   = m.dd === 0;
     return [
       `{ "name": "Discovery & needs confirmation",        "max": ${m.d},  "score": 0, "feedback": "${fh.d  || '2-3 sentences of specific actionable coaching tied to what happened in this call'}" }`,
-      `{ "name": "Value framing",                        "max": ${m.vf}, "score": 0, "feedback": "${fh.vf || '2-3 sentences — how clearly did the rep connect OneAxiom\'s value to the prospect\'s stated pain?'}" }`,
+      `{ "name": "Value framing",                        "max": ${m.vf}, "score": 0, "feedback": "${fh.vf || '2-3 sentences — how clearly did the rep connect your company\'s value to the prospect\'s stated pain?'}" }`,
       `{ "name": "Demo delivery",                        "max": ${m.dd}, "score": 0, "feedback": "${fh.dd || (ddNa ? 'No demo expected for this meeting type or role — award 0 and note N/A' : '2-3 sentences — was the demo anchored to stated pain, technically accurate, and free of generic feature touring?')}" }`,
       `{ "name": "Executive presence & strategic positioning", "max": ${m.ep}, "score": 0, "feedback": "${fh.ep || (epNa ? 'Not applicable for this rep role — award 0 and note N/A' : '2-3 sentences — did they build peer-level credibility, stay at strategic altitude, and handle escalated concerns with authority without over-committing?')}" }`,
       `{ "name": "Tactical empathy & objection handling", "max": ${m.t},  "score": 0, "feedback": "${fh.t  || '2-3 sentences — call out specific techniques used or missed'}" }`,
@@ -551,7 +551,7 @@
 
     if (stage.includes('cold')) return `Dimension weighting for Cold Outreach:
 - Discovery & needs confirmation (20 pts): Full weight. Surface initial pain or curiosity; one sharp question beats five generic ones.
-- Value framing (15 pts → 10 pts): REDUCED. Brief value hook only — one sentence on what OneAxiom solves. Do not penalize for lack of depth.
+- Value framing (15 pts → 10 pts): REDUCED. Brief value hook only — one sentence on what your company solves. Do not penalize for lack of depth.
 - Demo delivery (10 pts → 0 pts): NOT APPLICABLE. No demo expected on a cold call. Award 0 and mark N/A in feedback.
 - Tactical empathy & objection handling (25 pts): Full weight. Handling "not interested" gracefully is the core skill tested here.
 - Qualification & deal mechanics (15 pts → 7 pts): REDUCED. Light confirmation of fit only — full BANT is not appropriate.
@@ -559,7 +559,7 @@
 
     if (stage.includes('discovery')) return `Dimension weighting for Discovery:
 - Discovery & needs confirmation (20 pts): Full weight, primary focus. Rep must go deep — current environment, specific pain, impact, what they have tried. Pitching instead of listening is penalized.
-- Value framing (15 pts): Full weight. Connecting pain to OneAxiom's capability is expected — but pitching the full product is penalized. Framing and pitching are different.
+- Value framing (15 pts): Full weight. Connecting pain to your company's capability is expected — but pitching the full product is penalized. Framing and pitching are different.
 - Demo delivery (10 pts → 0 pts): NOT APPLICABLE. No demo expected unless explicitly pre-agreed. Award 0 and mark N/A in feedback.
 - Tactical empathy & objection handling (25 pts): Full weight. Early resistance must be handled with labeling and calibrated questions.
 - Qualification & deal mechanics (15 pts): Full weight. Budget, authority, timeline, and competitive context should all be touched.
@@ -576,7 +576,7 @@
 
     if (stage.includes('proposal') || stage.includes('close')) return `Dimension weighting for Proposal / Close:
 - Discovery & needs confirmation (20 pts → 10 pts): REDUCED. Pain is already established. Grade only on whether the rep re-anchors the proposal to stated pain when presenting pricing.
-- Value framing (15 pts): Full weight. Framing here is ROI, risk of inaction, and why OneAxiom over the alternative. Rep must justify the investment — not just restate it.
+- Value framing (15 pts): Full weight. Framing here is ROI, risk of inaction, and why your company over the alternative. Rep must justify the investment — not just restate it.
 - Demo delivery (10 pts → 5 pts): REDUCED. A brief solution recap is acceptable if the prospect requests it. A full re-demo is a red flag. Grade only on any light technical reinforcement present.
 - Tactical empathy & objection handling (25 pts): Full weight, highest scrutiny. Caving on price without extracting a concession is a hard grading failure.
 - Qualification & deal mechanics (15 pts): Full weight. Contract terms, procurement process, and signatories must be confirmed — not left open.
@@ -1068,7 +1068,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
       const lines = allThirdParties.map(p =>
         `- ${p.name}: ${p.role}${p.organization ? ' (' + p.organization + ')' : ''}`
       ).join('\n');
-      thirdPartyContext = `\n\nThird-party participants on this call (NOT OneAxiom sales reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score OneAxiom sales reps\n- Do NOT penalize the OneAxiom rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics\n- Populate the partner_scores array (one entry per third-party participant) using this schema:\n\n"partner_scores": [\n  {\n    "name": "participant name",\n    "role": "their role as provided",\n    "organization": "their org if known",\n    "dimensions": [\n      { "name": "Technical relevance", "max": 25, "score": 0, "feedback": "2-3 sentences — did their technical contributions match the prospect needs?" },\n      { "name": "Rep alignment", "max": 25, "score": 0, "feedback": "2-3 sentences — did they reinforce or contradict the rep positioning?" },\n      { "name": "Preparation", "max": 25, "score": 0, "feedback": "2-3 sentences — were they briefed and ready for this specific account?" },\n      { "name": "Deal momentum", "max": 25, "score": 0, "feedback": "2-3 sentences — did their presence move the deal forward or introduce friction?" }\n    ],\n    "total": 0,\n    "letter_grade": "B",\n    "grade_label": "short evocative phrase",\n    "top_strength": "one specific sentence about what this partner did well",\n    "top_priority": "single most important improvement for this partner",\n    "call_impact": "positive|negative|neutral",\n    "call_impact_delta": 0,\n    "call_impact_summary": "2-3 sentences explaining how their presence affected overall call outcome — be specific about what helped or hurt"\n  }\n]\n\ncall_impact_delta: estimate the net point impact this partner had on the call effectiveness as a signed integer (e.g. +8 if they meaningfully helped, -5 if they confused the prospect or undercut the rep). This does NOT change the rep score — it is an independent assessment of partner contribution.`;
+      thirdPartyContext = `\n\nThird-party participants on this call (NOT your company's reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score your company's sales reps\n- Do NOT penalize your company's rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics\n- Populate the partner_scores array (one entry per third-party participant) using this schema:\n\n"partner_scores": [\n  {\n    "name": "participant name",\n    "role": "their role as provided",\n    "organization": "their org if known",\n    "dimensions": [\n      { "name": "Technical relevance", "max": 25, "score": 0, "feedback": "2-3 sentences — did their technical contributions match the prospect needs?" },\n      { "name": "Rep alignment", "max": 25, "score": 0, "feedback": "2-3 sentences — did they reinforce or contradict the rep positioning?" },\n      { "name": "Preparation", "max": 25, "score": 0, "feedback": "2-3 sentences — were they briefed and ready for this specific account?" },\n      { "name": "Deal momentum", "max": 25, "score": 0, "feedback": "2-3 sentences — did their presence move the deal forward or introduce friction?" }\n    ],\n    "total": 0,\n    "letter_grade": "B",\n    "grade_label": "short evocative phrase",\n    "top_strength": "one specific sentence about what this partner did well",\n    "top_priority": "single most important improvement for this partner",\n    "call_impact": "positive|negative|neutral",\n    "call_impact_delta": 0,\n    "call_impact_summary": "2-3 sentences explaining how their presence affected overall call outcome — be specific about what helped or hurt"\n  }\n]\n\ncall_impact_delta: estimate the net point impact this partner had on the call effectiveness as a signed integer (e.g. +8 if they meaningfully helped, -5 if they confused the prospect or undercut the rep). This does NOT change the rep score — it is an independent assessment of partner contribution.`;
     }
 
     setLoading(true, prospect, selectedStage);
@@ -1077,7 +1077,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
 
 ${buildLibraryPrompt()}${buildDocsPrompt()}${buildHistoryContext(prospect, rep)}
 
-You are grading a ${selectedStage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
+You are grading a ${selectedStage} call for your company (an MSSP). Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}
 
 ${buildStageWeighting()}
 ${buildDemoEdgeCaseGuidance()}
@@ -1149,10 +1149,10 @@ IMPORTANT — two separate scoring contexts apply:
 }
 
 atlas_data instructions — extract from the transcript:
-- contacts: every named prospect-side participant actually on this call, with their title. Exclude OneAxiom reps and third-party partners already captured elsewhere.
-- champion: the single prospect-side person who showed the most enthusiasm, advocacy, or internal influence toward OneAxiom. Null object if no clear champion is identifiable ({\"name\":\"\",\"title\":\"\"}).
+- contacts: every named prospect-side participant actually on this call, with their title. Exclude your company's reps and third-party partners already captured elsewhere.
+- champion: the single prospect-side person who showed the most enthusiasm, advocacy, or internal influence toward your company. Null object if no clear champion is identifiable ({\"name\":\"\",\"title\":\"\"}).
 - stakeholders: prospect-side people mentioned in the conversation but NOT on the call (e.g., "I need to loop in our CFO", "our IT director said"). Include name if given, or role if only role was mentioned.
-- competitors: any competing vendor, product, or solution mentioned (e.g., existing tools being evaluated against OneAxiom, other MSSPs, or incumbent solutions).
+- competitors: any competing vendor, product, or solution mentioned (e.g., existing tools being evaluated against your company, other MSSPs, or incumbent solutions).
 - tech_stack: any existing security tools, platforms, or vendors the prospect currently has deployed (not competitors — tools they own today).
 - opportunity_summary: a concise 1-2 sentence summary of what this deal is about and where it stands.
 If a field has nothing to report, return an empty array [] or empty object as appropriate.
@@ -1178,7 +1178,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
 
     const team = loadTeam();
     const teamContext = team.length
-      ? 'OneAxiom sales team on this call (include ALL who speak in rep_scores): ' +
+      ? 'Your sales team on this call (include ALL who speak in rep_scores): ' +
         team.map(m => `${m.name} (${m.role})`).join(', ')
       : '';
     const context = [
@@ -2230,7 +2230,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage);
       const context = [
         tRepObj  ? 'Primary rep: ' + tRepObj.name + ' (' + tRepObj.role + ')' : (tRepName ? 'Primary rep: ' + tRepName : ''),
-        team.length ? 'OneAxiom sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
+        team.length ? 'Your sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
         tProspect ? 'Prospect: ' + tProspect   : '',
         tCallDate ? 'Call date: ' + tCallDate   : '',
         tStage    ? 'Call stage: ' + tStage     : '',
@@ -3045,7 +3045,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage);
         const context = [
           tRepObj   ? 'Primary rep: ' + tRepObj.name + ' (' + tRepObj.role + ')' : (tRepName ? 'Primary rep: ' + tRepName : ''),
-          team.length ? 'OneAxiom sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
+          team.length ? 'Your sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
           tProspect ? 'Prospect: ' + tProspect : '',
           tCallDate ? 'Call date: ' + tCallDate : '',
           tStage    ? 'Call stage: ' + tStage : '',
@@ -3207,7 +3207,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     selectedStage = stage;
     const prompt = `You are an expert sales coach specializing in MSSP and B2B security sales.\n\n` +
       `${buildLibraryPrompt()}${buildDocsPrompt()}` +
-      `\n\nYou are grading a ${stage} call for OneAxiom, a Houston-based MSSP. Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}\n\n` +
+      `\n\nYou are grading a ${stage} call for your company (an MSSP). Key differentiator: bundling 24x7 SOC + EDR (CrowdStrike/SentinelOne) + vuln scanning (SecPod Saner CVEM) + KnowBe4 security awareness training, replacing 2-3 vendors. CMMC positioning is only relevant if the transcript explicitly mentions DoD contracts, CMMC, or CUI — do NOT grade on CMMC for general prospects.${buildRoleGuidance(rep)}\n\n` +
       `${buildStageWeighting()}\n` +
       `${buildDemoEdgeCaseGuidance()}\n\n` +
       `Use this grading scale when assigning letter_grade. Grades are based on percentage of the applicable maximum (stage max for overall call; role+stage max for each rep). Do not use raw score against a 100-point scale — normalize first:\n` +

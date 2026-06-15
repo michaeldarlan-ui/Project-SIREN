@@ -881,7 +881,7 @@
       : '';
 
     const hasTranscript = transcriptText.length > 0;
-    const prompt = `You are a sales coach at OneAxiom, a Houston-based MSSP. Write a personalized coaching report for ${_coachCurrentRep||'the rep'} based on this graded sales call.
+    const prompt = `You are a sales coach. Write a personalized coaching report for ${_coachCurrentRep||'the rep'} based on this graded sales call.
 
 Call details:
 - Company: ${h.prospect||'Unknown'}
@@ -1139,12 +1139,12 @@ Write in second person ("you"), be direct and specific, and base all feedback on
   const DIFF_LABELS = { easy: 'Receptive', medium: 'Skeptical', hard: 'Resistant' };
 
   const SYSTEM_PROMPTS = {
-    objection: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company. You are ${diff} about cybersecurity solutions. The sales rep from OneAxiom (a Houston-based MSSP) is calling to discuss managed security services. Raise realistic objections a ${persona} would have — budget, timing, incumbent vendors, internal IT capability, ROI skepticism. Stay fully in character. Keep responses to 2–4 sentences. Never break character or give coaching. After the rep responds to an objection, either push back or raise a new concern depending on how convincing they were.`,
-    closing: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company who has been through a full sales cycle with OneAxiom (a Houston-based MSSP). You are at the proposal stage. You are ${diff} — you have concerns but are somewhat interested. The rep is trying to close the deal. Raise realistic stalls: need to think about it, need to talk to the team, pricing concerns, timing. Stay in character. Keep responses 2–4 sentences.`,
-    discovery: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company. A OneAxiom (MSSP) sales rep has reached you for a discovery call. You are ${diff} and busy. Answer their questions somewhat vaguely at first — let them earn the real answers through good discovery technique. You have real pain around compliance, an aging firewall, and a recent phishing incident you haven't disclosed yet. Reveal depth only if the rep asks good questions. Stay in character. 2–4 sentences per response.`,
-    cold: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company who just picked up a cold call from OneAxiom (a Houston-based MSSP). You are ${diff} and not expecting this call. React as a real executive would — guarded, slightly dismissive initially, but potentially open if the rep delivers value quickly. Stay in character. 2–4 sentences per response.`,
-    proposal: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company reviewing a proposal from OneAxiom (a Houston-based MSSP). You are ${diff}. You have a competing bid from a cheaper vendor. Push back on pricing, scope, and ROI. Stay in character. 2–4 sentences per response.`,
-    followup: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company. OneAxiom (a Houston-based MSSP) pitched you 2 weeks ago and is following up. You've been non-responsive because you've been busy and aren't fully convinced of urgency. You are ${diff}. Respond as someone being followed up with — a bit guarded, somewhat forgetful of the details. Stay in character. 2–4 sentences per response.`,
+    objection: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company. You are ${diff} about cybersecurity solutions. The sales rep is calling to discuss managed security services. Raise realistic objections a ${persona} would have — budget, timing, incumbent vendors, internal IT capability, ROI skepticism. Stay fully in character. Keep responses to 2–4 sentences. Never break character or give coaching. After the rep responds to an objection, either push back or raise a new concern depending on how convincing they were.`,
+    closing: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company who has been through a full sales cycle with your company. You are at the proposal stage. You are ${diff} — you have concerns but are somewhat interested. The rep is trying to close the deal. Raise realistic stalls: need to think about it, need to talk to the team, pricing concerns, timing. Stay in character. Keep responses 2–4 sentences.`,
+    discovery: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company. A your company sales rep has reached you for a discovery call. You are ${diff} and busy. Answer their questions somewhat vaguely at first — let them earn the real answers through good discovery technique. You have real pain around compliance, an aging firewall, and a recent phishing incident you haven't disclosed yet. Reveal depth only if the rep asks good questions. Stay in character. 2–4 sentences per response.`,
+    cold: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company who just picked up a cold call from your company. You are ${diff} and not expecting this call. React as a real executive would — guarded, slightly dismissive initially, but potentially open if the rep delivers value quickly. Stay in character. 2–4 sentences per response.`,
+    proposal: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company reviewing a proposal from your company. You are ${diff}. You have a competing bid from a cheaper vendor. Push back on pricing, scope, and ROI. Stay in character. 2–4 sentences per response.`,
+    followup: (persona, industry, diff) => `You are playing ${persona} at a ${industry} company. your company pitched you 2 weeks ago and is following up. You've been non-responsive because you've been busy and aren't fully convinced of urgency. You are ${diff}. Respond as someone being followed up with — a bit guarded, somewhat forgetful of the details. Stay in character. 2–4 sentences per response.`,
   };
 
   const DIFF_DESC = { easy: 'receptive and open', medium: 'skeptical but professional', hard: 'resistant and cost-focused' };
@@ -1270,7 +1270,7 @@ Write in second person ("you"), be direct and specific, and base all feedback on
     const persona = document.getElementById('arenaPersonaSel').selectedOptions[0]?.text || '';
     const industry = document.getElementById('arenaIndustrySel').selectedOptions[0]?.text || '';
 
-    const prompt = `You are a sales coach at OneAxiom, a Houston-based MSSP. Review this training session and provide a detailed debrief.
+    const prompt = `You are a sales coach. Review this training session and provide a detailed debrief.
 
 Scenario: ${scenarioLabel}
 Prospect: ${persona} · ${industry} · ${DIFF_LABELS[_arenaDiff]}
