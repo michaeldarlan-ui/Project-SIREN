@@ -1149,6 +1149,55 @@ Write in second person ("you"), be direct and specific, and base all feedback on
 
   const DIFF_DESC = { easy: 'receptive and open', medium: 'skeptical but professional', hard: 'resistant and cost-focused' };
 
+  // Collect real objection context from the current rep's graded calls
+  function _arenaRealObjectionContext() {
+    if (!_coachCurrentRep) return '';
+    const lc = _coachCurrentRep.toLowerCase();
+    const calls = _coachGetRepCalls(_coachCurrentRep).slice(0, 10); // most recent 10
+    const objFeedback = [], improvements = [], missed = [];
+
+    calls.forEach(h => {
+      const rs = _parseRepScores(h.rep_scores);
+      const repEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
+      // Per-rep dimension feedback for objection handling
+      if (repEntry && Array.isArray(repEntry.dimensions)) {
+        repEntry.dimensions.forEach(d => {
+          if (/objection|empathy/i.test(d.name) && d.feedback) objFeedback.push(d.feedback.trim());
+        });
+        const cs = repEntry.call_summary;
+        if (cs) {
+          (cs.improvements || []).forEach(s => { if (s) improvements.push(s.trim()); });
+          (cs.missed     || []).forEach(s => { if (s) missed.push(s.trim()); });
+        }
+      }
+      // Fall back to top-level call dimensions if no rep_scores match
+      if (!repEntry && Array.isArray(h.dimensions)) {
+        h.dimensions.forEach(d => {
+          if (/objection|empathy/i.test(d.name) && d.feedback) objFeedback.push(d.feedback.trim());
+        });
+      }
+    });
+
+    // Deduplicate by first 60 chars
+    const dedup = arr => {
+      const seen = new Set();
+      return arr.filter(s => { const k=s.slice(0,60).toLowerCase(); if(seen.has(k))return false; seen.add(k); return true; });
+    };
+
+    const objLines   = dedup(objFeedback).slice(0, 4);
+    const imprvLines = dedup(improvements).slice(0, 3);
+    const missLines  = dedup(missed).slice(0, 3);
+
+    if (!objLines.length && !imprvLines.length && !missLines.length) return '';
+
+    const parts = [];
+    if (objLines.length)  parts.push(`Objection handling observations from past calls:\n${objLines.map((s,i)=>`${i+1}. ${s}`).join('\n')}`);
+    if (imprvLines.length) parts.push(`Areas this rep has been coached to improve:\n${imprvLines.map((s,i)=>`- ${s}`).join('\n')}`);
+    if (missLines.length)  parts.push(`Missed opportunities noted in past calls:\n${missLines.map((s,i)=>`- ${s}`).join('\n')}`);
+
+    return `\n\nREAL CALL CONTEXT — base the objections and pushback in this session on themes from ${_coachCurrentRep}'s actual call history. Adapt these themes naturally into your persona — do not quote them verbatim:\n${parts.join('\n\n')}`;
+  }
+
   window.arenaStart = async function() {
     const persona = document.getElementById('arenaPersonaSel').value;
     const industry = document.getElementById('arenaIndustrySel').value;
@@ -1174,7 +1223,8 @@ Write in second person ("you"), be direct and specific, and base all feedback on
     chat.innerHTML = '';
 
     // Opening message from prospect
-    const systemPrompt = (SYSTEM_PROMPTS[_arenaScenario] || SYSTEM_PROMPTS.objection)(personaLabel, industryLabel, diffDesc);
+    const realCtx = _arenaRealObjectionContext();
+    const systemPrompt = (SYSTEM_PROMPTS[_arenaScenario] || SYSTEM_PROMPTS.objection)(personaLabel, industryLabel, diffDesc) + realCtx;
     const openingPrompt = `${systemPrompt}\n\nOpen the conversation with a brief, realistic first line as the prospect — the way you'd actually answer or respond at the start of this interaction. Don't introduce yourself with your full title unless it's natural.`;
 
     _arenaAddBubble('prospect', '…', 'opening');
