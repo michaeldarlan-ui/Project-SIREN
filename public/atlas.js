@@ -471,6 +471,16 @@
         </div>` : ''}
       </div>`;
 
+      // ── Next Meeting Prep ──
+      html += `<div class="lc-profile-divider"></div>
+      <div class="lc-sb-section lc-meeting-prep-section">
+        <div class="lc-sb-section-label" style="margin-bottom:10px;">Next Meeting Prep</div>
+        <button class="lc-sb-btn lc-sb-btn-primary" style="width:100%;" onclick="atlasGenerateMeetingPrep('${cSafe}')">
+          &#9670; Generate Capture Checklist
+        </button>
+        <div id="atlasMeetingPrepOut" class="lc-meeting-prep-out" style="display:none;"></div>
+      </div>`;
+
       html += `<div class="lc-sb-actions"><button class="lc-sb-btn lc-sb-btn-ghost" onclick="navTo('history')">View in History</button></div>`;
 
     } else {
@@ -763,6 +773,107 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   };
   window.atlasSetDealStatus = atlasSetDealStatus;
   window.atlasGenerateDealReport = atlasGenerateDealReport;
+
+  // ── Next Meeting Prep ─────────────────────────────────────────────────────────
+  window.atlasGenerateMeetingPrep = async function(company) {
+    const outEl = document.getElementById('atlasMeetingPrepOut');
+    if (!outEl) return;
+
+    outEl.style.display = '';
+    outEl.innerHTML = `<div class="lc-meeting-prep-loading"><span class="load-blink">●</span> Analyzing account…</div>`;
+
+    const prof = loadAccountProfile(company);
+    const industry = _getProspectIndustry(company) || 'unknown industry';
+    const entries = loadHistory()
+      .filter(h => (h.prospect||'').trim().toLowerCase() === company.toLowerCase())
+      .sort((a,b) => { const da=a.callDate||a.ts.slice(0,10), db=b.callDate||b.ts.slice(0,10); return da>db?-1:da<db?1:0; });
+
+    // Identify profile gaps
+    const gaps = [];
+    if (!prof.champion) gaps.push('No champion identified');
+    if (!(prof.contacts||[]).length) gaps.push('No key contacts recorded');
+    if (!(prof.stakeholders||[]).length) gaps.push('No stakeholders mapped');
+    if (!(prof.competitors||[]).length) gaps.push('No competitors identified');
+    if (!(prof.techstack||[]).length) gaps.push('No tech stack captured');
+    if (!industry || industry === 'unknown industry') gaps.push('Industry not set');
+    if (!prof.opportunity_summary) gaps.push('No opportunity summary');
+
+    // Last few calls for context
+    const recentCalls = entries.slice(0, 5).map((h, i) => {
+      const ds = h.callDate || h.ts.slice(0,10);
+      const spicedCovered = h.spiced ? Object.entries(h.spiced).filter(([,v])=>v.touched).map(([k])=>k).join(', ') : '';
+      return `Call ${i+1} (${ds}): Stage="${h.stage||'?'}", Grade=${h.letter_grade||'?'} ${h.total||0}/100. Top priority: ${h.top_priority||'n/a'}. Strength: ${h.top_strength||'n/a'}.${spicedCovered?' SPICED covered: '+spicedCovered:''}${h.improvements?.length?' Coaching notes: '+h.improvements.slice(0,2).join('; '):''}`;
+    }).join('\n');
+
+    const profileCtx = [
+      prof.champion ? `Champion: ${prof.champion.name}${prof.champion.title?' ('+prof.champion.title+')':''}` : 'No champion',
+      `Key contacts: ${(prof.contacts||[]).length ? prof.contacts.map(c=>c.name+(c.title?' ('+c.title+')':'')).join(', ') : 'none'}`,
+      `Stakeholders: ${(prof.stakeholders||[]).length ? prof.stakeholders.map(s=>s.name).join(', ') : 'none'}`,
+      `Competitors: ${(prof.competitors||[]).length ? prof.competitors.join(', ') : 'none identified'}`,
+      `Tech stack: ${(prof.techstack||[]).length ? prof.techstack.join(', ') : 'unknown'}`,
+      `Industry: ${industry}`,
+      `Deal status: ${prof.deal_status || 'active'}`,
+    ].join('\n');
+
+    const prompt = `You are a sales intelligence system helping a rep prepare for their next meeting with ${company}.
+
+Current account profile:
+${profileCtx}
+
+Profile gaps (missing information):
+${gaps.length ? gaps.map(g=>`- ${g}`).join('\n') : 'None — profile is well populated'}
+
+Recent call history (${entries.length} total calls):
+${recentCalls || 'No calls graded yet'}
+
+Generate a prioritised "Next Meeting Capture Checklist" — specific questions and information the rep MUST capture in the next meeting to advance this deal. Structure your output as:
+
+## Priority Captures
+3–5 bullet points — the most critical gaps to fill right now, with a specific question the rep can ask to get the answer.
+
+## Relationship Intelligence
+2–3 bullets on stakeholder/champion intelligence to uncover or confirm.
+
+## Competitive & Technical
+2–3 bullets on competitive positioning or technical details to nail down.
+
+## Deal Advancement
+1–2 bullets on the specific commitment or next step the rep should lock in before ending the meeting.
+
+Be direct and specific to this account. Use the company name. Reference actual gaps and call history where relevant. Format as markdown bullets.`;
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'ATLAS',
+          model: getDevModel('atlas', 'claude-haiku-4-5-20251001'),
+          max_tokens: 1024,
+          temperature: 0,
+          stream: false,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!resp.ok) throw new Error('API error ' + resp.status);
+      const data = await resp.json();
+      const md = (data.content?.[0]?.text || '').trim();
+      outEl.innerHTML = `<div class="lc-meeting-prep-body">${_atlasMd(md)}</div>
+        <button class="lc-meeting-prep-regen" onclick="atlasGenerateMeetingPrep('${company.replace(/'/g,"\\'")}')">&#8635; Regenerate</button>`;
+    } catch(e) {
+      outEl.innerHTML = `<div style="color:#ef4444;font-size:12px;padding:8px 0;">Error: ${escHtml(e.message)}</div>`;
+    }
+  };
+
+  // Minimal markdown renderer for meeting prep output (reuses _coachMd pattern)
+  function _atlasMd(md) {
+    return md
+      .replace(/^## (.+)$/gm, '<div class="lc-mp-heading">$1</div>')
+      .replace(/^- (.+)$/gm, '<div class="lc-mp-bullet">$1</div>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n{2,}/g, '')
+      .trim();
+  }
 
   // ── Account Profile storage ──
   function atlasRenameAccount(oldName) {

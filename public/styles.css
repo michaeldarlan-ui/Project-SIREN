@@ -1540,6 +1540,18 @@
   .lc-profile-add-btn:hover { background: rgba(0,200,255,0.28); }
   .lc-profile-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0 14px; }
 
+  /* ── Next Meeting Prep ── */
+  .lc-meeting-prep-section { padding-bottom: 4px; }
+  .lc-meeting-prep-out { margin-top: 12px; }
+  .lc-meeting-prep-loading { font-size: 12px; color: rgba(0,200,255,0.6); padding: 10px 0; display: flex; align-items: center; gap: 6px; }
+  .lc-meeting-prep-body { font-size: 12px; line-height: 1.6; color: rgba(255,255,255,0.75); }
+  .lc-mp-heading { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(0,200,255,0.7); margin: 14px 0 6px; }
+  .lc-mp-heading:first-child { margin-top: 0; }
+  .lc-mp-bullet { padding: 4px 0 4px 14px; position: relative; color: rgba(255,255,255,0.72); border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .lc-mp-bullet::before { content: '›'; position: absolute; left: 2px; color: rgba(0,200,255,0.5); }
+  .lc-meeting-prep-regen { margin-top: 10px; width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; color: rgba(255,255,255,0.35); font-size: 11px; padding: 5px; cursor: pointer; font-family: inherit; transition: all .15s; }
+  .lc-meeting-prep-regen:hover { border-color: rgba(0,200,255,0.3); color: rgba(0,200,255,0.7); }
+
   /* Click modal */
   #lcModal {
     position: fixed; inset: 0; z-index: 600;
