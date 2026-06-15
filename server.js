@@ -74,6 +74,14 @@ await client.batch([
       tokens_in INTEGER DEFAULT 0, tokens_out INTEGER DEFAULT 0,
       PRIMARY KEY (day, feature)
     )` },
+  { sql: `CREATE TABLE IF NOT EXISTS call_reps (
+      call_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      is_primary INTEGER NOT NULL DEFAULT 0,
+      total INTEGER DEFAULT 0,
+      letter_grade TEXT,
+      PRIMARY KEY (call_id, name)
+    )` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -98,6 +106,37 @@ await client.batch([
       await client.execute('ALTER TABLE history_prod ADD COLUMN normalized_score INTEGER DEFAULT 0');
       await client.execute('UPDATE history_prod SET normalized_score = total WHERE normalized_score = 0 AND total > 0');
     }
+  }
+
+  // Backfill call_reps from existing history_prod rep_scores
+  if (!tables.includes('call_reps')) {
+    const rows = (await client.execute('SELECT id, rep, rep_scores FROM history_prod')).rows;
+    const inserts = [];
+    for (const row of rows) {
+      const callId = String(row.id);
+      const primaryRep = row.rep ? String(row.rep).trim() : null;
+      let rs = [];
+      try { rs = JSON.parse(String(row.rep_scores || '[]')); } catch {}
+      const seen = new Set();
+      for (const r of rs) {
+        if (!r.name) continue;
+        const name = String(r.name).trim();
+        seen.add(name.toLowerCase());
+        inserts.push({
+          sql: `INSERT OR IGNORE INTO call_reps (call_id, name, is_primary, total, letter_grade) VALUES (?,?,?,?,?)`,
+          args: [callId, name, primaryRep && name.toLowerCase() === primaryRep.toLowerCase() ? 1 : 0,
+                 r.total || 0, r.letter_grade || null],
+        });
+      }
+      if (primaryRep && !seen.has(primaryRep.toLowerCase())) {
+        inserts.push({
+          sql: `INSERT OR IGNORE INTO call_reps (call_id, name, is_primary, total, letter_grade) VALUES (?,?,?,?,?)`,
+          args: [callId, primaryRep, 1, 0, null],
+        });
+      }
+    }
+    if (inserts.length) await client.batch(inserts, 'write');
+    console.log(`[db] Backfilled call_reps with ${inserts.length} rows`);
   }
 
   // Migrate old transcripts table (history_id PK) to new standalone schema
@@ -189,11 +228,44 @@ function recordToArgs(r) {
   ];
 }
 
+function callRepRows(r) {
+  const callId = String(r.id);
+  const primaryRep = r.rep ? String(r.rep).trim() : null;
+  const rs = Array.isArray(r.rep_scores) ? r.rep_scores : [];
+  const rows = [];
+  const seen = new Set();
+  for (const entry of rs) {
+    if (!entry.name) continue;
+    const name = String(entry.name).trim();
+    seen.add(name.toLowerCase());
+    rows.push({ callId, name, isPrimary: primaryRep && name.toLowerCase() === primaryRep.toLowerCase() ? 1 : 0,
+                total: entry.total || 0, letterGrade: entry.letter_grade || null });
+  }
+  if (primaryRep && !seen.has(primaryRep.toLowerCase())) {
+    rows.push({ callId, name: primaryRep, isPrimary: 1, total: 0, letterGrade: null });
+  }
+  return rows;
+}
+
+async function syncCallReps(r) {
+  const rows = callRepRows(r);
+  const callId = String(r.id);
+  const stmts = [{ sql: `DELETE FROM call_reps WHERE call_id = ?`, args: [callId] }];
+  for (const row of rows) {
+    stmts.push({
+      sql: `INSERT INTO call_reps (call_id, name, is_primary, total, letter_grade) VALUES (?,?,?,?,?)`,
+      args: [row.callId, row.name, row.isPrimary, row.total, row.letterGrade],
+    });
+  }
+  await client.batch(stmts, 'write');
+}
+
 async function upsertOne(r) {
   await client.execute({
     sql:  `INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   });
+  await syncCallReps(r);
 }
 
 async function bulkUpsert(records) {
@@ -202,6 +274,7 @@ async function bulkUpsert(records) {
     sql:  `INSERT OR REPLACE INTO history_prod (${DB_COLS}) VALUES (${DB_PARAMS})`,
     args: recordToArgs(r),
   })), 'write');
+  for (const r of records) await syncCallReps(r);
 }
 
 // ── API call metering ─────────────────────────────────────────
