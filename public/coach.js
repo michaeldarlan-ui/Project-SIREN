@@ -1390,7 +1390,6 @@ Each option must be under 50 words. Make them meaningfully different in approach
           <button class="arena-mc-opt ${qualClass[o.quality] || ''}" onclick="arenaMcChoose(${i})">
             <span class="arena-mc-opt-letter">${o.label || String.fromCharCode(65 + i)}</span>
             <span class="arena-mc-opt-text">${escHtml(o.text)}</span>
-            <span class="arena-mc-opt-badge">${qualLabel[o.quality] || o.quality}</span>
           </button>`).join('')}
       </div>`;
     wrap.style.display = '';

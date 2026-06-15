@@ -1074,7 +1074,7 @@
     border-radius: 10px 10px 2px 10px;
   }
   .arena-bubble-prospect .arena-bubble-text {
-    background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); color: var(--siren-text-body);
+    background: var(--siren-bg-card-raised); border: 1px solid var(--siren-border-mid); color: #ffffff;
     border-radius: 10px 10px 10px 2px;
   }
 
