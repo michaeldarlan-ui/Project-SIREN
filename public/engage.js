@@ -1063,13 +1063,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
       ...Object.entries(userEntries).map(([name, f]) => ({ name, role: f.role, organization: f.organization || '' })),
     ];
 
-    let thirdPartyContext = '';
-    if (allThirdParties.length) {
-      const lines = allThirdParties.map(p =>
-        `- ${p.name}: ${p.role}${p.organization ? ' (' + p.organization + ')' : ''}`
-      ).join('\n');
-      thirdPartyContext = `\n\nThird-party participants on this call (NOT your company's reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score your company's sales reps\n- Do NOT penalize your company's rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics\n- Populate the partner_scores array (one entry per third-party participant) using this schema:\n\n"partner_scores": [\n  {\n    "name": "participant name",\n    "role": "their role as provided",\n    "organization": "their org if known",\n    "dimensions": [\n      { "name": "Technical relevance", "max": 25, "score": 0, "feedback": "2-3 sentences — did their technical contributions match the prospect needs?" },\n      { "name": "Rep alignment", "max": 25, "score": 0, "feedback": "2-3 sentences — did they reinforce or contradict the rep positioning?" },\n      { "name": "Preparation", "max": 25, "score": 0, "feedback": "2-3 sentences — were they briefed and ready for this specific account?" },\n      { "name": "Deal momentum", "max": 25, "score": 0, "feedback": "2-3 sentences — did their presence move the deal forward or introduce friction?" }\n    ],\n    "total": 0,\n    "letter_grade": "B",\n    "grade_label": "short evocative phrase",\n    "top_strength": "one specific sentence about what this partner did well",\n    "top_priority": "single most important improvement for this partner",\n    "call_impact": "positive|negative|neutral",\n    "call_impact_delta": 0,\n    "call_impact_summary": "2-3 sentences explaining how their presence affected overall call outcome — be specific about what helped or hurt"\n  }\n]\n\ncall_impact_delta: estimate the net point impact this partner had on the call effectiveness as a signed integer (e.g. +8 if they meaningfully helped, -5 if they confused the prospect or undercut the rep). This does NOT change the rep score — it is an independent assessment of partner contribution.`;
-    }
+    const thirdPartyContext = _buildThirdPartyContext(allThirdParties);
 
     setLoading(true, prospect, selectedStage);
 
@@ -2224,10 +2218,11 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       const team      = loadTeam();
       const tRepObj   = team.find(m => m.name && m.name.toLowerCase() === tRepName.toLowerCase()) || null;
 
-      // 2. Build prompt under the transcript's stage
+      // 2. Build prompt under the transcript's stage (detect third parties first)
+      const tpContext    = await _detectThirdPartyContext(tData.transcript, tProspect);
       const prevStage = selectedStage;
       selectedStage   = tStage;
-      const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage);
+      const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage, tpContext);
       const context = [
         tRepObj  ? 'Primary rep: ' + tRepObj.name + ' (' + tRepObj.role + ')' : (tRepName ? 'Primary rep: ' + tRepName : ''),
         team.length ? 'Your sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
@@ -3044,7 +3039,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         const prevStage = selectedStage;
         selectedStage = tStage;
 
-        const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage);
+        const tpContext    = await _detectThirdPartyContext(tData.transcript, tProspect);
+        const systemPrompt = buildBulkGradePrompt(tProspect, tRepObj, tCallDate, tStage, tpContext);
         const context = [
           tRepObj   ? 'Primary rep: ' + tRepObj.name + ' (' + tRepObj.role + ')' : (tRepName ? 'Primary rep: ' + tRepName : ''),
           team.length ? 'Your sales team on this call (include ALL who speak in rep_scores): ' + team.map(m => m.name + ' (' + m.role + ')').join(', ') : '',
@@ -3204,7 +3200,33 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     brgLog(`── Bulk re-grade complete: ${succeeded}/${total} updated in ${fmtSecs(totalSec)} ──`, succeeded === total ? 'ok' : 'err');
   }
 
-  function buildBulkGradePrompt(prospect, rep, callDate, stage) {
+  function _buildThirdPartyContext(allThirdParties) {
+    if (!allThirdParties.length) return '';
+    const lines = allThirdParties.map(p =>
+      `- ${p.name}: ${p.role}${p.organization ? ' (' + p.organization + ')' : ''}`
+    ).join('\n');
+    return `\n\nThird-party participants on this call (NOT your company's reps, NOT the customer):\n${lines}\n\nGrading instructions for third-party participants:\n- Do NOT include third-party participants in rep_scores — only score your company's sales reps\n- Do NOT penalize your company's rep for topics or tasks the third party handled\n- In call_summary, acknowledge the third party's presence and note how their role affected call dynamics\n- Populate the partner_scores array (one entry per third-party participant) using this schema:\n\n"partner_scores": [\n  {\n    "name": "participant name",\n    "role": "their role as provided",\n    "organization": "their org if known",\n    "dimensions": [\n      { "name": "Technical relevance", "max": 25, "score": 0, "feedback": "2-3 sentences — did their technical contributions match the prospect needs?" },\n      { "name": "Rep alignment", "max": 25, "score": 0, "feedback": "2-3 sentences — did they reinforce or contradict the rep positioning?" },\n      { "name": "Preparation", "max": 25, "score": 0, "feedback": "2-3 sentences — were they briefed and ready for this specific account?" },\n      { "name": "Deal momentum", "max": 25, "score": 0, "feedback": "2-3 sentences — did their presence move the deal forward or introduce friction?" }\n    ],\n    "total": 0,\n    "letter_grade": "B",\n    "grade_label": "short evocative phrase",\n    "top_strength": "one specific sentence about what this partner did well",\n    "top_priority": "single most important improvement for this partner",\n    "call_impact": "positive|negative|neutral",\n    "call_impact_delta": 0,\n    "call_impact_summary": "2-3 sentences explaining how their presence affected overall call outcome — be specific about what helped or hurt"\n  }\n]\n\ncall_impact_delta: estimate the net point impact this partner had on the call effectiveness as a signed integer (e.g. +8 if they meaningfully helped, -5 if they confused the prospect or undercut the rep). This does NOT change the rep score — it is an independent assessment of partner contribution.`;
+  }
+
+  async function _detectThirdPartyContext(transcript, prospect) {
+    try {
+      const { newUnknowns, known } = await detectUnknownParticipants(transcript, prospect, '', null);
+      const allThirdParties = [
+        ...known.map(k => ({ name: k.name, role: k.role || '', organization: k.organization || '' })),
+        ...newUnknowns.map(u => {
+          const stored = _getKnownThirdParty(u.name);
+          return stored
+            ? { name: stored.name, role: stored.role || '', organization: stored.organization || '' }
+            : { name: u.name, role: u.clue || 'Unknown role', organization: '' };
+        }),
+      ];
+      return _buildThirdPartyContext(allThirdParties);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function buildBulkGradePrompt(prospect, rep, callDate, stage, thirdPartyContext = '') {
     const prevStage = selectedStage;
     selectedStage = stage;
     const prompt = `You are an expert sales coach specializing in MSSP and B2B security sales.\n\n` +
@@ -3238,7 +3260,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       `total (overall call): sum of all 7 dimension scores. Max is ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} for this meeting type.\n` +
       `rep_scores[].total: sum of that rep's 7 dimension scores. Do not exceed the role_max shown in each rep entry.\n` +
       `IMPORTANT — Demo delivery: if max is 0 for this context, score MUST be 0. Write "N/A" in the feedback field.\n` +
-      `IMPORTANT — Executive presence & strategic positioning: if max is 0 for a rep, score MUST be 0. Write "N/A" in the feedback field.`;
+      `IMPORTANT — Executive presence & strategic positioning: if max is 0 for a rep, score MUST be 0. Write "N/A" in the feedback field.` +
+      thirdPartyContext;
     selectedStage = prevStage;
     return prompt;
   }
