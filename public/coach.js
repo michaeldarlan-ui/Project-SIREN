@@ -229,6 +229,18 @@
     try { return JSON.parse(rs); } catch { return []; }
   }
 
+  // Match a rep_scores entry to a roster name — handles cases where the graded name
+  // is longer than the roster name (e.g. "Paulo Roberto Naves Veloso" vs "Paulo Veloso").
+  // Exact match first, then check if every word in the shorter name appears in the longer.
+  function _repNameMatch(entryName, rosterName) {
+    const a = (entryName || '').toLowerCase().trim();
+    const b = (rosterName || '').toLowerCase().trim();
+    if (a === b) return true;
+    const shorter = a.split(' ').length <= b.split(' ').length ? a : b;
+    const longer  = shorter === a ? b : a;
+    return shorter.split(' ').every(w => w.length > 1 && longer.includes(w));
+  }
+
   function _coachGetRepCalls(name) {
     if (!name) return [];
     const lc = name.toLowerCase();
@@ -238,7 +250,7 @@
       .filter(h => {
         if (!isIsrBdr && /cold.outreach/i.test(h.stage || '')) return false;
         const rs = _parseRepScores(h.rep_scores);
-        const rsEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
+        const rsEntry = rs.find(r => _repNameMatch(r.name, name));
         if (rsEntry) return rsEntry.total > 0;
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
@@ -267,7 +279,7 @@
 
   function _coachRepScore(h, repName) {
     const rs = _parseRepScores(h.rep_scores);
-    const r = rs.find(r => (r.name||'').toLowerCase() === repName.toLowerCase());
+    const r = rs.find(r => _repNameMatch(r.name, repName));
     if (r) return r.total;
     return h.total;
   }
@@ -519,7 +531,7 @@
     const positives = [], improvements = [];
     calls.forEach(h => {
       const rs = _parseRepScores(h.rep_scores);
-      const repEntry = rs.find(r => (r.name || '').toLowerCase() === repNameLc);
+      const repEntry = rs.find(r => _repNameMatch(r.name, _coachCurrentRep));
       const cs = repEntry && repEntry.call_summary;
       if (cs) {
         (cs.positives || []).forEach(s => { if (s) positives.push(s.trim()); });
@@ -656,7 +668,7 @@
       .filter(h => {
         const lc = repName.toLowerCase();
         const rs = _parseRepScores(h.rep_scores);
-        const rsEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
+        const rsEntry = rs.find(r => _repNameMatch(r.name, name));
         if (rsEntry) return rsEntry.total > 0;
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
@@ -678,7 +690,7 @@
         if (h.rep_scores) {
           try {
             const rs = JSON.parse(h.rep_scores);
-            const r = rs.find(r => (r.name||'').toLowerCase() === repName.toLowerCase());
+            const r = rs.find(r => _repNameMatch(r.name, repName));
             return r ? r.total : h.total;
           } catch {}
         }
@@ -859,7 +871,7 @@
     let repScoreData = '';
     {
       const rs = _parseRepScores(h.rep_scores);
-      const r = rs.find(r => (r.name||'').toLowerCase() === (_coachCurrentRep||'').toLowerCase());
+      const r = rs.find(r => _repNameMatch(r.name, _coachCurrentRep));
       if (r) repScoreData = `Rep score: ${r.total}/100. Breakdown: ${Object.entries(r).filter(([k,v])=>k!=='name'&&k!=='total'&&typeof v==='number').map(([k,v])=>`${k}: ${v}`).join(', ')}.`;
     }
     if (!repScoreData && h.total) repScoreData = `Call score: ${h.total}/100 (${h.letter_grade}).`;
@@ -1158,7 +1170,7 @@ Write in second person ("you"), be direct and specific, and base all feedback on
 
     calls.forEach(h => {
       const rs = _parseRepScores(h.rep_scores);
-      const repEntry = rs.find(r => (r.name||'').toLowerCase() === lc);
+      const repEntry = rs.find(r => _repNameMatch(r.name, name));
       // Per-rep dimension feedback for objection handling
       if (repEntry && Array.isArray(repEntry.dimensions)) {
         repEntry.dimensions.forEach(d => {
