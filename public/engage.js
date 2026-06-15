@@ -2414,6 +2414,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
             <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(t.prospect || t.label || 'Untitled')}</div>
             <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px;">${escHtml(meta)}</div>
           </div>
+          <button class="pdf-btn pdf-btn-sm" onclick="window.open('/transcript/'+encodeURIComponent(${escHtml(JSON.stringify(t.id))}),'_blank')">&#128196; View</button>
           <button class="pdf-btn pdf-btn-sm" onclick="loadSavedTranscript(${escHtml(JSON.stringify(t.id))})">&#8635; Load</button>
           <button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${escHtml(JSON.stringify(t.id))},this)">Delete</button>
         </div>`;
