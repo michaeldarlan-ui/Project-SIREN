@@ -14,7 +14,8 @@
           (page === 'forge'     && t.textContent === 'FORGE') ||
           (page === 'vigil'       && t.textContent === 'VIGIL') ||
           (page === 'coach'       && t.textContent === 'COACH') ||
-          (page === 'usage'       && t.textContent === 'USAGE')) {
+          (page === 'usage'       && t.textContent === 'USAGE') ||
+          (page === 'dash'        && t.textContent === 'DASH')) {
         t.classList.add('active');
       }
     });
@@ -29,6 +30,7 @@
     if (page === 'vigil')       pulseRenderFeed();
     if (page === 'coach')       coachInit();
     if (page === 'usage')       renderUsagePage();
+    if (page === 'dash')        typeof dashInit === 'function' && dashInit();
     if (page === 'settings')    rdmRender();
     if (page === 'audit')       typeof auditLoad === 'function' && auditLoad();
   }
@@ -70,30 +72,34 @@
 
   // ── Dev model selector ─────────────────────────────────────
   const DEV_MODELS = [
-    { id: 'claude-haiku-4-5-20251001',  label: 'Haiku 4.5',  hint: 'Fast · low cost' },
-    { id: 'claude-sonnet-4-6',          label: 'Sonnet 4.6', hint: 'Balanced · default' },
-    { id: 'claude-opus-4-8',            label: 'Opus 4.8',   hint: 'Most capable' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5' },
+    { id: 'claude-sonnet-4-6',         label: 'Sonnet 4.6' },
+    { id: 'claude-opus-4-8',           label: 'Opus 4.8' },
   ];
-  const DEV_MODEL_KEY = 'siren_dev_model';
-  window.getDevModel = function(fallback) {
-    return localStorage.getItem(DEV_MODEL_KEY) || fallback;
+  const _MODEL_PFX = 'siren_model_';
+  window.getDevModel = function(key, fallback) {
+    return localStorage.getItem(_MODEL_PFX + key) || fallback;
   };
-  window.setDevModel = function(id) {
-    if (id) localStorage.setItem(DEV_MODEL_KEY, id);
-    else localStorage.removeItem(DEV_MODEL_KEY);
-    _renderDevModelSelector();
+  window.setDevModel = function(key, model) {
+    if (model) localStorage.setItem(_MODEL_PFX + key, model);
+    else localStorage.removeItem(_MODEL_PFX + key);
   };
-  function _renderDevModelSelector() {
-    const wrap = document.getElementById('devModelSelector');
-    if (!wrap) return;
-    const current = localStorage.getItem(DEV_MODEL_KEY) || '';
-    wrap.innerHTML = DEV_MODELS.map(m => `
-      <button onclick="setDevModel('${m.id}')" title="${m.hint}"
-        style="flex:1;padding:4px 6px;font-size:10px;font-weight:700;border-radius:4px;border:1px solid ${current===m.id?'rgba(0,200,255,.6)':'rgba(255,255,255,.1)'};background:${current===m.id?'rgba(0,200,255,.12)':'transparent'};color:${current===m.id?'#00c8ff':'rgba(255,255,255,.5)'};cursor:pointer;white-space:nowrap;">
-        ${m.label}
-      </button>`).join('');
-  }
-  document.addEventListener('DOMContentLoaded', _renderDevModelSelector);
+  // Render all .dev-model-wrap placeholders on the page
+  window.renderDevPickers = function() {
+    document.querySelectorAll('.dev-model-wrap').forEach(el => {
+      const key = el.dataset.key;
+      const def = el.dataset.default || 'claude-sonnet-4-6';
+      const cur = localStorage.getItem(_MODEL_PFX + key) || def;
+      el.innerHTML = `<select class="dev-model-sel"
+          onchange="setDevModel('${key}',this.value)"
+          onclick="event.stopPropagation()">
+        ${DEV_MODELS.map(m =>
+          `<option value="${m.id}"${cur===m.id?' selected':''}>${m.label}${m.id===def?' (default)':''}</option>`
+        ).join('')}
+      </select>`;
+    });
+  };
+  document.addEventListener('DOMContentLoaded', window.renderDevPickers);
 
   // ── Dev Sync modal ────────────────────────────────────────────
   function openDevSyncModal() {
