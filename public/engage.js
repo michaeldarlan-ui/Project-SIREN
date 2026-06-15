@@ -2491,6 +2491,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // Sort state: 'company' | 'date' | 'score' | 'stage'  +  direction per key
   const histSortDir = { date: -1, score: -1, stage: 1 }; // -1=desc, 1=asc
   let histSort = 'company';
+  let histRepFilter = '';
+
+  window.setHistRepFilter = function(val) {
+    histRepFilter = (val || '').trim().toLowerCase();
+    renderHistory();
+  };
 
   function setHistSort(key) {
     if (key !== 'company' && key === histSort) {
@@ -2577,9 +2583,24 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   }
 
   function renderHistory() {
-    const history = loadHistory();
+    let history = loadHistory();
     const el = document.getElementById('historyList');
     if (!el) return;
+    if (histRepFilter) {
+      const _matchName = (a, b) => {
+        const x = (a||'').toLowerCase().trim(), y = (b||'').toLowerCase().trim();
+        if (!x || !y) return false;
+        if (x === y) return true;
+        const shorter = x.split(' ').length <= y.split(' ').length ? x : y;
+        const longer  = shorter === x ? y : x;
+        return shorter.split(' ').every(w => w.length > 1 && longer.includes(w));
+      };
+      const _parseRS = rs => { if (!rs) return []; if (Array.isArray(rs)) return rs; try { return JSON.parse(rs); } catch { return []; } };
+      history = history.filter(h => {
+        if (_matchName(h.rep, histRepFilter)) return true;
+        return _parseRS(h.rep_scores).some(r => _matchName(r.name, histRepFilter));
+      });
+    }
     if (!history.length) {
       el.innerHTML = '<div class="hist-empty">No graded calls yet. Grade a call on the Grader page and it will appear here.</div>';
       return;

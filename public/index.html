@@ -1759,6 +1759,9 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
       <p>Previous graded calls, saved automatically. Click a card to expand the full results.</p>
     </div>
     <div class="hist-toolbar">
+      <div style="margin-bottom:6px;">
+        <input id="histRepFilterInput" type="text" placeholder="Filter by rep name…" oninput="setHistRepFilter(this.value)" style="width:100%;box-sizing:border-box;background:var(--siren-bg-card);border:1px solid var(--siren-border);border-radius:6px;color:var(--siren-text);padding:6px 10px;font-size:13px;outline:none;" />
+      </div>
       <div class="hist-sort-row">
         <button class="hist-sort-btn active" id="hsort-company" onclick="setHistSort('company')">Company</button>
         <button class="hist-sort-btn" id="hsort-date"    onclick="setHistSort('date')">Date <span class="hist-sort-arrow" id="hsort-date-arrow">↓</span></button>
