@@ -6,8 +6,18 @@
     renderLifecyclePage();
   }
 
+  function _getAllAtlasCompanies() {
+    // Merge companies from graded call history + any saved account profiles
+    const fromHistory = getLcCompanies(); // sorted, deduped by name
+    const seen = new Set(fromHistory.map(c => c.trim().toLowerCase()));
+    const fromProfiles = Object.keys(_profilesCache)
+      .filter(key => !seen.has(key))
+      .map(key => (_profilesCache[key]._displayName || key)); // prefer stored display name
+    return [...fromHistory, ...fromProfiles].sort((a, b) => a.localeCompare(b));
+  }
+
   function renderLifecyclePage() {
-    const allCompanies = getLcCompanies();
+    const allCompanies = _getAllAtlasCompanies();
     // Filter companies by deal status
     const companies = allCompanies.filter(c => {
       if (_atlasFilter === 'all') return true;
@@ -790,7 +800,7 @@ Format in clean markdown. Be specific — cite call stages, grades, and actual w
   }
   function saveAccountProfile(company, prof) {
     const key = company.trim().toLowerCase();
-    _profilesCache[key] = prof;
+    _profilesCache[key] = { ...prof, _displayName: company.trim() };
     // Persist to DB (fire-and-forget — cache is source of truth for this session)
     fetch('/api/account-profiles/' + encodeURIComponent(key), {
       method: 'PUT',
