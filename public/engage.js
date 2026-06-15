@@ -2578,6 +2578,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           <div style="display:flex;gap:6px;align-items:center;">
             <button class="hist-regrade-btn" id="hist-regrade-${h.id}" onclick="regradeFromHistory('${h.id}',event)">&#8635; Re-grade</button>
             <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${h.id});event.stopPropagation()">&#8595; PDF</button>
+            <button class="pdf-btn pdf-btn-sm" onclick="window.open('/transcript/'+encodeURIComponent('${h.id}'),'_blank');event.stopPropagation()" title="Open raw transcript in new tab">&#128196; Transcript</button>
             <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
           </div>
         </div>

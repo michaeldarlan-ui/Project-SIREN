@@ -1024,6 +1024,34 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && req.url.startsWith('/transcript/')) {
+    const id  = decodeURIComponent(req.url.slice('/transcript/'.length));
+    const row = (await client.execute({ sql: 'SELECT * FROM transcripts WHERE id = ?', args: [id] })).rows[0];
+    if (!row) { res.writeHead(404); res.end('Transcript not found'); return; }
+    const label     = String(row.label || '');
+    const prospect  = row.prospect ? String(row.prospect) : '';
+    const stage     = row.stage    ? String(row.stage)    : '';
+    const rep       = row.rep      ? String(row.rep)      : '';
+    const callDate  = row.call_date ? String(row.call_date) : '';
+    const text      = String(row.transcript);
+    const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const meta = [prospect && `<b>Account:</b> ${esc(prospect)}`, stage && `<b>Stage:</b> ${esc(stage)}`, rep && `<b>Rep:</b> ${esc(rep)}`, callDate && `<b>Date:</b> ${esc(callDate)}`].filter(Boolean).join(' &nbsp;·&nbsp; ');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(label)}</title><style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:#0d0f14;color:#d4d8e2;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:13px;line-height:1.7;padding:2rem}
+      h1{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:.5rem}
+      .meta{font-size:12px;color:#7a8499;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,.08)}
+      pre{white-space:pre-wrap;word-break:break-word;color:#c9d1e0}
+    </style></head><body>
+    <h1>${esc(label)}</h1>
+    <div class="meta">${meta}</div>
+    <pre>${esc(text)}</pre>
+    </body></html>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+    return;
+  }
+
   if (req.method === 'GET' && req.url.startsWith('/api/transcripts/')) {
     const id  = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
     const row = (await client.execute({ sql: 'SELECT * FROM transcripts WHERE id = ?', args: [id] })).rows[0];
