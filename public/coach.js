@@ -255,8 +255,12 @@
       .filter(h => {
         if (!isIsrBdr && /cold.outreach/i.test(h.stage || '')) return false;
         const rs = _parseRepScores(h.rep_scores);
-        const rsEntry = rs.find(r => _repNameMatch(r.name, name));
-        if (rsEntry) return rsEntry.total > 0;
+        if (rs.length) {
+          // rep_scores present — only count if this rep actually spoke and has a score
+          const rsEntry = rs.find(r => _repNameMatch(r.name, name));
+          return !!(rsEntry && rsEntry.total > 0);
+        }
+        // No rep_scores (older call) — fall back to primary rep field
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
