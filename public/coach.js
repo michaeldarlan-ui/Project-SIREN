@@ -185,11 +185,12 @@
 
   // ── Claude API call helper ────────────────────────────────────────────────────
   async function _coachAsk(prompt, modelKey) {
+    const source = (modelKey || '').includes('arena') ? 'Coach/Range' : 'Coach/Dashboard';
     const resp = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        source: 'COACH',
+        source,
         model: getDevModel(modelKey || 'coach', 'claude-sonnet-4-6'),
         max_tokens: 4096,
         temperature: 0,
@@ -1317,7 +1318,7 @@ Write in second person ("you"), be direct and specific, and base all feedback on
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          source: 'COACH',
+          source: 'Coach/Range',
           model: getDevModel('coach_arena', 'claude-sonnet-4-6'),
           max_tokens: 512,
           temperature: 0.7,
@@ -1424,7 +1425,7 @@ Each option must be under 50 words. Make them meaningfully different in approach
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          source: 'COACH',
+          source: 'Coach/Range',
           model: getDevModel('coach_arena', 'claude-sonnet-4-6'),
           max_tokens: 300,
           temperature: 0.7,
@@ -1687,7 +1688,7 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          source: 'COACH',
+          source: 'Coach/Dashboard',
           model: getDevModel('coach_intel', 'claude-sonnet-4-6'), max_tokens: 1024, temperature: 0,
           system: systemMsg,
           messages: [
