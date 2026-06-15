@@ -2,6 +2,7 @@
 
   let _coachRaf = null;
   let _coachCurrentRep = null;
+  let _coachKpiCalls = [];
 
   // ── Insight persistence (localStorage) ───────────────────────────────────────
   const _INSIGHT_PFX = 'siren_coach_insights_';
@@ -383,12 +384,49 @@
     }, 'F');
 
     strip.innerHTML = `
-      <div class="cd-kpi"><div class="cd-kpi-val">${calls.length}</div><div class="cd-kpi-lbl">Total Calls</div></div>
+      <div class="cd-kpi cd-kpi-clickable" onclick="coachToggleCallList()" title="Click to view calls">
+        <div class="cd-kpi-val">${calls.length}</div>
+        <div class="cd-kpi-lbl">Total Calls <span style="font-size:9px;opacity:.5;">▼</span></div>
+      </div>
       <div class="cd-kpi"><div class="cd-kpi-val" style="color:${avgColor};">${avg != null ? avg : '—'}</div><div class="cd-kpi-lbl">Avg Score</div></div>
       <div class="cd-kpi"><div class="cd-kpi-val">${bestGrade}</div><div class="cd-kpi-lbl">Best Grade</div></div>
       <div class="cd-kpi"><div class="cd-kpi-val" style="color:${trendColor};font-size:13px;">${trendLabel}</div><div class="cd-kpi-lbl">Score Trend</div></div>
       <div class="cd-kpi"><div class="cd-kpi-val" style="color:${consistencyColor};font-size:15px;">${consistency}</div><div class="cd-kpi-lbl">Consistency</div></div>`;
+
+    // Store calls for the drill-down panel
+    _coachKpiCalls = calls;
+    const listEl = document.getElementById('cdCallList');
+    if (listEl) listEl.style.display = 'none';
   }
+
+  window.coachToggleCallList = function() {
+    const listEl = document.getElementById('cdCallList');
+    if (!listEl) return;
+    const visible = listEl.style.display !== 'none';
+    if (visible) { listEl.style.display = 'none'; return; }
+    const calls = _coachKpiCalls;
+    if (!calls.length) { listEl.style.display = 'none'; return; }
+    const sorted = [...calls].sort((a, b) => {
+      const da = a.callDate || a.ts || '';
+      const db = b.callDate || b.ts || '';
+      return db.localeCompare(da);
+    });
+    const getBg = g => g==='A+'||g==='A'||g==='A-' ? 'var(--siren-grade-a)' : g==='B+'||g==='B'||g==='B-' ? 'var(--siren-grade-b)' : g==='C+'||g==='C'||g==='C-' ? 'var(--siren-grade-c)' : 'var(--siren-grade-d)';
+    listEl.innerHTML = sorted.map(h => {
+      const dt = h.callDate
+        ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+        : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+      const bg = getBg(h.letter_grade);
+      return `<div class="cd-call-row">
+        <div class="cd-call-grade" style="background:${bg};">${escHtml(h.letter_grade)} ${escHtml(String(h.normalized_score ?? h.total))}</div>
+        <div class="cd-call-info">
+          <div class="cd-call-prospect">${escHtml(h.prospect || '—')}</div>
+          <div class="cd-call-meta">${escHtml(h.stage || '')}${h.stage && dt ? ' · ' : ''}${escHtml(dt)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    listEl.style.display = 'block';
+  };
 
   // ── Score trend chart ─────────────────────────────────────────────────────────
   function _coachRenderTrendChart(calls) {
