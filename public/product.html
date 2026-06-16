@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product - SIREN</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #09090b; --bg-card: #111113; --bg-raised: #18181b;
+      --accent: #f59e0b; --accent-dim: rgba(245,158,11,0.10); --accent-glow: rgba(245,158,11,0.18);
+      --text: #fafafa; --text-muted: #a1a1aa; --text-faint: #52525b;
+      --border: rgba(255,255,255,0.07);
+      --radius-sm: 4px; --radius: 8px; --radius-lg: 12px;
+      --font: 'Outfit', system-ui, sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+    /* NAV */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(1.5rem,5vw,4rem); background: rgba(9,9,11,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); text-decoration: none; }
+    .nav-mark { width: 28px; height: 28px; background: var(--accent); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 14px; transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); }
+    .btn-primary { background: var(--accent); color: #09090b; font-family: var(--font); font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: var(--radius-sm); border: none; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; transition: opacity 0.15s, transform 0.1s; white-space: nowrap; line-height: 1; }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:active { transform: scale(0.97); }
+
+    /* LAYOUT */
+    .page-hero { min-height: 60dvh; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 0 clamp(1.5rem,5vw,4rem) 5rem; max-width: 1320px; margin: 0 auto; padding-top: 64px; }
+    .page-hero-inner { max-width: 700px; }
+    .eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.11em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); margin-bottom: 1.25rem; display: block; }
+    h1 { font-size: clamp(2.4rem,4.5vw,3.6rem); font-weight: 700; line-height: 1.08; letter-spacing: -0.04em; margin-bottom: 1.25rem; }
+    .hero-sub { font-size: 17px; color: var(--text-muted); line-height: 1.65; max-width: 52ch; }
+
+    section { padding: 6rem clamp(1.5rem,5vw,4rem); }
+    .s-inner { max-width: 1320px; margin: 0 auto; }
+
+    /* DIMENSION GRID */
+    .dim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1px; background: var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .dim-cell { background: var(--bg-card); padding: 2rem; }
+    .dim-cell:first-child { background: #0f1117; }
+    .dim-num { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: var(--text-faint); font-family: var(--mono); margin-bottom: 1rem; }
+    .dim-cell h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .dim-cell p { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+    .dim-pts { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-family: var(--mono); color: var(--accent); margin-top: 0.75rem; background: var(--accent-dim); padding: 3px 8px; border-radius: 99px; }
+
+    /* SPLIT SECTIONS */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; }
+    .split.reverse { direction: rtl; }
+    .split.reverse > * { direction: ltr; }
+    .split-copy h2 { font-size: clamp(1.8rem,3vw,2.4rem); font-weight: 700; letter-spacing: -0.035em; color: var(--text); line-height: 1.15; margin-bottom: 1rem; }
+    .split-copy p { font-size: 15px; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.75rem; max-width: 44ch; }
+    .feature-list { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
+    .feature-item { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text-muted); }
+    .feature-item::before { content: ''; width: 5px; height: 5px; background: var(--accent); border-radius: 50%; flex-shrink: 0; margin-top: 8px; }
+    .split-visual { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; }
+    .split-visual-tinted { background: #0f1117; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; }
+
+    /* COACH VISUAL */
+    .coach-rep-list { display: flex; flex-direction: column; gap: 10px; }
+    .coach-rep { background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .coach-rep-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .coach-rep-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .coach-rep-grade { font-size: 13px; font-family: var(--mono); font-weight: 600; color: var(--accent); }
+    .coach-rep-bar-bg { height: 3px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+    .coach-rep-bar { height: 100%; background: var(--accent); border-radius: 99px; }
+    .coach-rep-meta { display: flex; justify-content: space-between; margin-top: 6px; }
+    .coach-rep-calls { font-size: 11px; color: var(--text-faint); font-family: var(--mono); }
+    .coach-rep-trend { font-size: 11px; color: #22c55e; font-family: var(--mono); }
+
+    /* PULSE VISUAL */
+    .pulse-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pulse-card { background: var(--bg-raised); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .pulse-card-label { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-family: var(--mono); margin-bottom: 6px; }
+    .pulse-card-value { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -0.04em; font-family: var(--mono); }
+    .pulse-card-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+    .pulse-card-value.accent { color: var(--accent); }
+
+    /* PARTNER VISUAL */
+    .partner-table { width: 100%; border-collapse: collapse; }
+    .partner-table th { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); font-family: var(--mono); padding: 0 0 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    .partner-table td { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; color: var(--text-muted); vertical-align: middle; }
+    .partner-table td:last-child { text-align: right; font-family: var(--mono); color: var(--accent); }
+    .partner-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 2px 8px; border-radius: 99px; }
+    .partner-badge.rep { background: rgba(245,158,11,0.12); color: var(--accent); }
+    .partner-badge.partner { background: rgba(99,102,241,0.12); color: #818cf8; }
+
+    /* SECTION HEADER */
+    .section-header { margin-bottom: 3.5rem; }
+    .section-header h2 { font-size: clamp(1.8rem,3.2vw,2.5rem); font-weight: 700; letter-spacing: -0.035em; color: var(--text); line-height: 1.15; margin-bottom: 0.75rem; }
+    .section-header p { font-size: 15px; color: var(--text-muted); max-width: 54ch; }
+
+    /* DIVIDER */
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    /* CTA */
+    .cta-wrap { text-align: center; }
+    .cta-inner { max-width: 580px; margin: 0 auto; }
+    .cta-wrap h2 { font-size: clamp(1.9rem,3.5vw,2.8rem); font-weight: 700; letter-spacing: -0.04em; color: var(--text); line-height: 1.1; margin-bottom: 1rem; }
+    .cta-wrap p { font-size: 16px; color: var(--text-muted); margin-bottom: 2.25rem; }
+
+    /* FOOTER */
+    .footer-wrap { border-top: 1px solid var(--border); }
+    footer { max-width: 1320px; margin: 0 auto; padding: 2rem clamp(1.5rem,5vw,4rem); display: flex; align-items: center; justify-content: space-between; }
+    .footer-logo { font-size: 15px; font-weight: 700; letter-spacing: -0.03em; color: var(--text-muted); }
+    .footer-links { display: flex; gap: 2rem; }
+    .footer-links a { font-size: 13px; color: var(--text-faint); text-decoration: none; }
+    .footer-links a:hover { color: var(--text-muted); }
+    .footer-copy { font-size: 12px; color: var(--text-faint); font-family: var(--mono); }
+
+    @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .ai { animation: fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) both; }
+    .d1 { animation-delay: 0.08s; } .d2 { animation-delay: 0.18s; }
+
+    @media (max-width: 900px) {
+      .split { grid-template-columns: 1fr; gap: 2.5rem; }
+      .split.reverse { direction: ltr; }
+      .dim-grid { grid-template-columns: 1fr; }
+      .pulse-cards { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      nav .nav-links { display: none; }
+      footer { flex-direction: column; gap: 1.25rem; text-align: center; }
+      .footer-links { flex-wrap: wrap; justify-content: center; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="landing.html" class="nav-logo">
+    <div class="nav-mark">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M1 8h2M4 5v6M7 3v10M10 6v4M13 5v6" stroke="#09090b" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+    </div>
+    SIREN
+  </a>
+  <ul class="nav-links">
+    <li><a href="product.html" class="active">Product</a></li>
+    <li><a href="how-it-works.html">How it works</a></li>
+    <li><a href="pricing.html">Pricing</a></li>
+  </ul>
+  <a href="landing.html#cta" class="btn-primary">Request access</a>
+</nav>
+
+<!-- HERO -->
+<div class="page-hero" style="max-width:none; padding-left: clamp(1.5rem,5vw,4rem); padding-right: clamp(1.5rem,5vw,4rem);">
+  <div class="page-hero-inner">
+    <span class="eyebrow ai">The Platform</span>
+    <h1 class="ai d1">The full picture of<br>every sales call.</h1>
+    <p class="hero-sub ai d2">Seven graded dimensions. Rep-level coaching. Pipeline intelligence. All from a single transcript.</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- 7 DIMENSIONS -->
+<section>
+  <div class="s-inner">
+    <div class="section-header">
+      <h2>Seven dimensions. One clear picture.</h2>
+      <p>SIREN grades every call across the dimensions that actually predict revenue outcomes. Each score comes with specific evidence from the transcript.</p>
+    </div>
+    <div class="dim-grid">
+      <div class="dim-cell">
+        <div class="dim-num">01 / 07</div>
+        <h3>Discovery &amp; Needs Confirmation</h3>
+        <p>Did the rep uncover the real problem? Graded on question depth, active listening, and whether pain was confirmed before pitching.</p>
+        <span class="dim-pts">20 pts</span>
+      </div>
+      <div class="dim-cell">
+        <div class="dim-num">02 / 07</div>
+        <h3>Value Framing</h3>
+        <p>Was the solution tied directly to the buyer's stated pain? Graded on specificity, proof points, and ROI anchoring.</p>
+        <span class="dim-pts">10 pts</span>
+      </div>
+      <div class="dim-cell">
+        <div class="dim-num">03 / 07</div>
+        <h3>Demo Delivery</h3>
+        <p>For demo calls - did the rep show what was relevant, not everything? Graded on focus, pacing, and tailoring to the buyer's role.</p>
+        <span class="dim-pts">13 pts</span>
+      </div>
+      <div class="dim-cell">
+        <div class="dim-num">04 / 07</div>
+        <h3>Executive Presence &amp; Strategic Positioning</h3>
+        <p>Did the rep sound like a peer to the buyer? Graded on confidence, strategic framing, and ability to steer the conversation.</p>
+        <span class="dim-pts">10 pts</span>
+      </div>
+      <div class="dim-cell">
+        <div class="dim-num">05 / 07</div>
+        <h3>Tactical Empathy &amp; Objection Handling</h3>
+        <p>Were objections met with curiosity or defensiveness? Graded on acknowledgment, reframing, and resolution quality.</p>
+        <span class="dim-pts">25 pts</span>
+      </div>
+      <div class="dim-cell">
+        <div class="dim-num">06 / 07</div>
+        <h3>Qualification &amp; Deal Mechanics</h3>
+        <p>Does the rep understand the buying process, stakeholders, and timeline? Graded on MEDDIC/SPICED coverage and budget qualification.</p>
+        <span class="dim-pts">7 pts</span>
+      </div>
+      <div class="dim-cell">
+        <div class="dim-num">07 / 07</div>
+        <h3>Call Control &amp; Next Steps</h3>
+        <p>Did the call end with a clear, committed next step - or a vague "I'll follow up"? Graded on specificity and mutual agreement.</p>
+        <span class="dim-pts">15 pts</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- COACH -->
+<section>
+  <div class="s-inner">
+    <div class="split">
+      <div class="split-copy">
+        <span class="eyebrow">Rep Coaching</span>
+        <h2>Know exactly who needs what coaching.</h2>
+        <p>Every rep gets a running score across every call they've been on. See who's improving, who's plateaued, and where to focus your next 1:1.</p>
+        <p>SIREN identifies each rep's strongest and weakest dimensions, so your coaching is always targeted - not generic.</p>
+        <div class="feature-list">
+          <div class="feature-item">Per-rep score trends across all calls</div>
+          <div class="feature-item">Dimension-level breakdown showing where each rep over- and under-indexes</div>
+          <div class="feature-item">Call history with individual scores and coach notes</div>
+          <div class="feature-item">Shareable coaching reports for direct feedback sessions</div>
+        </div>
+      </div>
+      <div class="split-visual">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.25rem;">Rep Performance</div>
+        <div class="coach-rep-list">
+          <div class="coach-rep">
+            <div class="coach-rep-top">
+              <span class="coach-rep-name">Peyton Murphy</span>
+              <span class="coach-rep-grade">A &nbsp;91</span>
+            </div>
+            <div class="coach-rep-bar-bg"><div class="coach-rep-bar" style="width:91%"></div></div>
+            <div class="coach-rep-meta"><span class="coach-rep-calls">12 calls</span><span class="coach-rep-trend">+14 this month</span></div>
+          </div>
+          <div class="coach-rep">
+            <div class="coach-rep-top">
+              <span class="coach-rep-name">Hayden Morgan</span>
+              <span class="coach-rep-grade">B+ &nbsp;78</span>
+            </div>
+            <div class="coach-rep-bar-bg"><div class="coach-rep-bar" style="width:78%"></div></div>
+            <div class="coach-rep-meta"><span class="coach-rep-calls">9 calls</span><span class="coach-rep-trend">+6 this month</span></div>
+          </div>
+          <div class="coach-rep">
+            <div class="coach-rep-top">
+              <span class="coach-rep-name">Elliot Cook</span>
+              <span class="coach-rep-grade">C+ &nbsp;63</span>
+            </div>
+            <div class="coach-rep-bar-bg"><div class="coach-rep-bar" style="width:63%"></div></div>
+            <div class="coach-rep-meta"><span class="coach-rep-calls">7 calls</span><span class="coach-rep-trend" style="color:var(--text-faint)">+2 this month</span></div>
+          </div>
+          <div class="coach-rep">
+            <div class="coach-rep-top">
+              <span class="coach-rep-name">Morgan Hernandez</span>
+              <span class="coach-rep-grade">C &nbsp;58</span>
+            </div>
+            <div class="coach-rep-bar-bg"><div class="coach-rep-bar" style="width:58%"></div></div>
+            <div class="coach-rep-meta"><span class="coach-rep-calls">5 calls</span><span class="coach-rep-trend" style="color:#ef4444">-3 this month</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- PULSE / PIPELINE -->
+<section>
+  <div class="s-inner">
+    <div class="split reverse">
+      <div class="split-copy">
+        <span class="eyebrow">Pipeline Intelligence</span>
+        <h2>A live read on your team's call quality.</h2>
+        <p>Pulse gives revenue leaders a single view across all calls graded this week - average score, top grade, and where quality is trending.</p>
+        <p>Vigil monitors accounts that need attention: open action items, stalled deals, and calls where next steps were missed.</p>
+        <div class="feature-list">
+          <div class="feature-item">Team-wide score trend over the last 10 or 30 calls</div>
+          <div class="feature-item">Account-level alerts for open items and missed commitments</div>
+          <div class="feature-item">Quick scan of which calls need your review today</div>
+          <div class="feature-item">Filter by rep, stage, or date range</div>
+        </div>
+      </div>
+      <div class="split-visual-tinted">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.25rem;">Intelligence Overview</div>
+        <div class="pulse-cards">
+          <div class="pulse-card">
+            <div class="pulse-card-label">Calls Graded</div>
+            <div class="pulse-card-value accent">24</div>
+            <div class="pulse-card-sub">6 this week</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-card-label">Avg Score</div>
+            <div class="pulse-card-value">74</div>
+            <div class="pulse-card-sub">+4 vs last month</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-card-label">Open Items</div>
+            <div class="pulse-card-value" style="color:#f87171">3</div>
+            <div class="pulse-card-sub">2 accounts flagged</div>
+          </div>
+          <div class="pulse-card">
+            <div class="pulse-card-label">Top Grade</div>
+            <div class="pulse-card-value accent">A</div>
+            <div class="pulse-card-sub">Peyton Murphy</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- PARTNER SCORING -->
+<section>
+  <div class="s-inner">
+    <div class="split">
+      <div class="split-copy">
+        <span class="eyebrow">Partner Scoring</span>
+        <h2>Score everyone on the call, not just your reps.</h2>
+        <p>On partner calls and co-sells, SIREN grades external participants alongside your own team. Know how your channel partners show up - before it costs you a deal.</p>
+        <div class="feature-list">
+          <div class="feature-item">Separate scores for internal reps and external participants</div>
+          <div class="feature-item">Partner performance trends across all co-sell calls</div>
+          <div class="feature-item">Identify which partners add value vs. which ones need enablement</div>
+        </div>
+      </div>
+      <div class="split-visual">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.25rem;">Cascade Health - Apr 14</div>
+        <table class="partner-table">
+          <thead>
+            <tr>
+              <th>Participant</th>
+              <th>Role</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Peyton Murphy</td>
+              <td><span class="partner-badge rep">Rep</span></td>
+              <td>91</td>
+            </tr>
+            <tr>
+              <td>Jordan Fields</td>
+              <td><span class="partner-badge partner">Partner</span></td>
+              <td>72</td>
+            </tr>
+            <tr>
+              <td>Alex Nguyen</td>
+              <td><span class="partner-badge rep">Rep</span></td>
+              <td>68</td>
+            </tr>
+            <tr>
+              <td>Sam Okafor</td>
+              <td><span class="partner-badge partner">Partner</span></td>
+              <td>54</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-wrap" style="border-top:1px solid var(--border);">
+  <div class="cta-inner">
+    <h2>See SIREN grade a real call.</h2>
+    <p>Request access and we'll walk you through a live report on one of your team's actual calls.</p>
+    <a href="landing.html" class="btn-primary" style="font-size:15px;padding:13px 26px;">Request access &rarr;</a>
+  </div>
+</section>
+
+<div class="footer-wrap">
+  <footer>
+    <span class="footer-logo">SIREN</span>
+    <div class="footer-links">
+      <a href="product.html">Product</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="pricing.html">Pricing</a>
+    </div>
+    <span class="footer-copy">&copy; 2025</span>
+  </footer>
+</div>
+
+</body>
+</html>
