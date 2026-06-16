@@ -1344,7 +1344,7 @@ const server = http.createServer(async (req, res) => {
   const filePath = path.join(__dirname, 'public', req.url);
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext  = path.extname(filePath);
-    const mime = { '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png' }[ext] || 'text/plain';
+    const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png' }[ext] || 'text/plain';
     res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store' });
     res.end(fs.readFileSync(filePath));
     return;
