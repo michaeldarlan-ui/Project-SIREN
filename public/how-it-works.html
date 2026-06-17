@@ -30,6 +30,8 @@
     .btn-primary { background: var(--accent); color: #09090b; font-family: var(--font); font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: var(--radius-sm); border: none; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; transition: opacity 0.15s, transform 0.1s; white-space: nowrap; line-height: 1; }
     .btn-primary:hover { opacity: 0.88; }
     .btn-primary:active { transform: scale(0.97); }
+    .btn-app { color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.15s; white-space: nowrap; }
+    .btn-app:hover { color: var(--text); }
 
     section { padding: 6rem clamp(1.5rem,5vw,4rem); }
     .s-inner { max-width: 1320px; margin: 0 auto; }
@@ -153,6 +155,7 @@
     <li><a href="how-it-works.html" class="active">How it works</a></li>
     <li><a href="pricing.html">Pricing</a></li>
   </ul>
+  <a href="index.html" class="btn-app">Open app</a>
   <a href="landing.html" class="btn-primary">Request access</a>
 </nav>
 
@@ -177,7 +180,7 @@
         <div class="step-nav-list">
           <div class="step-nav-item active" onclick="scrollToStep(1)">
             <span class="step-nav-num">01</span>
-            <span class="step-nav-text">Upload your transcript</span>
+            <span class="step-nav-text">Connect your meeting platform</span>
           </div>
           <div class="step-nav-item" onclick="scrollToStep(2)">
             <span class="step-nav-num">02</span>
@@ -203,9 +206,9 @@
 
         <div class="step-block" id="step-1">
           <div class="step-block-num">01</div>
-          <h2>Upload your transcript.</h2>
-          <p>Paste a call transcript directly into SIREN, or upload a file. No recorder integration required. If you use Gong, Chorus, Otter, or Fireflies, you can export a transcript in seconds.</p>
-          <p>SIREN works with any format. Speaker labels help it identify participants, but even unlabeled transcripts can be processed with a quick manual tag.</p>
+          <h2>Connect your meeting platform.</h2>
+          <p>Link Zoom, Microsoft Teams, or Google Meet. SIREN captures transcripts automatically from recorded calls using each platform's native recording — no manual export, no copy-paste.</p>
+          <p>Don't use a supported platform yet? You can still paste a transcript directly or upload a file. SIREN works with any format and a built-in recorder is coming for teams that need it.</p>
           <div class="step-visual">
             <div style="font-size:10px;font-family:var(--mono);color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1rem;">Transcript input</div>
             <div class="transcript-lines">

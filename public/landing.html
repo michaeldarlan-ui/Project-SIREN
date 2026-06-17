@@ -86,6 +86,8 @@
     }
     .btn-primary:hover { opacity: 0.88; }
     .btn-primary:active { transform: scale(0.97); }
+    .btn-app { color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.15s; white-space: nowrap; }
+    .btn-app:hover { color: var(--text); }
 
     /* ── HERO ───────────────────────────────────────── */
     .hero {
@@ -497,11 +499,12 @@
     SIREN
   </a>
   <ul class="nav-links">
-    <li><a href="#">Product</a></li>
-    <li><a href="#">How it works</a></li>
-    <li><a href="#">Pricing</a></li>
+    <li><a href="product.html">Product</a></li>
+    <li><a href="how-it-works.html">How it works</a></li>
+    <li><a href="pricing.html">Pricing</a></li>
   </ul>
-  <a href="#" class="btn-primary">Request access</a>
+  <a href="index.html" class="btn-app">Open app</a>
+  <a href="#cta" class="btn-primary">Request access</a>
 </nav>
 
 <!-- ── HERO ───────────────────────────────────────────── -->
@@ -516,8 +519,8 @@
       SIREN scores every sales call your team makes, surfaces exactly where each rep needs coaching, and tracks improvement over time.
     </p>
     <div class="hero-actions ai d3">
-      <a href="#" class="btn-primary btn-hero">Request access &rarr;</a>
-      <a href="#" class="btn-ghost">See a sample report &rarr;</a>
+      <a href="#cta" class="btn-primary btn-hero">Request access &rarr;</a>
+      <a href="product.html" class="btn-ghost">See how it works &rarr;</a>
     </div>
   </div>
 
@@ -642,14 +645,14 @@
 <section>
   <div class="s-inner">
     <div class="hiw-header">
-      <h2>From transcript to coaching report,<br>in minutes.</h2>
-      <p>Paste any transcript and SIREN does the rest. No rubric-building, no manual listening.</p>
+      <h2>From call to coaching report,<br>automatically.</h2>
+      <p>Connect your meeting platform and SIREN does the rest. No manual exports, no rubric-building, no listening.</p>
     </div>
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
-        <h3>Upload your transcript</h3>
-        <p>Paste a call transcript or connect your recording platform. SIREN reads every line, including who said what.</p>
+        <h3>Connect your meeting platform</h3>
+        <p>Link Zoom, Microsoft Teams, or Google Meet. SIREN captures transcripts automatically from recorded calls — no copy-pasting required.</p>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -770,11 +773,11 @@
 </section>
 
 <!-- ── FINAL CTA ───────────────────────────────────────── -->
-<section class="cta-wrap">
+<section class="cta-wrap" id="cta">
   <div class="cta-inner">
     <h2>Your team's best calls deserve to be learned from.</h2>
     <p>Start grading every call. Stop guessing what to coach.</p>
-    <a href="#" class="btn-primary cta-btn">Request access &rarr;</a>
+    <a href="pricing.html" class="btn-primary cta-btn">Request access &rarr;</a>
   </div>
 </section>
 
@@ -783,9 +786,9 @@
   <footer>
     <span class="footer-logo">SIREN</span>
     <div class="footer-links">
-      <a href="#">Product</a>
-      <a href="#">Privacy</a>
-      <a href="#">Terms</a>
+      <a href="product.html">Product</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="pricing.html">Pricing</a>
     </div>
     <span class="footer-copy">&copy; 2025</span>
   </footer>
