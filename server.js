@@ -1341,7 +1341,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const filePath = path.join(__dirname, 'public', req.url);
+  const urlPath  = req.url.split('?')[0];
+  const filePath = path.join(__dirname, 'public', urlPath);
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext  = path.extname(filePath);
     const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png' }[ext] || 'text/plain';
