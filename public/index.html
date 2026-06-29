@@ -76,7 +76,41 @@
         <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Landing page
       </a>
+      <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;" id="usersMenuDivider" style="display:none;"></div>
+      <button class="settings-item" id="usersMenuItem" onclick="navTo('users');closeSettingsMenu()" style="display:none;">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </button>
     </div>
+  </div>
+  <div id="userPill" style="display:none;align-items:center;gap:10px;margin-left:12px;">
+    <div id="userPillName" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(0,200,255,.7);text-transform:uppercase;"></div>
+    <button onclick="authChangePwdOpen()" style="background:none;border:1px solid rgba(0,200,255,.2);border-radius:4px;padding:3px 8px;font-size:10px;color:rgba(255,255,255,.4);cursor:pointer;letter-spacing:.04em;" title="Change password">⚿</button>
+    <button onclick="authLogout()" style="background:none;border:1px solid rgba(255,100,100,.2);border-radius:4px;padding:3px 8px;font-size:10px;color:rgba(255,100,100,.5);cursor:pointer;letter-spacing:.04em;" title="Sign out">Sign out</button>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="changePwdModal" onclick="if(event.target===this)authChangePwdClose()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
+  <div style="background:#0a1a24;border:1px solid rgba(0,200,255,.18);border-radius:10px;width:min(380px,94vw);padding:28px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;letter-spacing:.06em;color:rgba(0,200,255,.8);">CHANGE PASSWORD</div>
+      <button onclick="authChangePwdClose()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:5px;">Current Password</label>
+      <input id="cpCurPwd" type="password" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:6px;color:rgba(255,255,255,.9);padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:5px;">New Password</label>
+      <input id="cpNewPwd" type="password" placeholder="min. 8 characters" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:6px;color:rgba(255,255,255,.9);padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:5px;">Confirm Password</label>
+      <input id="cpConfPwd" type="password" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:6px;color:rgba(255,255,255,.9);padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+    </div>
+    <button onclick="authDoChangePassword()" style="width:100%;background:#00c8ff;color:#040f14;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;">Save Password</button>
+    <div id="cpErr" style="color:#ef4444;font-size:12px;margin-top:10px;min-height:18px;text-align:center;"></div>
   </div>
 </div>
 
@@ -1938,6 +1972,47 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
   </div>
 </div>
 
+<!-- ══ USERS PAGE (admin only) ══ -->
+<div class="page" id="page-users">
+  <div class="shell">
+    <div class="page-heading" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">Users</h2>
+        <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Manage SIREN user accounts.</p>
+      </div>
+      <button onclick="usersOpenAdd()" style="background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.04em;">+ Add User</button>
+    </div>
+    <div id="usersList" style="background:var(--siren-bg-card);border:1px solid var(--siren-border);border-radius:8px;overflow:hidden;"></div>
+
+    <!-- Add User form -->
+    <div id="usersAddForm" style="display:none;background:var(--siren-bg-card);border:1px solid rgba(0,200,255,.18);border-radius:8px;padding:20px;margin-top:16px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:14px;">New User</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap;">
+        <div>
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Username</label>
+          <input id="uaUsername" type="text" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Password</label>
+          <input id="uaPassword" type="password" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Role</label>
+          <select id="uaRole" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="usersAddSubmit()" style="background:#00c8ff;color:#040f14;border:none;border-radius:5px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+          <button onclick="usersCloseAdd()" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:5px;padding:7px 10px;font-size:12px;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+      <div id="uaErr" style="color:#ef4444;font-size:12px;margin-top:8px;min-height:16px;"></div>
+    </div>
+  </div>
+</div>
+
 <script src="db.js"></script>
 <script src="core.js"></script>
 <script src="engage.js"></script>
@@ -1950,6 +2025,7 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 <script src="dash.js"></script>
 <script src="roadmap.js"></script>
 <script src="audit.js"></script>
+<script src="auth.js"></script>
 <script src="init.js"></script>
 </body>
 </html>

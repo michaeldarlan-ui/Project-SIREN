@@ -600,6 +600,7 @@
             </div>
             <span style="font-size:11px;color:rgba(255,255,255,.25);">${escHtml(lastDate)} · ${escHtml(gradeLabel)}</span>
             <span class="pulse-feed-tag ${a.severity}">${sevLabel[a.severity]}</span>
+            <button class="pulse-pdf-btn" title="Download deal status report as PDF" onclick="event.stopPropagation();vigilOpenPdfReport('${cSafe}')">⬇ PDF</button>
             <span class="pulse-feed-chevron">▶</span>
           </div>
         </div>
@@ -1225,4 +1226,173 @@
       });
     });
   }
+
+  // ── VIGIL PDF Report ─────────────────────────────────────────
+  window.vigilOpenPdfReport = function(company) {
+    const hist = loadHistory();
+    const calls = hist
+      .filter(h => (h.prospect || '').trim() === company)
+      .sort((a, b) => {
+        const da = a.callDate || a.ts.slice(0, 10);
+        const db = b.callDate || b.ts.slice(0, 10);
+        return da > db ? -1 : da < db ? 1 : 0;
+      });
+    if (!calls.length) return;
+
+    const latest = calls[0];
+    const tasks = pulseSeedTasks(company, calls);
+    const openTasks = tasks.filter(t => !t.done);
+    const doneTasks = tasks.filter(t => t.done);
+
+    // Scope data (localStorage)
+    let scopeData = {};
+    try {
+      const all = JSON.parse(localStorage.getItem('oa_scope_v2') || '{}');
+      scopeData = all[company]?.draft || {};
+    } catch {}
+
+    const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const fmt = d => d ? new Date(d + 'T00:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+
+    const gradeColor = g => {
+      if (!g) return '#aaa';
+      if (g.startsWith('A')) return '#22c55e';
+      if (g.startsWith('B')) return '#86efac';
+      if (g.startsWith('C')) return '#f59e0b';
+      return '#ef4444';
+    };
+
+    const callRows = calls.map(c => {
+      const score = c.normalized_score || c.total || 0;
+      const gc = gradeColor(c.letter_grade);
+      return `<tr>
+        <td>${esc(c.callDate || c.ts.slice(0, 10))}</td>
+        <td>${esc(c.stage || '—')}</td>
+        <td>${esc(c.rep || '—')}</td>
+        <td style="color:${gc};font-weight:700;">${esc(c.letter_grade || '—')}</td>
+        <td style="color:${gc};">${score}</td>
+        <td>${esc(c.top_strength || '—')}</td>
+        <td>${esc(c.top_priority || '—')}</td>
+      </tr>`;
+    }).join('');
+
+    const stepRows = (list, done) => list.length
+      ? list.map(t => `<li style="${done ? 'text-decoration:line-through;opacity:.5;' : ''}">${esc(t.text)}${t.source ? ` <span class="src">${esc(t.source)}</span>` : ''}</li>`).join('')
+      : `<li style="opacity:.35;">None</li>`;
+
+    const scopeSections = [
+      { title: 'ENGAGEMENT OVERVIEW', keys: ['Company Name','Primary point of contact (name & title)','Contact email','Contact phone','Target completion window / date needed','Primary business driver (gap assessment / exam prep / board request / insurance / M&A)'] },
+      { title: 'ORGANIZATION PROFILE', keys: ['Total number of employees (full-time + part-time)','Number of in-house IT / security staff','Number of business locations / offices','Primary regulator(s) / oversight body (FTC / HHS-OCR / FDA / SEC / state DPA / sector-specific / none)'] },
+      { title: 'ENVIRONMENT', keys: ['System architecture (on-prem / cloud-hosted / hybrid)','Number of endpoints (workstations + laptops)','Number of servers (physical + virtual)','Cloud environment(s) in use (Azure / AWS / GCP / M365 / none)'] },
+    ];
+
+    const scopeHtml = scopeSections.map(sec => {
+      const rows = sec.keys.map(k => {
+        const slug = k.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const val = scopeData[slug]?.value;
+        return val ? `<tr><td class="sk">${esc(k.split('(')[0].trim())}</td><td>${esc(val)}</td></tr>` : '';
+      }).filter(Boolean).join('');
+      return rows ? `<h3>${esc(sec.title)}</h3><table class="scope-tbl">${rows}</table>` : '';
+    }).filter(Boolean).join('');
+
+    const nextStepsHtml = latest.next_steps
+      ? (Array.isArray(latest.next_steps)
+          ? latest.next_steps.map(s => `<li>${esc(s)}</li>`).join('')
+          : `<li>${esc(latest.next_steps)}</li>`)
+      : '';
+
+    const teamHtml = (() => {
+      let members = [];
+      try { members = JSON.parse(latest.participants || '[]'); } catch {}
+      return members.length
+        ? members.map(m => `<span class="team-chip">${esc(typeof m === 'string' ? m : m.name || '')}</span>`).join('')
+        : '<span style="opacity:.4;">—</span>';
+    })();
+
+    const reportDate = new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SIREN Deal Report — ${esc(company)}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#040f14;color:#d4e8f0;font-family:'Inter',sans-serif;font-size:13px;line-height:1.6;padding:40px 48px;}
+  h1{font-size:22px;font-weight:700;letter-spacing:.06em;color:#fff;margin-bottom:4px;}
+  h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:#00c8ff;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(0,200,255,.2);}
+  h3{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.6);margin:16px 0 6px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(0,200,255,.2);}
+  .company{font-size:26px;font-weight:700;color:#00c8ff;letter-spacing:.04em;}
+  .meta{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;}
+  .grade-badge{text-align:right;}
+  .grade-letter{font-size:56px;font-weight:800;line-height:1;color:${gradeColor(latest.letter_grade)};}
+  .grade-score{font-size:14px;color:rgba(255,255,255,.5);margin-top:4px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+  th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:6px 8px;border-bottom:1px solid rgba(0,200,255,.15);}
+  td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .scope-tbl td:first-child{color:rgba(255,255,255,.4);font-size:11px;width:45%;}
+  .sk{white-space:nowrap;}
+  ul{list-style:none;padding:0;}
+  li{padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;}
+  li:last-child{border-bottom:none;}
+  .src{font-size:10px;color:rgba(0,200,255,.5);margin-left:8px;}
+  .team-chip{display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);color:#00c8ff;font-size:11px;margin:3px 4px 3px 0;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .save-btn{position:fixed;top:20px;right:20px;background:#00c8ff;color:#040f14;border:none;border-radius:6px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;}
+  .save-btn:hover{background:#33d4ff;}
+  @media print{.save-btn{display:none;}body{padding:20px 28px;}@page{margin:10mm;}}
+</style>
+</head>
+<body>
+<button class="save-btn" onclick="window.print()">Save as PDF</button>
+<div class="header">
+  <div>
+    <div style="font-size:9px;font-weight:700;letter-spacing:.18em;color:rgba(0,200,255,.5);text-transform:uppercase;margin-bottom:8px;">SIREN · Deal Status Report</div>
+    <div class="company">${esc(company)}</div>
+    <div class="meta">Stage: ${esc(latest.stage || '—')} &nbsp;·&nbsp; Last call: ${fmt(latest.callDate || latest.ts.slice(0, 10))} &nbsp;·&nbsp; Rep: ${esc(latest.rep || '—')}</div>
+    <div class="meta">Generated: ${esc(reportDate)} &nbsp;·&nbsp; ${calls.length} call${calls.length !== 1 ? 's' : ''} on record</div>
+  </div>
+  <div class="grade-badge">
+    <div class="grade-letter">${esc(latest.letter_grade || '—')}</div>
+    <div class="grade-score">${latest.normalized_score || latest.total || 0} / 100</div>
+  </div>
+</div>
+
+<h2>Call History</h2>
+<table>
+  <thead><tr><th>Date</th><th>Stage</th><th>Rep</th><th>Grade</th><th>Score</th><th>Top Strength</th><th>Top Gap</th></tr></thead>
+  <tbody>${callRows}</tbody>
+</table>
+
+<h2>Next Steps &amp; Action Items</h2>
+<div class="two-col">
+  <div>
+    <h3>Open (${openTasks.length})</h3>
+    <ul>${stepRows(openTasks, false)}</ul>
+  </div>
+  <div>
+    <h3>Completed (${doneTasks.length})</h3>
+    <ul>${stepRows(doneTasks, true)}</ul>
+  </div>
+</div>
+
+${nextStepsHtml ? `<h2>Agreed Next Steps (Latest Call)</h2><ul>${nextStepsHtml}</ul>` : ''}
+
+<h2>Team</h2>
+<div>${teamHtml}</div>
+
+${scopeHtml ? `<h2>Scope Data</h2>${scopeHtml}` : ''}
+
+${latest.overview ? `<h2>Call Overview</h2><p style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.7;">${esc(latest.overview)}</p>` : ''}
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+  };
 

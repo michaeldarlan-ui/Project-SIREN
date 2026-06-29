@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import readline from 'readline';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { createClient } from '@libsql/client';
 
@@ -129,6 +130,22 @@ await client.batch([
       top_priority TEXT,
       normalized_score INTEGER DEFAULT 0,
       PRIMARY KEY (call_id, name)
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      must_change_password INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      role TEXT NOT NULL,
+      expires_at TEXT NOT NULL
     )` },
 ], 'write');
 
@@ -265,6 +282,82 @@ await client.batch([
       }
       console.log(`[db] Migrated ${old.length} transcript rows to standalone schema`);
     }
+  }
+}
+
+// ── Auth helpers ──────────────────────────────────────────────
+function hashPassword(password, salt) {
+  return new Promise((resolve, reject) =>
+    crypto.scrypt(password, salt, 64, (err, buf) => err ? reject(err) : resolve(buf.toString('hex')))
+  );
+}
+
+async function createUser(username, password, role = 'user', mustChange = false) {
+  const id   = crypto.randomUUID();
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = await hashPassword(password, salt);
+  await client.execute({
+    sql: `INSERT INTO users (id, username, password_hash, salt, role, must_change_password, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, username, hash, salt, role, mustChange ? 1 : 0, new Date().toISOString()],
+  });
+  return id;
+}
+
+async function verifyPassword(username, password) {
+  const row = (await client.execute({ sql: 'SELECT * FROM users WHERE username = ?', args: [username] })).rows[0];
+  if (!row) return null;
+  const hash = await hashPassword(password, String(row.salt));
+  if (hash !== String(row.password_hash)) return null;
+  return { id: String(row.id), username: String(row.username), role: String(row.role), mustChangePassword: !!row.must_change_password };
+}
+
+async function createSession(userId, username, role) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  await client.execute({
+    sql: `INSERT INTO sessions (token, user_id, username, role, expires_at) VALUES (?, ?, ?, ?, ?)`,
+    args: [token, userId, username, role, expires],
+  });
+  return token;
+}
+
+async function getSession(token) {
+  if (!token) return null;
+  const row = (await client.execute({ sql: 'SELECT * FROM sessions WHERE token = ?', args: [token] })).rows[0];
+  if (!row) return null;
+  if (new Date(String(row.expires_at)) < new Date()) {
+    await client.execute({ sql: 'DELETE FROM sessions WHERE token = ?', args: [token] });
+    return null;
+  }
+  return { userId: String(row.user_id), username: String(row.username), role: String(row.role) };
+}
+
+function parseCookie(cookieHeader) {
+  if (!cookieHeader) return {};
+  return Object.fromEntries(cookieHeader.split(';').map(c => {
+    const [k, ...v] = c.trim().split('=');
+    return [k.trim(), decodeURIComponent(v.join('='))];
+  }));
+}
+
+async function requireAuth(req, res) {
+  const token = parseCookie(req.headers.cookie).siren_session;
+  const session = await getSession(token);
+  if (!session) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Unauthorized' }));
+    return null;
+  }
+  return session;
+}
+
+// Seed default admin if no users exist
+{
+  const userCount = (await client.execute('SELECT COUNT(*) as n FROM users')).rows[0];
+  if (Number(userCount.n) === 0) {
+    await createUser('admin', 'siren-admin', 'admin', true);
+    console.log('  ✓  Default admin created: admin / siren-admin (change on first login)');
   }
 }
 
@@ -615,6 +708,162 @@ function readBody(req) {
 // ── HTTP server ───────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   console.log(`[${req.method}] ${req.url}`);
+
+  const urlPath0 = req.url.split('?')[0];
+
+  // ── Auth endpoints (public — no session required) ──────────
+  if (req.method === 'POST' && urlPath0 === '/api/auth/login') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const { username, password } = JSON.parse(body);
+        const user = await verifyPassword(username, password);
+        if (!user) {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid username or password' }));
+          return;
+        }
+        const token = await createSession(user.id, user.username, user.role);
+        const cookie = `siren_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}`;
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': cookie });
+        res.end(JSON.stringify({ ok: true, username: user.username, role: user.role, mustChangePassword: user.mustChangePassword }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Bad request' }));
+      }
+    });
+    return;
+  }
+
+  if (urlPath0 === '/login' || urlPath0 === '/login.html') {
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
+    res.end(fs.readFileSync(path.join(__dirname, 'public', 'login.html')));
+    return;
+  }
+
+  // ── Auth middleware (all other routes require session) ─────
+  const _sessionToken = parseCookie(req.headers.cookie).siren_session;
+  const _session = await getSession(_sessionToken);
+
+  // Redirect unauthenticated browser requests to login
+  if (!_session) {
+    const isApi = urlPath0.startsWith('/api/');
+    if (isApi) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+    } else {
+      res.writeHead(302, { Location: '/login' });
+      res.end();
+    }
+    return;
+  }
+
+  // ── Auth endpoints (session required) ─────────────────────
+  if (req.method === 'POST' && urlPath0 === '/api/auth/logout') {
+    await client.execute({ sql: 'DELETE FROM sessions WHERE token = ?', args: [_sessionToken] });
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'siren_session=; Path=/; HttpOnly; Max-Age=0' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  if (req.method === 'GET' && urlPath0 === '/api/auth/me') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ username: _session.username, role: _session.role }));
+    return;
+  }
+
+  if (req.method === 'POST' && urlPath0 === '/api/auth/change-password') {
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const { currentPassword, newPassword } = JSON.parse(body);
+        const user = await verifyPassword(_session.username, currentPassword);
+        if (!user) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Current password is incorrect' }));
+          return;
+        }
+        if (!newPassword || newPassword.length < 8) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'New password must be at least 8 characters' }));
+          return;
+        }
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = await hashPassword(newPassword, salt);
+        await client.execute({ sql: 'UPDATE users SET password_hash=?, salt=?, must_change_password=0 WHERE username=?', args: [hash, salt, _session.username] });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Bad request' }));
+      }
+    });
+    return;
+  }
+
+  // ── User management (admin only) ───────────────────────────
+  if (req.method === 'GET' && urlPath0 === '/api/users') {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const rows = (await client.execute('SELECT id, username, role, must_change_password, created_at FROM users ORDER BY created_at')).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at) }))));
+    return;
+  }
+
+  if (req.method === 'POST' && urlPath0 === '/api/users') {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const { username, password, role } = JSON.parse(body);
+        if (!username || !password) { res.writeHead(400); res.end(JSON.stringify({ error: 'username and password required' })); return; }
+        const id = await createUser(username, password, role || 'user', false);
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, id }));
+      } catch (e) {
+        const msg = String(e.message || '').includes('UNIQUE') ? 'Username already exists' : 'Error creating user';
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: msg }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && /^\/api\/users\/[^/]+\/reset-password$/.test(urlPath0)) {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const userId = urlPath0.split('/')[3];
+    let body = '';
+    req.on('data', c => { body += c; });
+    req.on('end', async () => {
+      try {
+        const { password } = JSON.parse(body);
+        if (!password) { res.writeHead(400); res.end(JSON.stringify({ error: 'password required' })); return; }
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = await hashPassword(password, salt);
+        await client.execute({ sql: 'UPDATE users SET password_hash=?, salt=?, must_change_password=1 WHERE id=?', args: [hash, salt, userId] });
+        await client.execute({ sql: 'DELETE FROM sessions WHERE user_id=?', args: [userId] });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch { res.writeHead(400); res.end(JSON.stringify({ error: 'Bad request' })); }
+    });
+    return;
+  }
+
+  if (req.method === 'DELETE' && /^\/api\/users\/[^/]+$/.test(urlPath0)) {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const userId = urlPath0.split('/')[3];
+    const targetRow = (await client.execute({ sql: 'SELECT id FROM users WHERE id=?', args: [userId] })).rows[0];
+    if (!targetRow) { res.writeHead(404); res.end(); return; }
+    if (String(targetRow.id) === _session.userId) { res.writeHead(400); res.end(JSON.stringify({ error: 'Cannot delete yourself' })); return; }
+    await client.execute({ sql: 'DELETE FROM sessions WHERE user_id=?', args: [userId] });
+    await client.execute({ sql: 'DELETE FROM users WHERE id=?', args: [userId] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
 
   // ── Claude API proxy ───────────────────────────────────────
   if (req.method === 'POST' && req.url === '/api/claude') {
@@ -1335,14 +1584,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Static files ───────────────────────────────────────────
-  if (req.url === '/' || req.url === '/index.html') {
+  if (urlPath0 === '/' || urlPath0 === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
     res.end(fs.readFileSync(path.join(__dirname, 'public', 'index.html')));
     return;
   }
 
-  const urlPath  = req.url.split('?')[0];
-  const filePath = path.join(__dirname, 'public', urlPath);
+  const filePath = path.join(__dirname, 'public', urlPath0);
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext  = path.extname(filePath);
     const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.png': 'image/png' }[ext] || 'text/plain';

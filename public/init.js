@@ -1,4 +1,7 @@
 (async function initSiren() {
+  // ── 0. Auth init ─────────────────────────────────────────────
+  await authInit();
+
   // ── 1. Migrate localStorage history to DB (one-time) ────────
   if (!localStorage.getItem('oa_migrated_to_db')) {
     const local = [];

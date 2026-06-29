@@ -33,6 +33,7 @@
     if (page === 'dash')        typeof dashInit === 'function' && dashInit();
     if (page === 'settings')    rdmRender();
     if (page === 'audit')       typeof auditLoad === 'function' && auditLoad();
+    if (page === 'users')       typeof usersLoad === 'function' && usersLoad();
   }
 
   // ── Settings menu ──────────────────────────────────────────

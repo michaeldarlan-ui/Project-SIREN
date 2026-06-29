@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIREN · Login</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #040f14;
+    --card:     #0a1a24;
+    --raised:   #0e2130;
+    --border:   rgba(0,200,255,.12);
+    --border-m: rgba(0,200,255,.22);
+    --cyan:     #00c8ff;
+    --text:     rgba(255,255,255,.85);
+    --muted:    rgba(255,255,255,.4);
+    --faint:    rgba(255,255,255,.18);
+    --error:    #ef4444;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .wrap { width: 100%; max-width: 380px; padding: 24px; }
+  .logo { text-align: center; margin-bottom: 36px; }
+  .logo-mark { font-size: 11px; font-weight: 700; letter-spacing: .22em; color: var(--cyan); text-transform: uppercase; }
+  .logo-name { font-size: 32px; font-weight: 800; letter-spacing: .12em; color: #fff; line-height: 1; margin-top: 4px; }
+  .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: .06em; margin-top: 6px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 24px; }
+  h2 { font-size: 14px; font-weight: 700; letter-spacing: .06em; color: var(--text); margin-bottom: 20px; }
+  label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  input { width: 100%; background: var(--raised); border: 1px solid var(--border-m); border-radius: 6px; color: rgba(255,255,255,.9); padding: 9px 12px; font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+  input:focus { border-color: var(--cyan); }
+  .field { margin-bottom: 16px; }
+  .field:last-of-type { margin-bottom: 20px; }
+  button.submit { width: 100%; background: var(--cyan); color: #040f14; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; cursor: pointer; transition: opacity .15s; }
+  button.submit:hover { opacity: .88; }
+  button.submit:disabled { opacity: .45; cursor: default; }
+  .error { color: var(--error); font-size: 12px; margin-top: 12px; min-height: 18px; text-align: center; }
+
+  /* Force-change password panel */
+  #changePwd { display: none; }
+  #changePwd.show { display: block; }
+  .back-link { font-size: 12px; color: var(--muted); cursor: pointer; margin-bottom: 16px; display: inline-block; }
+  .back-link:hover { color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-mark">OneAxiom</div>
+    <div class="logo-name">SIREN</div>
+    <div class="logo-sub">Sales Intelligence &amp; Rep Enablement Network</div>
+  </div>
+
+  <!-- Login form -->
+  <div class="card" id="loginCard">
+    <h2>Sign In</h2>
+    <div class="field">
+      <label for="usr">Username</label>
+      <input id="usr" type="text" autocomplete="username" autofocus>
+    </div>
+    <div class="field">
+      <label for="pwd">Password</label>
+      <input id="pwd" type="password" autocomplete="current-password">
+    </div>
+    <button class="submit" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="error" id="loginErr"></div>
+  </div>
+
+  <!-- Force-change password panel -->
+  <div class="card" id="changePwd">
+    <span class="back-link" onclick="showLogin()">← Back</span>
+    <h2>Change Your Password</h2>
+    <p style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:18px;">You must set a new password before continuing.</p>
+    <div class="field">
+      <label for="curPwd">Current Password</label>
+      <input id="curPwd" type="password" autocomplete="current-password">
+    </div>
+    <div class="field">
+      <label for="newPwd">New Password</label>
+      <input id="newPwd" type="password" autocomplete="new-password" placeholder="min. 8 characters">
+    </div>
+    <div class="field">
+      <label for="confPwd">Confirm Password</label>
+      <input id="confPwd" type="password" autocomplete="new-password">
+    </div>
+    <button class="submit" id="changeBtn" onclick="doChangePassword()">Set Password</button>
+    <div class="error" id="changeErr"></div>
+  </div>
+</div>
+
+<script>
+  let _pendingUsername = '';
+
+  function showLogin() {
+    document.getElementById('loginCard').style.display = '';
+    document.getElementById('changePwd').classList.remove('show');
+    document.getElementById('loginErr').textContent = '';
+  }
+
+  function showChangePwd() {
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('changePwd').classList.add('show');
+    document.getElementById('curPwd').focus();
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('usr').value.trim();
+    const password = document.getElementById('pwd').value;
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginErr');
+    err.textContent = '';
+    if (!username || !password) { err.textContent = 'Enter username and password.'; return; }
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Login failed.'; return; }
+      if (data.mustChangePassword) {
+        _pendingUsername = username;
+        document.getElementById('curPwd').value = password;
+        showChangePwd();
+      } else {
+        window.location.href = '/';
+      }
+    } catch { err.textContent = 'Network error. Try again.'; }
+    finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+  }
+
+  async function doChangePassword() {
+    const curPwd  = document.getElementById('curPwd').value;
+    const newPwd  = document.getElementById('newPwd').value;
+    const confPwd = document.getElementById('confPwd').value;
+    const btn = document.getElementById('changeBtn');
+    const err = document.getElementById('changeErr');
+    err.textContent = '';
+    if (!newPwd || newPwd.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
+    if (newPwd !== confPwd) { err.textContent = 'Passwords do not match.'; return; }
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: curPwd, newPassword: newPwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Failed to change password.'; return; }
+      window.location.href = '/';
+    } catch { err.textContent = 'Network error. Try again.'; }
+    finally { btn.disabled = false; btn.textContent = 'Set Password'; }
+  }
+
+  // Enter key support
+  ['usr','pwd'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+  ['curPwd','newPwd','confPwd'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doChangePassword(); }));
+</script>
+</body>
+</html>
