@@ -1468,7 +1468,8 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:#09090b;color:rgba(250,250,250,.88);font-family:'Outfit',system-ui,sans-serif;font-size:13px;line-height:1.65;padding:40px 48px;}
+  html{background:#09090b;min-height:100%;}
+  body{background:#09090b;color:rgba(250,250,250,.88);font-family:'Outfit',system-ui,sans-serif;font-size:13px;line-height:1.65;padding:40px 48px;min-height:100vh;}
 
   /* ── Top bar ── */
   .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid rgba(245,158,11,.18);}
