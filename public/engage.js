@@ -2555,26 +2555,53 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
-    // Render report preserving the toggle — strip only the grader action buttons
-    const bodyHtml = (h.resultsHtml || '')
-      // Remove "Grade another call" reset button and "Export PDF" button from results-actions
+    const isAdmin = typeof sirenIsAdmin === 'function' ? sirenIsAdmin() : true;
+    const myName = window._sirenUser?.displayName || '';
+
+    // For non-admin users: strip rep toggle and other reps' score views; keep overall + own rep view
+    let bodyHtml = (h.resultsHtml || '')
       .replace(/<div class="results-actions">[\s\S]*?<\/div>/g, '')
-      // Ensure switchScoreView calls pass the event for .hist-card-body scoping
       .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"");
+
+    if (!isAdmin && myName) {
+      // Remove the entire rep toggle button row
+      bodyHtml = bodyHtml.replace(/<div class="rep-toggle">[\s\S]*?<\/div>/g, '');
+      // Identify which score-view-rep-N belongs to this user and strip the others
+      const repScores = Array.isArray(h.rep_scores) ? h.rep_scores : [];
+      repScores.forEach((rs, i) => {
+        const nameMatch = (rs.name || '').toLowerCase().trim() === myName.toLowerCase().trim() ||
+          (rs.name || '').toLowerCase().split(' ').some(w => w.length > 1 && myName.toLowerCase().includes(w));
+        if (!nameMatch) {
+          // Remove this rep's score view block
+          const pattern = new RegExp(`<div[^>]+id="score-view-rep-${i}"[^>]*>[\\s\\S]*?(?=<div[^>]+id="score-view-|$)`, 'g');
+          bodyHtml = bodyHtml.replace(pattern, '');
+        }
+      });
+    }
+
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
-    // Build attendee list: OneAxiom reps from rep_scores + third parties from partner_scores
+    // Build attendee list: only the current user for non-admins, all reps for admins
     const team = loadTeam();
-    const repChips = Array.isArray(h.rep_scores) && h.rep_scores.length
-      ? h.rep_scores.map(rs => {
+    const allRepScores = Array.isArray(h.rep_scores) ? h.rep_scores : [];
+    const visibleReps = isAdmin ? allRepScores
+      : allRepScores.filter(rs => {
+          const n = (rs.name || '').toLowerCase().trim();
+          const m = myName.toLowerCase().trim();
+          return n === m || n.split(' ').some(w => w.length > 1 && m.includes(w)) || m.split(' ').some(w => w.length > 1 && n.includes(w));
+        });
+    const repChips = visibleReps.length
+      ? visibleReps.map(rs => {
           const member = team.find(m => m.name && m.name.toLowerCase() === (rs.name || '').toLowerCase());
           const role = member?.role || rs.role || '';
           return { label: role ? `${rs.name} · ${role}` : rs.name, type: 'rep' };
         })
-      : [h.rep, h.repRole].filter(Boolean).join(' · ')
-        ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }]
-        : [];
+      : (!isAdmin && myName)
+        ? (h.rep ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }] : [])
+        : [h.rep, h.repRole].filter(Boolean).join(' · ')
+          ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }]
+          : [];
     const partnerChips = Array.isArray(h.partner_scores) && h.partner_scores.length
       ? h.partner_scores.map(ps => {
           const label = [ps.name, ps.role || ps.organization].filter(Boolean).join(' · ');
@@ -2597,16 +2624,16 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       <div class="hist-card-body" id="hist-body-${h.id}">
         ${bodyHtml}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;gap:10px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${isAdmin ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--siren-text-faint);">Rep:</span>
             <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${h.id})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
-          </div>
+          </div>` : '<div></div>'}
           <div style="display:flex;gap:6px;align-items:center;">
-            <button class="hist-regrade-btn" id="hist-regrade-${h.id}" onclick="regradeFromHistory('${h.id}',event)">&#8635; Re-grade</button>
+            ${isAdmin ? `<button class="hist-regrade-btn" id="hist-regrade-${h.id}" onclick="regradeFromHistory('${h.id}',event)">&#8635; Re-grade</button>` : ''}
             <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${h.id});event.stopPropagation()">&#8595; PDF</button>
             <button class="pdf-btn pdf-btn-sm" onclick="window.open('/transcript/'+encodeURIComponent('${h.id}'),'_blank');event.stopPropagation()" title="Open raw transcript in new tab">&#128196; Transcript</button>
-            <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
+            ${isAdmin ? `<button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>` : ''}
           </div>
         </div>
       </div>
