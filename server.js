@@ -1749,8 +1749,9 @@ const server = http.createServer(async (req, res) => {
       const userRow = (await client.execute({ sql: 'SELECT display_name FROM users WHERE id = ?', args: [filterUserId] })).rows[0];
       const displayName = userRow?.display_name ? String(userRow.display_name) : null;
       if (displayName) {
-        histSql = 'SELECT * FROM history_prod WHERE org_id = ? AND rep = ? ORDER BY ts DESC';
-        histArgs = [_session.orgId, displayName];
+        // Match calls where this rep is the primary rep OR appears in multi-rep rep_scores JSON
+        histSql = 'SELECT * FROM history_prod WHERE org_id = ? AND (rep = ? OR (rep_scores IS NOT NULL AND rep_scores LIKE ?)) ORDER BY ts DESC';
+        histArgs = [_session.orgId, displayName, `%"name":"${displayName}"%`];
       } else {
         histSql = 'SELECT * FROM history_prod WHERE org_id = ? AND 0=1 ORDER BY ts DESC';
         histArgs = [_session.orgId];

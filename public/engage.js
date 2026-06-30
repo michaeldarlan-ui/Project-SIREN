@@ -3322,11 +3322,18 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const btns = document.getElementById('coachGradingBtns');
     const desc = document.getElementById('coachGradingDesc');
     if (!btns || !window.GRADING_PRESETS) return;
-    const saved = Number(localStorage.getItem('siren_coach_grade_level')) || window._sirenGradingLevel || 3;
+    const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
+    // Non-admins use their personal grading level (auto-assigned); admins can override per-session
+    const defaultLevel = isAdmin
+      ? (Number(localStorage.getItem('siren_coach_grade_level')) || window._sirenGradingLevel || 3)
+      : (window._sirenUserGradingLevel || window._sirenGradingLevel || 3);
+    const saved = defaultLevel;
     window._sirenCoachGradingLevel = saved;
     btns.innerHTML = window.GRADING_PRESETS.map(p => {
       const active = p.level === saved;
-      return `<button onclick="setCoachGradingLevel(${p.level})" id="cgbtn-${p.level}" style="background:${active ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.04)'};border:1px solid ${active ? 'rgba(245,158,11,.5)' : 'rgba(255,255,255,.1)'};color:${active ? '#f59e0b' : 'rgba(255,255,255,.4)'};border-radius:5px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">${p.level} — ${p.label}</button>`;
+      const clickHandler = isAdmin ? `onclick="setCoachGradingLevel(${p.level})"` : '';
+      const cursor = isAdmin ? 'cursor:pointer' : 'cursor:default;opacity:0.7';
+      return `<button ${clickHandler} id="cgbtn-${p.level}" style="background:${active ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.04)'};border:1px solid ${active ? 'rgba(245,158,11,.5)' : 'rgba(255,255,255,.1)'};color:${active ? '#f59e0b' : 'rgba(255,255,255,.4)'};border-radius:5px;padding:4px 12px;font-size:11px;font-weight:700;${cursor};font-family:inherit;">${p.level} — ${p.label}</button>`;
     }).join('');
     if (desc) desc.textContent = window.GRADING_PRESETS.find(p => p.level === saved)?.tagline || '';
   }
