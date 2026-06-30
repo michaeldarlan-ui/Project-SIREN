@@ -25,13 +25,16 @@
   ];
 
   // Build a <select> element's innerHTML from SIREN_SALES_ROLES (with optional blank first option).
+  const _optStyle  = 'background:#18181b;color:#e2e8f0;';
+  const _grpStyle  = 'background:#111113;color:rgba(245,158,11,.65);font-size:10px;font-weight:700;letter-spacing:.06em;';
+  const _blankStyle = 'background:#18181b;color:rgba(255,255,255,.3);';
   window.buildRoleOptions = function(selected, blankLabel) {
-    const blank = blankLabel !== undefined ? `<option value="">${blankLabel}</option>` : '';
+    const blank = blankLabel !== undefined ? `<option value="" style="${_blankStyle}">${blankLabel}</option>` : '';
     const groups = {};
     window.SIREN_SALES_ROLES.forEach(r => { (groups[r.group] = groups[r.group] || []).push(r); });
     return blank + Object.entries(groups).map(([g, roles]) =>
-      `<optgroup label="${g}">${roles.map(r =>
-        `<option value="${r.value}"${r.value === selected ? ' selected' : ''}>${r.label}</option>`
+      `<optgroup label="${g}" style="${_grpStyle}">${roles.map(r =>
+        `<option value="${r.value}" style="${_optStyle}"${r.value === selected ? ' selected' : ''}>${r.label}</option>`
       ).join('')}</optgroup>`
     ).join('');
   };
