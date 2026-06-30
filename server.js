@@ -192,7 +192,8 @@ await client.batch([
       user_id TEXT NOT NULL,
       username TEXT NOT NULL,
       role TEXT NOT NULL,
-      expires_at TEXT NOT NULL
+      expires_at TEXT NOT NULL,
+      assumed_role TEXT
     )` },
 ], 'write');
 
@@ -355,12 +356,11 @@ await client.batch([
     }
   }
 
-  // Add org_id to sessions if missing
+  // Add org_id / assumed_role to sessions if missing
   if (tables.includes('sessions')) {
     const sCols = (await client.execute('PRAGMA table_info(sessions)')).rows.map(r => String(r.name));
-    if (!sCols.includes('org_id')) {
-      await client.execute('ALTER TABLE sessions ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
-    }
+    if (!sCols.includes('org_id'))       await client.execute('ALTER TABLE sessions ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    if (!sCols.includes('assumed_role')) await client.execute('ALTER TABLE sessions ADD COLUMN assumed_role TEXT');
   }
 
   // Add org_id / display_name / sales_role / email to users if missing
@@ -519,7 +519,9 @@ async function getSession(token) {
     await client.execute({ sql: 'DELETE FROM sessions WHERE token = ?', args: [token] });
     return null;
   }
-  return { userId: String(row.user_id), username: String(row.username), role: String(row.role), orgId: Number(row.org_id) || 1 };
+  const realRole = String(row.role);
+  const assumedRole = row.assumed_role ? String(row.assumed_role) : null;
+  return { userId: String(row.user_id), username: String(row.username), role: assumedRole || realRole, realRole, assumedRole, orgId: Number(row.org_id) || 1 };
 }
 
 function parseCookie(cookieHeader) {
@@ -1039,6 +1041,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /api/invites — list pending invites for this org (admin only)
+  if (req.method === 'GET' && urlPath0 === '/api/invites') {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const rows = (await client.execute({ sql: 'SELECT token,email,role,sales_role,created_at,expires_at,used FROM invite_tokens WHERE org_id=? AND used=0 AND expires_at > ? ORDER BY created_at DESC', args: [_session.orgId, new Date().toISOString()] })).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows.map(r => ({ token: String(r.token), email: String(r.email), role: String(r.role), salesRole: r.sales_role ? String(r.sales_role) : '', createdAt: String(r.created_at), expiresAt: String(r.expires_at) }))));
+    return;
+  }
+
   // GET /api/invite/check?token=xxx — validate invite token (public)
   if (req.method === 'GET' && urlPath0 === '/api/invite/check') {
     const token = new URL(req.url, 'http://x').searchParams.get('token');
@@ -1048,6 +1059,104 @@ const server = http.createServer(async (req, res) => {
     const orgRow = (await client.execute({ sql: 'SELECT name FROM orgs WHERE id=?', args: [inv.org_id] })).rows[0];
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ email: String(inv.email), orgName: orgRow ? String(orgRow.name) : 'SIREN', role: String(inv.role), salesRole: inv.sales_role ? String(inv.sales_role) : '' }));
+    return;
+  }
+
+  // GET /api/invite/:token/pdf — generate downloadable invitation PDF (admin only)
+  if (req.method === 'GET' && /^\/api\/invite\/[^/]+\/pdf$/.test(urlPath0)) {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const token = urlPath0.split('/')[3];
+    const inv   = token ? (await client.execute({ sql: 'SELECT * FROM invite_tokens WHERE token=?', args: [token] })).rows[0] : null;
+    if (!inv) { res.writeHead(404); res.end('Invitation not found'); return; }
+    const orgRow    = (await client.execute({ sql: 'SELECT name FROM orgs WHERE id=?', args: [inv.org_id] })).rows[0];
+    const orgName   = orgRow ? String(orgRow.name) : 'SIREN';
+    const proto     = process.env.APP_URL || `http://localhost:${PORT}`;
+    const inviteUrl = `${proto}/register?token=${token}`;
+    const expires   = new Date(String(inv.expires_at)).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+    const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #18181b; padding: 40px 20px; }
+  .wrapper { max-width: 560px; margin: 0 auto; }
+  .header { background: #09090b; border-radius: 10px 10px 0 0; padding: 32px 36px; text-align: center; }
+  .logo { font-size: 28px; font-weight: 900; letter-spacing: .14em; color: #f59e0b; }
+  .logo-sub { font-size: 11px; letter-spacing: .12em; color: rgba(255,255,255,.3); margin-top: 4px; text-transform: uppercase; }
+  .body { background: #ffffff; padding: 36px 36px 28px; }
+  .greeting { font-size: 22px; font-weight: 700; color: #18181b; margin-bottom: 14px; }
+  p { font-size: 15px; line-height: 1.65; color: #3f3f46; margin-bottom: 16px; }
+  .btn-wrap { text-align: center; margin: 28px 0; }
+  .btn { display: inline-block; background: #f59e0b; color: #09090b; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 32px; border-radius: 8px; letter-spacing: .02em; }
+  .url-box { background: #f4f4f5; border: 1px solid #e4e4e7; border-radius: 7px; padding: 12px 14px; word-break: break-all; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: #52525b; margin-bottom: 20px; }
+  .url-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #a1a1aa; margin-bottom: 6px; }
+  .meta { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+  .meta-item { flex: 1; min-width: 120px; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 7px; padding: 12px 14px; }
+  .meta-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #a1a1aa; margin-bottom: 4px; }
+  .meta-value { font-size: 14px; font-weight: 600; color: #18181b; }
+  .divider { border: none; border-top: 1px solid #e4e4e7; margin: 24px 0; }
+  .note { font-size: 12px; color: #a1a1aa; line-height: 1.6; }
+  .footer { background: #f4f4f5; border-radius: 0 0 10px 10px; padding: 18px 36px; text-align: center; border-top: 1px solid #e4e4e7; }
+  .footer-text { font-size: 11px; color: #a1a1aa; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .wrapper { max-width: 100%; }
+  }
+</style></head><body>
+<div class="wrapper">
+  <div class="header">
+    <div class="logo">SIREN</div>
+    <div class="logo-sub">Sales Intelligence, Review &amp; Enablement Network</div>
+  </div>
+  <div class="body">
+    <div class="greeting">You're invited to join SIREN</div>
+    <p>You've been invited to join <strong>${orgName}</strong> on SIREN — the sales intelligence and call coaching platform used by your team.</p>
+    <p>Click the button below to accept your invitation and create your account. You'll set your display name, sales role, and password to complete setup.</p>
+    <div class="btn-wrap">
+      <a class="btn" href="${inviteUrl}">Accept Invitation &rarr;</a>
+    </div>
+    <div class="url-label">Or copy this link into your browser</div>
+    <div class="url-box">${inviteUrl}</div>
+    <div class="meta">
+      <div class="meta-item">
+        <div class="meta-label">Organization</div>
+        <div class="meta-value">${orgName}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Sent to</div>
+        <div class="meta-value" style="font-size:13px;">${String(inv.email)}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Link expires</div>
+        <div class="meta-value" style="font-size:12px;color:#f59e0b;">${expires}</div>
+      </div>
+    </div>
+    <hr class="divider">
+    <p class="note">If you were not expecting this invitation, you can safely ignore this message — no account will be created until you click the link above.<br><br>Need help? Reply to this email or contact your organization administrator.</p>
+  </div>
+  <div class="footer">
+    <div class="footer-text">SIREN &middot; Sales Intelligence &amp; Coaching Platform &middot; This invitation was sent by an administrator of ${orgName}.</div>
+  </div>
+</div>
+</body></html>`;
+
+    try {
+      const { chromium } = await import('playwright');
+      const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] });
+      const page    = await browser.newPage({ viewport: { width: 640, height: 900 } });
+      await page.setContent(emailHtml, { waitUntil: 'domcontentloaded' });
+      const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' } });
+      await browser.close();
+      res.writeHead(200, {
+        'Content-Type':        'application/pdf',
+        'Content-Disposition': `attachment; filename="siren-invite-${String(inv.email).replace(/[^a-z0-9]/gi,'-')}.pdf"`,
+        'Content-Length':      pdf.length,
+      });
+      res.end(pdf);
+    } catch (e) {
+      console.error('[invite-pdf]', e.message);
+      // Fallback: serve the HTML directly so it can be printed to PDF from the browser
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Disposition': `attachment; filename="siren-invite-${String(inv.email).replace(/[^a-z0-9]/gi,'-')}.html"` });
+      res.end(emailHtml);
+    }
     return;
   }
 
@@ -1103,10 +1212,31 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       username: _session.username,
       role: _session.role,
+      realRole: _session.realRole,
+      assumedRole: _session.assumedRole || null,
       orgId: _session.orgId,
       orgName: orgRow ? String(orgRow.name) : 'Production',
       isDemo: orgRow ? !!orgRow.is_demo : false,
     }));
+    return;
+  }
+
+  // POST /api/auth/assume-role — admin temporarily views app as a different role
+  if (req.method === 'POST' && urlPath0 === '/api/auth/assume-role') {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const { role } = await readBody(req);
+    if (role !== 'user') { res.writeHead(400); res.end(JSON.stringify({ error: 'Can only assume role: user' })); return; }
+    await client.execute({ sql: 'UPDATE sessions SET assumed_role=? WHERE token=?', args: [role, _sessionToken] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, assumedRole: role }));
+    return;
+  }
+
+  // POST /api/auth/exit-assume-role — return to real admin role
+  if (req.method === 'POST' && urlPath0 === '/api/auth/exit-assume-role') {
+    await client.execute({ sql: 'UPDATE sessions SET assumed_role=NULL WHERE token=?', args: [_sessionToken] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -1142,7 +1272,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Org management (admin only) ────────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/orgs') {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end(); return; }
     const rows = (await client.execute('SELECT id, name, slug, is_demo, created_at FROM orgs ORDER BY id')).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({ id: Number(r.id), name: String(r.name), slug: String(r.slug), isDemo: !!r.is_demo, createdAt: String(r.created_at) }))));
@@ -1150,7 +1280,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && urlPath0 === '/api/orgs') {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end(); return; }
     try {
       const { name, isDemo } = await readBody(req);
       if (!name) { res.writeHead(400); res.end(JSON.stringify({ error: 'name required' })); return; }
@@ -1169,7 +1299,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && /^\/api\/orgs\/\d+\/reset-demo$/.test(urlPath0)) {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end(); return; }
     const orgId = parseInt(urlPath0.split('/')[3]);
     const orgRow = (await client.execute({ sql: 'SELECT is_demo FROM orgs WHERE id = ?', args: [orgId] })).rows[0];
     if (!orgRow || !orgRow.is_demo) { res.writeHead(400); res.end(JSON.stringify({ error: 'Not a demo org' })); return; }
@@ -1192,7 +1322,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Admin: orphan cleanup ───────────────────────────────────
   if (req.method === 'POST' && urlPath0 === '/api/admin/cleanup-orphans') {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end(); return; }
     try {
       const tables = ['call_spiced', 'call_reps', 'call_partners', 'call_dimensions',
                       'call_rep_summary', 'call_next_steps'];
@@ -1207,9 +1337,52 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // POST /api/admin/migrate-prospect-org — move all records matching a prospect pattern to a target org
+  if (req.method === 'POST' && urlPath0 === '/api/admin/migrate-prospect-org') {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    try {
+      const { prospect, targetOrgName, targetOrgId } = await readBody(req);
+      if (!prospect) { res.writeHead(400); res.end(JSON.stringify({ error: 'prospect pattern required' })); return; }
+      // Resolve target org
+      let orgId = targetOrgId ? Number(targetOrgId) : null;
+      if (!orgId && targetOrgName) {
+        const orgRow = (await client.execute({ sql: 'SELECT id FROM orgs WHERE LOWER(name)=?', args: [String(targetOrgName).toLowerCase()] })).rows[0];
+        if (!orgRow) {
+          const slug = String(targetOrgName).toLowerCase().replace(/[^a-z0-9]/g, '-');
+          const r = await client.execute({ sql: 'INSERT INTO orgs (name, slug, is_demo, created_at) VALUES (?, ?, 0, ?) RETURNING id', args: [targetOrgName, slug, new Date().toISOString()] });
+          orgId = Number(r.rows[0].id);
+        } else {
+          orgId = Number(orgRow.id);
+        }
+      }
+      if (!orgId) { res.writeHead(400); res.end(JSON.stringify({ error: 'targetOrgName or targetOrgId required' })); return; }
+      const like = `%${prospect.toLowerCase()}%`;
+      // Move history_prod
+      const h = await client.execute({ sql: `UPDATE history_prod SET org_id=? WHERE LOWER(prospect) LIKE ?`, args: [orgId, like] });
+      // Move transcripts
+      const t = await client.execute({ sql: `UPDATE transcripts SET org_id=? WHERE LOWER(prospect) LIKE ?`, args: [orgId, like] });
+      // Move account_profiles (compound PK — delete+insert)
+      const profiles = (await client.execute({ sql: `SELECT company, profile, updated_at FROM account_profiles WHERE LOWER(company) LIKE ?`, args: [like] })).rows;
+      for (const p of profiles) {
+        await client.execute({ sql: 'INSERT OR REPLACE INTO account_profiles (org_id, company, profile, updated_at) VALUES (?,?,?,?)', args: [orgId, p.company, p.profile, p.updated_at] });
+        await client.execute({ sql: 'DELETE FROM account_profiles WHERE org_id != ? AND company = ?', args: [orgId, p.company] });
+      }
+      // Move prospects (compound PK)
+      const prospects = (await client.execute({ sql: `SELECT org_id, name, industry FROM prospects WHERE LOWER(name) LIKE ?`, args: [like] })).rows;
+      for (const p of prospects) {
+        if (Number(p.org_id) === orgId) continue;
+        await client.execute({ sql: 'INSERT OR REPLACE INTO prospects (org_id, name, industry) VALUES (?,?,?)', args: [orgId, p.name, p.industry] });
+        await client.execute({ sql: 'DELETE FROM prospects WHERE org_id=? AND name=?', args: [p.org_id, p.name] });
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, orgId, historyCalls: Number(h.rowsAffected)||0, transcripts: Number(t.rowsAffected)||0, profiles: profiles.length, prospects: prospects.length }));
+    } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+    return;
+  }
+
   // ── User management (admin only) ───────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/users') {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '' }))));
@@ -1218,7 +1391,7 @@ const server = http.createServer(async (req, res) => {
 
   // POST /api/invite — admin sends invitation email to a new user
   if (req.method === 'POST' && urlPath0 === '/api/invite') {
-    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     try {
       const { email, role, salesRole, orgId } = await readBody(req);
       if (!email || !String(email).includes('@')) { res.writeHead(400); res.end(JSON.stringify({ error: 'Valid email required' })); return; }
@@ -1239,7 +1412,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && urlPath0 === '/api/users') {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     let body = '';
     req.on('data', c => { body += c; });
     req.on('end', async () => {
@@ -1268,7 +1441,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && /^\/api\/users\/[^/]+\/reset-password$/.test(urlPath0)) {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const userId = urlPath0.split('/')[3];
     let body = '';
     req.on('data', c => { body += c; });
@@ -1288,7 +1461,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'PATCH' && /^\/api\/users\/[^/]+\/org$/.test(urlPath0)) {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const userId = urlPath0.split('/')[3];
     try {
       const { orgId } = await readBody(req);
@@ -1305,7 +1478,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'PATCH' && /^\/api\/users\/[^/]+\/profile$/.test(urlPath0)) {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const userId = urlPath0.split('/')[3];
     try {
       const { displayName, salesRole } = await readBody(req);
@@ -1330,7 +1503,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'DELETE' && /^\/api\/users\/[^/]+$/.test(urlPath0)) {
-    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const userId = urlPath0.split('/')[3];
     const targetRow = (await client.execute({ sql: 'SELECT id, display_name, org_id FROM users WHERE id=?', args: [userId] })).rows[0];
     if (!targetRow) { res.writeHead(404); res.end(); return; }
@@ -1574,7 +1747,7 @@ const server = http.createServer(async (req, res) => {
 
   // DELETE /api/history/real
   if (req.method === 'DELETE' && req.url === '/api/history/real') {
-    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     await client.execute({ sql: 'DELETE FROM history_prod WHERE org_id = ?', args: [_session.orgId] });
     res.writeHead(200); res.end();
     return;
@@ -1582,7 +1755,7 @@ const server = http.createServer(async (req, res) => {
 
   // DELETE /api/history/:id
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
-    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
     await client.execute({ sql: 'DELETE FROM history_prod WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
     res.writeHead(200); res.end();
@@ -2031,7 +2204,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && req.url === '/api/transcripts') {
-    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     try {
       const { id, label, prospect, stage, rep, call_date, transcript } = await readBody(req);
       await client.execute({
@@ -2090,7 +2263,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'DELETE' && req.url.startsWith('/api/transcripts/')) {
-    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
     await client.execute({ sql: 'DELETE FROM transcripts WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
     res.writeHead(200); res.end();
@@ -2099,7 +2272,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── SIREN Portal API (superadmin only) ────────────────────────
   if (urlPath0.startsWith('/api/portal')) {
-    if (_session.role !== 'superadmin') { res.writeHead(403); res.end(JSON.stringify({ error: 'Forbidden' })); return; }
+    if (_session.realRole !== 'superadmin') { res.writeHead(403); res.end(JSON.stringify({ error: 'Forbidden' })); return; }
 
     // GET /api/portal/stats — dashboard summary
     if (req.method === 'GET' && urlPath0 === '/api/portal/stats') {

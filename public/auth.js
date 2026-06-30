@@ -24,6 +24,36 @@
     }
 
 
+    // Assume-role banner (admin viewing as another role)
+    if (_authUser.assumedRole) {
+      let assumeBanner = document.getElementById('assumeRoleBanner');
+      if (!assumeBanner) {
+        assumeBanner = document.createElement('div');
+        assumeBanner.id = 'assumeRoleBanner';
+        assumeBanner.style.cssText = 'position:fixed;top:52px;left:0;right:0;z-index:160;background:rgba(239,68,68,.15);border-bottom:2px solid rgba(239,68,68,.4);padding:6px 20px;display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(255,100,100,.9);';
+        assumeBanner.innerHTML = `<span style="font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:10px;">&#128100; Viewing as: ${escHtml(_authUser.assumedRole)}</span><span style="color:rgba(255,255,255,.35);font-size:11px;">You are seeing the app as a normal user would. Admin capabilities are hidden.</span><button onclick="exitAssumeRole()" style="margin-left:auto;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#fca5a5;border-radius:5px;padding:3px 12px;font-size:11px;cursor:pointer;font-weight:700;">Exit Preview</button>`;
+        document.body.appendChild(assumeBanner);
+        const pages = document.getElementById('pages') || document.querySelector('.pages');
+        if (pages) pages.style.paddingTop = ((parseInt(pages.style.paddingTop)||0) + 36) + 'px';
+      }
+    }
+
+    // Admin "View as User" button in settings dropdown
+    if (_authUser.realRole === 'admin' || _authUser.realRole === 'superadmin') {
+      const settingsDropdown = document.getElementById('settingsDropdown');
+      if (settingsDropdown && !document.getElementById('assumeRoleBtn')) {
+        const divider = document.createElement('div');
+        divider.style.cssText = 'height:1px;background:rgba(255,255,255,.06);margin:4px 0;';
+        settingsDropdown.appendChild(divider);
+        const btn = document.createElement('div');
+        btn.id = 'assumeRoleBtn';
+        btn.style.cssText = 'padding:8px 16px;cursor:pointer;font-size:12px;color:rgba(255,100,100,.7);white-space:nowrap;user-select:none;';
+        btn.textContent = _authUser.assumedRole ? '↩ Exit User Preview' : '👁 Preview as User';
+        btn.onclick = _authUser.assumedRole ? exitAssumeRole : assumeUserRole;
+        settingsDropdown.appendChild(btn);
+      }
+    }
+
     // Show demo banner if in demo org
     if (_authUser.isDemo) {
       let banner = document.getElementById('demoBanner');
@@ -44,6 +74,20 @@
     await fetch('/api/auth/logout', { method: 'POST' });
     window.location.href = '/login';
   }
+
+  async function assumeUserRole() {
+    const res = await fetch('/api/auth/assume-role', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'user' }) });
+    if (res.ok) location.reload();
+    else alert('Could not assume role.');
+  }
+  window.assumeUserRole = assumeUserRole;
+
+  async function exitAssumeRole() {
+    const res = await fetch('/api/auth/exit-assume-role', { method: 'POST' });
+    if (res.ok) location.reload();
+    else alert('Could not exit assume role.');
+  }
+  window.exitAssumeRole = exitAssumeRole;
 
   function authChangePwdOpen() {
     document.getElementById('cpCurPwd').value = '';
@@ -76,6 +120,45 @@
       const data = await res.json();
       if (!res.ok) { err.textContent = data.error || 'Failed.'; return; }
       authChangePwdClose();
+    } catch { err.textContent = 'Network error.'; }
+  }
+
+  // ── Add member mode toggle ─────────────────────────────────────
+  function uaSetMode(mode) {
+    const isInvite = mode === 'invite';
+    document.getElementById('uaInvitePanel').style.display = isInvite ? '' : 'none';
+    document.getElementById('uaManualPanel').style.display = isInvite ? 'none' : '';
+    document.getElementById('uaFormTitle').textContent = isInvite ? 'Invite Team Member' : 'Create Member Manually';
+    document.getElementById('uaModeInvite').style.background = isInvite ? 'rgba(245,158,11,.15)' : 'none';
+    document.getElementById('uaModeInvite').style.color       = isInvite ? '#f59e0b' : 'rgba(255,255,255,.35)';
+    document.getElementById('uaModeManual').style.background  = !isInvite ? 'rgba(245,158,11,.15)' : 'none';
+    document.getElementById('uaModeManual').style.color       = !isInvite ? '#f59e0b' : 'rgba(255,255,255,.35)';
+    document.getElementById('uaErr').innerHTML = '';
+    if (!isInvite) {
+      const sel = document.getElementById('uaSalesRole');
+      if (sel && typeof buildRoleOptions === 'function') sel.innerHTML = buildRoleOptions('', '— Select role —');
+      document.getElementById('uaDisplayName')?.focus();
+    } else {
+      document.getElementById('uaEmail')?.focus();
+    }
+  }
+
+  async function usersAddManual() {
+    const displayName = (document.getElementById('uaDisplayName')?.value || '').trim();
+    const salesRole   = (document.getElementById('uaSalesRole')?.value || '').trim();
+    const username    = (document.getElementById('uaUsername')?.value || '').trim();
+    const password    = (document.getElementById('uaPassword')?.value || '');
+    const role        = document.getElementById('uaRoleManual')?.value || 'user';
+    const err = document.getElementById('uaErr');
+    err.style.color = '#ef4444'; err.innerHTML = '';
+    if (!displayName) { err.textContent = 'Display name is required.'; return; }
+    if (!username || !password) { err.textContent = 'Username and password are required.'; return; }
+    try {
+      const res  = await fetch('/api/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password, role, displayName, salesRole }) });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Failed to create member.'; return; }
+      usersCloseAdd();
+      usersLoad();
     } catch { err.textContent = 'Network error.'; }
   }
 
@@ -118,10 +201,11 @@
       }
 
       // Admin view: full account management table
-      const [usersRes, orgsRes] = await Promise.all([fetch('/api/users'), fetch('/api/orgs')]);
+      const [usersRes, orgsRes, invitesRes] = await Promise.all([fetch('/api/users'), fetch('/api/orgs'), fetch('/api/invites')]);
       if (!usersRes.ok) { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Failed to load team.</div>'; return; }
-      const users = await usersRes.json();
-      const orgs  = orgsRes.ok ? await orgsRes.json() : [];
+      const users   = await usersRes.json();
+      const orgs    = orgsRes.ok ? await orgsRes.json() : [];
+      const invites = invitesRes.ok ? await invitesRes.json() : [];
       if (!users.length) { el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">No team members found.</div>'; return; }
       const thStyle = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(245,158,11,.1);';
       el.innerHTML = `
@@ -167,7 +251,20 @@
               </tr>`;
             }).join('')}
           </tbody>
-        </table>`;
+        </table>
+        ${invites.length ? `
+        <div style="margin-top:20px;padding:14px 16px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.1);border-radius:8px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(245,158,11,.6);text-transform:uppercase;margin-bottom:10px;">Pending Invitations</div>
+          ${invites.map(inv => {
+            const pdfUrl = `/api/invite/${encodeURIComponent(inv.token)}/pdf`;
+            const exp = new Date(inv.expiresAt).toLocaleDateString([], { month:'short', day:'numeric' });
+            return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(245,158,11,.07);">
+              <div style="flex:1;font-size:13px;color:rgba(255,255,255,.7);">${escHtml(inv.email)}</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.3);">Expires ${exp}</div>
+              <a href="${pdfUrl}" target="_blank" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:#f59e0b;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">&#8595; PDF</a>
+            </div>`;
+          }).join('')}
+        </div>` : ''}`;
 
       await orgsLoad();
     } catch { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Error loading team.</div>'; }
@@ -231,6 +328,21 @@
             <span id="cleanupOrphansMsg" style="font-size:11px;color:rgba(255,255,255,.3);"></span>
           </div>
           <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px;">Removes call_spiced, call_reps, call_dimensions, and other normalized rows that have no matching call in history.</div>
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.04);">
+            <div style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Move Prospect Data Between Orgs</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+              <div>
+                <label style="display:block;font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Prospect (contains)</label>
+                <input id="migrateProspect" type="text" placeholder="e.g. AVN HLTH" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:rgba(255,255,255,.8);padding:5px 8px;font-size:12px;font-family:inherit;outline:none;width:140px;">
+              </div>
+              <div>
+                <label style="display:block;font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Target Org Name</label>
+                <input id="migrateTargetOrg" type="text" placeholder="e.g. OneAxiom" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:rgba(255,255,255,.8);padding:5px 8px;font-size:12px;font-family:inherit;outline:none;width:140px;">
+              </div>
+              <button onclick="adminMigrateProspect()" id="migrateProspectBtn" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:4px;padding:5px 12px;font-size:11px;cursor:pointer;">Migrate</button>
+              <span id="migrateProspectMsg" style="font-size:11px;color:rgba(255,255,255,.3);"></span>
+            </div>
+          </div>
         </div>`;
     } catch {}
   }
@@ -300,14 +412,40 @@
     const f = document.getElementById('usersAddForm');
     if (!f) return;
     f.style.display = '';
-    const emailEl = document.getElementById('uaEmail');
-    if (emailEl) emailEl.focus();
+    uaSetMode('invite');
   }
 
   function usersCloseAdd() {
-    const f = document.getElementById('usersAddForm');
+    const f   = document.getElementById('usersAddForm');
+    const err = document.getElementById('uaErr');
+    if (err?.dataset?.closeTimer) { clearTimeout(Number(err.dataset.closeTimer)); delete err.dataset.closeTimer; }
     if (f) f.style.display = 'none';
-    document.getElementById('uaErr').textContent = '';
+    if (err) err.innerHTML = '';
+  }
+
+  async function adminMigrateProspect() {
+    const prospect  = (document.getElementById('migrateProspect')?.value || '').trim();
+    const targetOrg = (document.getElementById('migrateTargetOrg')?.value || '').trim();
+    const btn = document.getElementById('migrateProspectBtn');
+    const msg = document.getElementById('migrateProspectMsg');
+    if (!prospect || !targetOrg) { if (msg) { msg.style.color='#ef4444'; msg.textContent='Enter prospect name and target org.'; } return; }
+    if (!confirm(`Move all records matching "${prospect}" to org "${targetOrg}"? This cannot be undone.`)) return;
+    if (btn) btn.disabled = true;
+    if (msg) { msg.style.color='rgba(255,255,255,.3)'; msg.textContent='Migrating…'; }
+    try {
+      const res  = await fetch('/api/admin/migrate-prospect-org', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prospect, targetOrgName: targetOrg }) });
+      const data = await res.json();
+      if (res.ok) {
+        msg.style.color = '#4ade80';
+        msg.textContent = `Done — ${data.historyCalls} call(s), ${data.transcripts} transcript(s), ${data.profiles} profile(s), ${data.prospects} prospect(s) moved to org #${data.orgId}.`;
+        document.getElementById('migrateProspect').value  = '';
+        document.getElementById('migrateTargetOrg').value = '';
+      } else {
+        msg.style.color = '#ef4444';
+        msg.textContent = 'Error: ' + (data.error || 'unknown');
+      }
+    } catch { if (msg) { msg.style.color='#ef4444'; msg.textContent='Network error.'; } }
+    finally { if (btn) btn.disabled = false; }
   }
 
   async function usersChangeOrg(userId, selectEl) {
@@ -351,10 +489,17 @@
       });
       const data = await res.json();
       if (!res.ok) { err.textContent = data.error || 'Failed to send invitation.'; return; }
+      // Extract token from inviteUrl for PDF link
+      const token = data.inviteUrl ? new URL(data.inviteUrl).searchParams.get('token') : null;
+      const pdfUrl = token ? `/api/invite/${encodeURIComponent(token)}/pdf` : null;
       err.style.color = '#4ade80';
-      err.textContent = `Invitation sent to ${email}.` + (data.inviteUrl ? ' (No SMTP configured — check server console for the link.)' : '');
+      err.innerHTML = `Invitation created for <strong>${escHtml(email)}</strong>.`
+        + (pdfUrl ? ` <a href="${pdfUrl}" target="_blank" style="color:#f59e0b;font-weight:700;text-decoration:underline;">Download invite PDF &darr;</a>` : '')
+        + (data.inviteUrl && !pdfUrl ? ` <span style="color:rgba(255,255,255,.4);">No SMTP — <a href="${data.inviteUrl}" target="_blank" style="color:#60a5fa;">open link</a></span>` : '');
       document.getElementById('uaEmail').value = '';
-      setTimeout(() => { usersCloseAdd(); usersLoad(); }, 3000);
+      // Don't auto-close — let admin download the PDF first
+      const closeTimer = setTimeout(() => { usersCloseAdd(); usersLoad(); }, 12000);
+      err.dataset.closeTimer = closeTimer;
     } catch { err.textContent = 'Network error — could not send invitation.'; }
   }
 

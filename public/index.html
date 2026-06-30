@@ -2019,27 +2019,74 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
     <div id="usersList" style="background:var(--siren-bg-card);border:1px solid var(--siren-border);border-radius:8px;overflow:hidden;"></div>
     <div id="orgsList"></div>
 
-    <!-- Invite Member form (admin only) -->
+    <!-- Add/Invite Member form (admin only) -->
     <div id="usersAddForm" style="display:none;background:var(--siren-bg-card);border:1px solid rgba(245,158,11,.18);border-radius:8px;padding:20px;margin-top:16px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(245,158,11,.7);text-transform:uppercase;margin-bottom:6px;">Invite Team Member</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.3);margin-bottom:14px;">An invitation email will be sent with a registration link. The user sets their own name and password.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
-        <div>
-          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Email Address <span style="color:rgba(245,158,11,.6);">*</span></label>
-          <input id="uaEmail" type="email" placeholder="jane@company.com" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(245,158,11,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
-        </div>
-        <div>
-          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Platform Role</label>
-          <select id="uaRole" style="width:100%;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
-            <option value="user" style="background:#18181b;color:#e2e8f0;">User</option>
-            <option value="admin" style="background:#18181b;color:#e2e8f0;">Admin</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="usersAddSubmit()" style="background:#f59e0b;color:#09090b;border:none;border-radius:5px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">Send Invite</button>
-          <button onclick="usersCloseAdd()" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:5px;padding:8px 10px;font-size:12px;cursor:pointer;">Cancel</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(245,158,11,.7);text-transform:uppercase;" id="uaFormTitle">Invite Team Member</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="uaSetMode('invite')" id="uaModeInvite" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">Send Invite</button>
+          <button onclick="uaSetMode('manual')" id="uaModeManual" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);border-radius:4px;padding:3px 10px;font-size:10px;cursor:pointer;">Manual</button>
         </div>
       </div>
+
+      <!-- Invite mode -->
+      <div id="uaInvitePanel">
+        <div style="font-size:12px;color:rgba(255,255,255,.3);margin-bottom:14px;">An invitation PDF will be generated. The user sets their own name and password via the registration link.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Email Address <span style="color:rgba(245,158,11,.6);">*</span></label>
+            <input id="uaEmail" type="email" placeholder="jane@company.com" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(245,158,11,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Platform Role</label>
+            <select id="uaRole" style="width:100%;background:#18181b;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+              <option value="user" style="background:#18181b;color:#e2e8f0;">User</option>
+              <option value="admin" style="background:#18181b;color:#e2e8f0;">Admin</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="usersAddSubmit()" style="background:#f59e0b;color:#09090b;border:none;border-radius:5px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;">Generate Invite</button>
+            <button onclick="usersCloseAdd()" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:5px;padding:8px 10px;font-size:12px;cursor:pointer;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual mode -->
+      <div id="uaManualPanel" style="display:none;">
+        <div style="font-size:12px;color:rgba(255,255,255,.3);margin-bottom:14px;">Create the account directly. The user can log in immediately with the credentials you set.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Display Name <span style="color:rgba(245,158,11,.6);">*</span></label>
+            <input id="uaDisplayName" type="text" placeholder="e.g. Jane Smith" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(245,158,11,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Sales Role</label>
+            <select id="uaSalesRole" style="width:100%;background:#18181b;border:1px solid rgba(245,158,11,.2);border-radius:5px;color:rgba(255,255,255,.85);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;"></select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Username / Email <span style="color:rgba(245,158,11,.6);">*</span></label>
+            <input id="uaUsername" type="text" placeholder="email or username" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Password <span style="color:rgba(245,158,11,.6);">*</span></label>
+            <input id="uaPassword" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Platform Role</label>
+            <select id="uaRoleManual" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+              <option value="user" style="background:#18181b;color:#e2e8f0;">User</option>
+              <option value="admin" style="background:#18181b;color:#e2e8f0;">Admin</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="usersAddManual()" style="background:#f59e0b;color:#09090b;border:none;border-radius:5px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">Create</button>
+            <button onclick="usersCloseAdd()" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:5px;padding:7px 10px;font-size:12px;cursor:pointer;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <div id="uaErr" style="font-size:12px;margin-top:10px;min-height:16px;"></div>
     </div>
   </div>
