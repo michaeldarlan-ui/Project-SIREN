@@ -1377,8 +1377,9 @@
 
   @media print{
     .save-btn,.copy-btn{display:none;}
-    body{padding:20px 28px;background:#09090b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    @page{margin:10mm;size:A4;}
+    html,body{background:#09090b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    body{padding:30px 38px;}
+    @page{margin:0;size:A4;}
   }`;
   }
 
