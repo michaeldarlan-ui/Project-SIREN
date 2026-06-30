@@ -196,6 +196,11 @@ await client.batch([
       assumed_role TEXT,
       assumed_user_id INTEGER
     )` },
+  { sql: `CREATE TABLE IF NOT EXISTS user_tab_permissions (
+      user_id INTEGER NOT NULL,
+      tab TEXT NOT NULL,
+      PRIMARY KEY (user_id, tab)
+    )` },
 ], 'write');
 
 // ── One-time migrations ───────────────────────────────────────
@@ -1216,6 +1221,13 @@ const server = http.createServer(async (req, res) => {
       const auRow = (await client.execute({ sql: 'SELECT display_name, username FROM users WHERE id = ?', args: [_session.assumedUserId] })).rows[0];
       assumedUserDisplay = auRow ? (String(auRow.display_name || auRow.username || '')) : null;
     }
+    // Tab permissions: for non-admins (or assumed user), load allowed tabs
+    let allowedTabs = null;
+    const tabUserId = _session.assumedUserId || (_session.realRole === 'user' ? Number(_session.userId) : null);
+    if (tabUserId) {
+      const tabRows = (await client.execute({ sql: 'SELECT tab FROM user_tab_permissions WHERE user_id = ?', args: [tabUserId] })).rows;
+      if (tabRows.length > 0) allowedTabs = tabRows.map(r => String(r.tab));
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       username: _session.username,
@@ -1224,6 +1236,7 @@ const server = http.createServer(async (req, res) => {
       assumedRole: _session.assumedRole || null,
       assumedUserId: _session.assumedUserId || null,
       assumedUserDisplay,
+      allowedTabs,
       orgId: _session.orgId,
       orgName: orgRow ? String(orgRow.name) : 'Production',
       isDemo: orgRow ? !!orgRow.is_demo : false,
@@ -1399,6 +1412,32 @@ const server = http.createServer(async (req, res) => {
     const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '' }))));
+    return;
+  }
+
+  // GET /api/users/:id/tabs — admin fetches tab permissions for a user
+  if (req.method === 'GET' && /^\/api\/users\/\d+\/tabs$/.test(urlPath0)) {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const uid = Number(urlPath0.split('/')[3]);
+    const rows = (await client.execute({ sql: 'SELECT tab FROM user_tab_permissions WHERE user_id = ?', args: [uid] })).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ tabs: rows.length > 0 ? rows.map(r => String(r.tab)) : null }));
+    return;
+  }
+
+  // PUT /api/users/:id/tabs — admin sets tab permissions for a user
+  if (req.method === 'PUT' && /^\/api\/users\/\d+\/tabs$/.test(urlPath0)) {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const uid = Number(urlPath0.split('/')[3]);
+    const { tabs } = await readBody(req);
+    await client.execute({ sql: 'DELETE FROM user_tab_permissions WHERE user_id = ?', args: [uid] });
+    if (Array.isArray(tabs) && tabs.length > 0) {
+      for (const tab of tabs) {
+        await client.execute({ sql: 'INSERT OR IGNORE INTO user_tab_permissions (user_id, tab) VALUES (?,?)', args: [uid, String(tab)] });
+      }
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

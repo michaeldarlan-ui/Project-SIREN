@@ -60,6 +60,19 @@
       document.querySelectorAll('[data-admin-only]').forEach(el => { el.style.display = 'none'; });
     }
 
+    // Restrict nav tabs based on per-user tab permissions
+    if (_authUser.allowedTabs) {
+      const allowed = new Set(_authUser.allowedTabs);
+      document.querySelectorAll('.nav-tab[data-tab]').forEach(btn => {
+        if (!allowed.has(btn.dataset.tab)) btn.style.display = 'none';
+      });
+      // Auto-navigate to first allowed tab if current tab isn't permitted
+      if (typeof navTo === 'function') {
+        const firstAllowed = _authUser.allowedTabs[0];
+        if (firstAllowed) setTimeout(() => navTo(firstAllowed), 0);
+      }
+    }
+
     // Show demo banner if in demo org
     if (_authUser.isDemo) {
       let banner = document.getElementById('demoBanner');
@@ -94,6 +107,76 @@
     else alert('Could not exit assume role.');
   }
   window.exitAssumeRole = exitAssumeRole;
+
+  const ALL_TABS = [
+    { key: 'pulse',     label: 'PULSE' },
+    { key: 'vigil',     label: 'VIGIL' },
+    { key: 'forge',     label: 'FORGE' },
+    { key: 'grader',    label: 'ENGAGE' },
+    { key: 'lifecycle', label: 'ATLAS' },
+    { key: 'scope',     label: 'SCOPE' },
+    { key: 'coach',     label: 'COACH' },
+    { key: 'usage',     label: 'USAGE' },
+    { key: 'dash',      label: 'DASH' },
+  ];
+
+  async function openTabPermissions(userId, displayName) {
+    // Build or reuse modal
+    let modal = document.getElementById('tabPermModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'tabPermModal';
+      modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;';
+      modal.innerHTML = `<div style="background:#111113;border:1px solid rgba(245,158,11,.18);border-radius:10px;width:min(400px,94vw);padding:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div id="tabPermTitle" style="font-size:11px;font-weight:700;letter-spacing:.14em;color:rgba(245,158,11,.7);text-transform:uppercase;font-family:'JetBrains Mono',monospace;"></div>
+          <button onclick="document.getElementById('tabPermModal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;line-height:1;">×</button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px;">Select which tabs this user can access. Leave all unchecked to grant access to all tabs.</div>
+        <div id="tabPermChecks" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;"></div>
+        <div id="tabPermErr" style="font-size:11px;color:#ef4444;margin-bottom:10px;min-height:16px;"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button onclick="document.getElementById('tabPermModal').style.display='none'" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);border-radius:5px;padding:7px 16px;font-size:12px;cursor:pointer;">Cancel</button>
+          <button id="tabPermSaveBtn" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:5px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;">Save</button>
+        </div>
+      </div>`;
+      document.body.appendChild(modal);
+    }
+
+    modal.querySelector('#tabPermTitle').textContent = `Tab Access — ${displayName}`;
+    const checksEl = modal.querySelector('#tabPermChecks');
+    const errEl = modal.querySelector('#tabPermErr');
+    errEl.textContent = '';
+    checksEl.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:11px;">Loading…</div>';
+    modal.style.display = 'flex';
+
+    // Load current permissions
+    let currentTabs = null;
+    try {
+      const r = await fetch(`/api/users/${userId}/tabs`);
+      const d = await r.json();
+      currentTabs = d.tabs; // null = all tabs
+    } catch {}
+
+    checksEl.innerHTML = ALL_TABS.map(t => {
+      const checked = !currentTabs || currentTabs.includes(t.key) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.7);">
+        <input type="checkbox" data-tab-key="${t.key}" ${checked} style="accent-color:#f59e0b;width:14px;height:14px;cursor:pointer;">
+        ${t.label}
+      </label>`;
+    }).join('');
+
+    modal.querySelector('#tabPermSaveBtn').onclick = async () => {
+      const checked = [...checksEl.querySelectorAll('input[type=checkbox]:checked')].map(c => c.dataset.tabKey);
+      const tabs = checked.length === ALL_TABS.length ? [] : checked; // empty = all tabs (no restriction)
+      try {
+        const r = await fetch(`/api/users/${userId}/tabs`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tabs }) });
+        if (r.ok) { modal.style.display = 'none'; }
+        else { errEl.textContent = 'Failed to save permissions.'; }
+      } catch { errEl.textContent = 'Network error.'; }
+    };
+  }
+  window.openTabPermissions = openTabPermissions;
 
   function authChangePwdOpen() {
     document.getElementById('cpCurPwd').value = '';
@@ -252,6 +335,7 @@
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Change pwd' : 'Active'}</td>
                 <td style="padding:8px 16px 8px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
                   ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="assumeUserRole(${uid})" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="View app as this user">View as</button>` : ''}
+                  ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="openTabPermissions(${uid},'${escHtml(u.displayName||u.username)}')" style="background:none;border:1px solid rgba(245,158,11,.25);color:rgba(245,158,11,.6);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="Configure tab access">Tabs</button>` : ''}
                   <button onclick="usersResetPwd('${uid}','${uname}')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;">Reset pwd</button>
                   ${!isSelf ? `<button onclick="usersDelete('${uid}','${uname}')" style="background:none;border:1px solid rgba(239,68,68,.2);color:rgba(239,68,68,.5);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Remove</button>` : ''}
                 </td>
