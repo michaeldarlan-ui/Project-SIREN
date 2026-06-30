@@ -201,11 +201,11 @@
       }
 
       // Admin view: full account management table
-      const [usersRes, orgsRes, invitesRes] = await Promise.all([fetch('/api/users'), fetch('/api/orgs'), fetch('/api/invites')]);
+      const [usersRes, orgsRes] = await Promise.all([fetch('/api/users'), fetch('/api/orgs')]);
       if (!usersRes.ok) { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Failed to load team.</div>'; return; }
       const users   = await usersRes.json();
       const orgs    = orgsRes.ok ? await orgsRes.json() : [];
-      const invites = invitesRes.ok ? await invitesRes.json() : [];
+      const invites = await fetch('/api/invites').then(r => r.ok ? r.json() : []).catch(() => []);
       if (!users.length) { el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">No team members found.</div>'; return; }
       const thStyle = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(245,158,11,.1);';
       el.innerHTML = `
