@@ -2558,25 +2558,40 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const isAdmin = typeof sirenIsAdmin === 'function' ? sirenIsAdmin() : true;
     const myName = window._sirenUser?.displayName || '';
 
-    // For non-admin users: strip rep toggle and other reps' score views; keep overall + own rep view
+    // Strip grader action buttons always
     let bodyHtml = (h.resultsHtml || '')
       .replace(/<div class="results-actions">[\s\S]*?<\/div>/g, '')
       .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"");
 
     if (!isAdmin && myName) {
-      // Remove the entire rep toggle button row
-      bodyHtml = bodyHtml.replace(/<div class="rep-toggle">[\s\S]*?<\/div>/g, '');
-      // Identify which score-view-rep-N belongs to this user and strip the others
-      const repScores = Array.isArray(h.rep_scores) ? h.rep_scores : [];
-      repScores.forEach((rs, i) => {
-        const nameMatch = (rs.name || '').toLowerCase().trim() === myName.toLowerCase().trim() ||
-          (rs.name || '').toLowerCase().split(' ').some(w => w.length > 1 && myName.toLowerCase().includes(w));
-        if (!nameMatch) {
-          // Remove this rep's score view block
-          const pattern = new RegExp(`<div[^>]+id="score-view-rep-${i}"[^>]*>[\\s\\S]*?(?=<div[^>]+id="score-view-|$)`, 'g');
-          bodyHtml = bodyHtml.replace(pattern, '');
-        }
-      });
+      // Use DOMParser to reliably remove unwanted elements from stored HTML
+      const _nm = s => (s || '').toLowerCase().trim();
+      const _nameMatch = (a, b) => {
+        const x = _nm(a), y = _nm(b);
+        if (!x || !y) return false;
+        if (x === y) return true;
+        const shorter = x.split(' ').length <= y.split(' ').length ? x : y;
+        const longer  = shorter === x ? y : x;
+        return shorter.split(' ').every(w => w.length > 1 && longer.includes(w));
+      };
+      try {
+        const doc = new DOMParser().parseFromString(`<div id="_hroot">${bodyHtml}</div>`, 'text/html');
+        const root = doc.getElementById('_hroot');
+        // Remove the entire rep-toggle tab bar
+        root.querySelectorAll('.rep-toggle').forEach(el => el.remove());
+        // For each per-rep score view, remove if not the logged-in user
+        const repScores = Array.isArray(h.rep_scores) ? h.rep_scores : [];
+        repScores.forEach((rs, i) => {
+          const el = root.querySelector(`[id="score-view-rep-${i}"]`);
+          if (!el) return;
+          if (_nameMatch(rs.name, myName)) {
+            el.style.display = '';  // ensure visible (was hidden by default toggle logic)
+          } else {
+            el.remove();
+          }
+        });
+        bodyHtml = root.innerHTML;
+      } catch {}
     }
 
     const titleLine = showCompany && h.prospect
