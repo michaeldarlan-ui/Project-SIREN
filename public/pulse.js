@@ -368,6 +368,29 @@
   const _SPICED_KEYS   = ['situation','pain','impact','critical_event','evolution','decision'];
   const _SPICED_LABELS = { situation:'Situation', pain:'Pain', impact:'Impact', critical_event:'Critical Event', evolution:'Evolution', decision:'Decision' };
 
+  // Cumulative SPICED state across every call on record for an account: which components
+  // have ever been touched, and the most recent summary text for each (newest call wins).
+  function _vigilSpicedCumulative(calls) {
+    const touched = {};
+    const summary = {};
+    _SPICED_KEYS.forEach(k => { touched[k] = false; summary[k] = ''; });
+    // calls is assumed sorted newest-first; iterate oldest-to-newest so the latest summary wins
+    [...calls].reverse().forEach(c => {
+      let cs = c.spiced;
+      if (typeof cs === 'string') { try { cs = JSON.parse(cs); } catch { cs = null; } }
+      if (!cs) return;
+      _SPICED_KEYS.forEach(k => {
+        if (cs[k]?.touched) touched[k] = true;
+        if (cs[k]?.summary) summary[k] = cs[k].summary;
+      });
+    });
+    return {
+      touched, summary,
+      gapLabels: _SPICED_KEYS.filter(k => !touched[k]).map(k => _SPICED_LABELS[k]),
+      coveredLabels: _SPICED_KEYS.filter(k => touched[k]).map(k => _SPICED_LABELS[k]),
+    };
+  }
+
   function vigilBuildDealIntel(h, hist) {
     // ── Momentum: delta across last 3 scored calls ──────────────
     const scores = hist.map(c => c.normalized_score || c.total).filter(s => s > 0);
@@ -611,6 +634,7 @@
             <span style="font-size:11px;color:rgba(255,255,255,.25);">${escHtml(lastDate)} · ${escHtml(gradeLabel)}</span>
             <span class="pulse-feed-tag ${a.severity}">${sevLabel[a.severity]}</span>
             <button class="pulse-pdf-btn" title="Download deal status report as PDF" onclick="event.stopPropagation();vigilOpenPdfReport('${cSafe}')">⬇ PDF</button>
+            <button class="pulse-pdf-btn" title="Generate AI pre-call brief" onclick="event.stopPropagation();vigilGenerateBrief('${cSafe}')">✦ Pre-Call Brief</button>
             <span class="pulse-feed-chevron">▶</span>
           </div>
         </div>
@@ -1390,16 +1414,9 @@
     </table>` : '';
 
     // ── Next Meeting Prep: capture / reinforce / watch, built from cumulative account data ──
-    const spicedCumulative = {};
-    spicedKeys.forEach(k => { spicedCumulative[k] = false; });
-    calls.forEach(c => {
-      let cs = c.spiced;
-      if (typeof cs === 'string') { try { cs = JSON.parse(cs); } catch { cs = null; } }
-      if (!cs) return;
-      spicedKeys.forEach(k => { if (cs[k]?.touched) spicedCumulative[k] = true; });
-    });
-    const spicedGapLabels = spicedKeys.filter(k => !spicedCumulative[k]).map(k => spicedLabels[k]);
-    const spicedCoveredLabels = spicedKeys.filter(k => spicedCumulative[k]).map(k => spicedLabels[k]);
+    const _spicedCum = _vigilSpicedCumulative(calls);
+    const spicedGapLabels = _spicedCum.gapLabels;
+    const spicedCoveredLabels = _spicedCum.coveredLabels;
 
     const scoresDesc = calls.map(c => c.normalized_score || c.total || 0).filter(s => s > 0);
     let momentumNote = null;
@@ -1599,5 +1616,237 @@ ${latest.overview ? `<h2>Call Overview</h2><div class="section-card"><p style="f
     if (!win) return;
     win.document.write(html);
     win.document.close();
+  };
+
+  // ── VIGIL Pre-Call Brief (AI-generated) ────────────────────────
+  // Minimal markdown renderer for the brief's expected output shape:
+  // ## headers, **bold** spans, --- horizontal rules, blank-line paragraphs.
+  function _renderBriefMarkdown(md) {
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const lines = md.replace(/\r\n/g, '\n').split('\n');
+    let html = '';
+    let para = [];
+    const flush = () => {
+      if (!para.length) return;
+      html += `<p style="margin:0 0 12px;">${para.join('<br>')}</p>`;
+      para = [];
+    };
+    const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong style="color:rgba(255,255,255,.95);">$1</strong>');
+    lines.forEach(line => {
+      const t = line.trim();
+      if (t === '---') { flush(); html += '<hr style="border:none;border-top:1px solid rgba(255,255,255,.1);margin:18px 0;">'; return; }
+      if (t.startsWith('## ')) { flush(); html += `<h2 style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#f59e0b;margin:20px 0 10px;">${inline(t.slice(3))}</h2>`; return; }
+      if (!t) { flush(); return; }
+      para.push(inline(t));
+    });
+    flush();
+    return html;
+  }
+
+  window.closeVigilBriefModal = function() {
+    const m = document.getElementById('vigilBriefModal');
+    if (m) m.style.display = 'none';
+  };
+
+  window.vigilCopyBrief = function(btn) {
+    const body = document.getElementById('vigilBriefBody');
+    if (!body) return;
+    navigator.clipboard.writeText(body.innerText).then(() => {
+      if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = orig; }, 1500); }
+    }).catch(() => {});
+  };
+
+  window.vigilGenerateBrief = async function(company) {
+    const hist = loadHistory();
+    const calls = hist
+      .filter(h => (h.prospect || '').trim() === company)
+      .sort((a, b) => {
+        const da = a.callDate || a.ts.slice(0, 10);
+        const db = b.callDate || b.ts.slice(0, 10);
+        return da > db ? -1 : da < db ? 1 : 0;
+      });
+    if (!calls.length) return;
+
+    const latest = calls[0];
+    const prof = typeof loadAccountProfile === 'function' ? loadAccountProfile(company) : {};
+    const industry = typeof _getProspectIndustry === 'function' ? _getProspectIndustry(company) : '';
+    const spicedCum = _vigilSpicedCumulative(calls);
+    const unknown = 'Unknown';
+
+    const contact = prof.champion || (prof.contacts || [])[0] || null;
+    const incumbentVendor = (prof.techstack || [])[0] || unknown;
+    const otherVendors = (prof.competitors || []).length ? prof.competitors.join(', ') : unknown;
+
+    const priorNotes = calls.slice(0, 3).map(c => {
+      const ds = c.callDate || c.ts.slice(0, 10);
+      const bits = [`${ds} (${c.stage || 'Unknown stage'}, ${c.letter_grade || '—'} ${c.normalized_score || c.total || ''})`];
+      if (c.top_strength) bits.push(`Strength: ${c.top_strength}`);
+      if (c.top_priority) bits.push(`Gap: ${c.top_priority}`);
+      return bits.join(' — ');
+    }).join('\n') || unknown;
+
+    const accountResearch = [
+      industry ? `Industry: ${industry}` : '',
+      prof.opportunity_summary ? `Opportunity summary: ${prof.opportunity_summary}` : '',
+      (prof.techstack || []).length ? `Known tech stack: ${prof.techstack.join(', ')}` : '',
+      (prof.stakeholders || []).length ? `Stakeholders mentioned but not yet engaged: ${prof.stakeholders.map(s => s.name).join(', ')}` : '',
+    ].filter(Boolean).join('\n') || unknown;
+
+    const spicedField = k => spicedCum.summary[k] || (spicedCum.touched[k] ? 'Touched — no summary on record' : unknown);
+    const knownGaps = spicedCum.gapLabels.length ? spicedCum.gapLabels.join(', ') : 'None — all SPICED components have been touched at least once.';
+
+    const promptData = `---INPUT DATA---
+
+DEAL METADATA:
+- Account name: ${company}
+- Deal stage: ${latest.stage || unknown}
+- ARR: ${unknown}
+- Meeting date: ${unknown}
+- Primary contact: ${contact ? contact.name : unknown}, ${contact ? (contact.title || unknown) : unknown}
+- Renewal / close deadline: ${unknown}
+- Budget status: ${unknown}
+
+PRIOR MEETING NOTES / TRANSCRIPT SUMMARY:
+${priorNotes}
+
+ACCOUNT RESEARCH:
+${accountResearch}
+(Include: org background, headcount, funding model, recent news/activity, known tech stack, any relevant regulatory or industry context)
+
+COMPETITIVE CONTEXT:
+- Current incumbent: ${incumbentVendor}
+- Known incumbent pain points (market-level): ${unknown}
+- Other vendors in evaluation: ${otherVendors}
+
+SPICED ANALYSIS FROM PRIOR CALLS:
+- Situation: ${spicedField('situation')}
+- Pain: ${spicedField('pain')}
+- Impact: ${spicedField('impact')}
+- Critical Event: ${spicedField('critical_event')}
+- Economic Buyer: ${spicedField('decision')}
+- Decision Process: ${spicedField('evolution')}
+
+KNOWN GAPS (fields with incomplete or missing data from prior calls):
+${knownGaps}`;
+
+    const systemPrompt = `You are an expert sales strategist preparing a rep for an upcoming call. Generate a pre-call brief following the exact output schema below. If a data point is marked "Unknown", flag it as such rather than inventing detail — do not fabricate ARR, deadlines, budget status, or specifics not present in the input data.
+
+---OUTPUT SCHEMA---
+
+Produce the brief in exactly this order. Use the headers as written.
+
+**[DEAL STAGE] · [DEADLINE] · [ARR] · [BUDGET STATUS]**
+(One line. No prose. Just the four fields separated by ·)
+
+---
+
+## ACCOUNT INTELLIGENCE
+3–5 short paragraphs. Cover in this order:
+1. What the org is, who governs it, how it's funded, and its scale
+2. What they're actively doing right now (recent news, programs, spending signals)
+3. Their tech stack — ranked by spend or importance if known
+4. The incumbent vendor's known pain points at the market level (not assumptions about this account specifically)
+
+---
+
+## DEAL CONTEXT
+2–3 paragraphs. Cover:
+1. How this opportunity originated and what stage it's in
+2. What's driving the evaluation — the stated reason and the real reason if different
+3. The key constraint or friction point that could affect the close
+
+---
+
+## SPICED SNAPSHOT
+One line per letter. Use label: value format. Flag unknowns with ⚠️ Unknown.
+
+S — Situation:
+P — Pain:
+I — Impact:
+C — Critical Event:
+E — Economic Buyer:
+D — Decision Process:
+
+---
+
+## GAP QUESTIONS
+List only the SPICED dimensions with incomplete data. For each gap, write one ready-to-ask question — verbatim, as the rep would say it out loud. Label each question with the gap it closes.
+
+Format:
+**[Gap label]**
+"[Question text in first person, conversational, not salesy]"
+
+Also include 1–2 reconfirm questions for items from prior calls that need validation.
+
+---
+
+## PRE-CALL STRATEGY
+Exactly 3–4 plays. Each play:
+- Starts with a bold imperative label (e.g. "Lead with the savings number")
+- 2–3 sentences of reasoning grounded in specific deal context
+- Ends with → [one-line outcome this play achieves]
+
+---
+
+## COACHING NOTES
+Plain prose. 2–4 sentences per risk or observation. Cover: the biggest risk to the deal, any blind spots from the call notes, and one behavioral coaching point for the rep (what to lead with, what to avoid, what to do before the call ends).
+
+No bullet points in this section. Write like a sales manager talking to a rep before they walk into the room.`;
+
+    const modal = document.getElementById('vigilBriefModal');
+    const nameEl = document.getElementById('vigilBriefCompanyName');
+    const bodyEl = document.getElementById('vigilBriefBody');
+    if (!modal || !bodyEl) return;
+    nameEl.textContent = company;
+    bodyEl.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px;">Generating brief…</div>';
+    modal.style.display = 'flex';
+
+    try {
+      const resp = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'VIGIL',
+          model: typeof getDevModel === 'function' ? getDevModel('vigil_brief', 'claude-sonnet-4-6') : 'claude-sonnet-4-6',
+          max_tokens: 2000,
+          stream: true,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: promptData }],
+        }),
+      });
+
+      if (!resp.ok) {
+        const raw = await resp.text().catch(() => '');
+        let msg = 'API error ' + resp.status;
+        try { const err = JSON.parse(raw); msg = err?.error?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+
+      let sseBuffer = '', accumulated = '';
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split('\n');
+        sseBuffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload || payload === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(payload);
+            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              accumulated += ev.delta.text;
+              bodyEl.innerHTML = _renderBriefMarkdown(accumulated);
+            }
+          } catch {}
+        }
+      }
+      bodyEl.innerHTML = _renderBriefMarkdown(accumulated);
+    } catch (err) {
+      bodyEl.innerHTML = `<div style="color:#ef4444;font-size:13px;">Error: ${(err.message || String(err)).replace(/</g,'&lt;')}</div>`;
+    }
   };
 
