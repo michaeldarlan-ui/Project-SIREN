@@ -1223,6 +1223,8 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && urlPath0 === '/api/auth/me') {
     const orgRow = (await client.execute({ sql: 'SELECT name, is_demo, grading_level FROM orgs WHERE id = ?', args: [_session.orgId] })).rows[0];
+    const selfRow = (await client.execute({ sql: 'SELECT display_name FROM users WHERE id = ?', args: [_session.userId] })).rows[0];
+    const selfDisplayName = selfRow ? (String(selfRow.display_name || '')).trim() : '';
     let assumedUserDisplay = null;
     if (_session.assumedUserId) {
       const auRow = (await client.execute({ sql: 'SELECT display_name, username FROM users WHERE id = ?', args: [_session.assumedUserId] })).rows[0];
@@ -1238,6 +1240,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       username: _session.username,
+      displayName: selfDisplayName || _session.username,
       role: _session.role,
       realRole: _session.realRole,
       assumedRole: _session.assumedRole || null,

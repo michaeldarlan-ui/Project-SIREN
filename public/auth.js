@@ -12,7 +12,7 @@
 
     // Store org + user context globally for other modules
     window._sirenOrg  = { id: _authUser.orgId, name: _authUser.orgName, isDemo: _authUser.isDemo };
-    window._sirenUser = { role: _authUser.role, username: _authUser.username, orgId: _authUser.orgId };
+    window._sirenUser = { role: _authUser.role, username: _authUser.username, displayName: _authUser.displayName || _authUser.username, orgId: _authUser.orgId };
     window.sirenIsAdmin = () => ['admin','superadmin'].includes(window._sirenUser?.role);
     window._sirenGradingLevel = _authUser.gradingLevel || 3;
 

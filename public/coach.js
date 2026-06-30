@@ -1761,7 +1761,29 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
 
   // ── Init ──────────────────────────────────────────────────────────────────────
   function coachInit() {
-    coachRenderRepSel();
+    const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
+    if (!isAdmin) {
+      // Non-admin: hide rep selector, auto-set rep to logged-in user's display name
+      const repCard = document.getElementById('coachRepSel')?.closest('.card');
+      if (repCard) repCard.style.display = 'none';
+      const myName = window._sirenUser?.displayName || window._sirenUser?.username || '';
+      if (myName && myName !== _coachCurrentRep) {
+        _coachCurrentRep = myName;
+        _coachRecogMd = '';
+        _coachFeedbackRecord = null;
+        _coachFeedbackMd = '';
+        const meta = document.getElementById('coachRepMeta');
+        if (meta) {
+          const calls = _coachGetRepCalls(myName);
+          meta.textContent = calls.length + ' graded call' + (calls.length !== 1 ? 's' : '');
+        }
+        coachClearCallSelection();
+        coachIntelClear();
+        _coachRenderDashboard();
+      }
+    } else {
+      coachRenderRepSel();
+    }
     if (!_coachCurrentRep) _coachRenderDashboard();
     _coachIntelUpdateState();
     _arenaApplyRoleFilter();
