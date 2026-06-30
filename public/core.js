@@ -71,7 +71,7 @@
     if (page === 'coach')       coachInit();
     if (page === 'usage')       renderUsagePage();
     if (page === 'dash')        typeof dashInit === 'function' && dashInit();
-    if (page === 'settings')    { rdmRender(); typeof renderGradingDifficultyUI === 'function' && renderGradingDifficultyUI(); }
+    if (page === 'settings')    { rdmRender(); typeof renderGradingDifficultyUI === 'function' && renderGradingDifficultyUI(); typeof _loadOrgKnowledgeUI === 'function' && _loadOrgKnowledgeUI(); }
     if (page === 'audit')       typeof auditLoad === 'function' && auditLoad();
     if (page === 'users')       typeof usersLoad === 'function' && usersLoad();
   }

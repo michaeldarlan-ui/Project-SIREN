@@ -659,8 +659,12 @@ Be concise and practical — 150-200 words. No preamble, just the research.`;
       ? `\nACTIVE NEXT STEP: "${_forgeActiveTask}"\nRESEARCH CONTEXT:\n${_forgeResearch}\n`
       : (_forgeActiveTask ? `\nACTIVE NEXT STEP THIS EMAIL SHOULD DRIVE: "${_forgeActiveTask}"\n` : '');
 
+    const knowledgeCtx = window._sirenOrgKnowledge
+      ? `\nPRODUCT & SERVICE CONTEXT:\n${window._sirenOrgKnowledge}\n`
+      : '';
+
     const prompt = `You are a Solutions Engineer at your company. Write a professional, warm follow-up email to send to a prospect after a discovery/sales call.
-${researchBlock}
+${knowledgeCtx}${researchBlock}
 CALL DATA:
 - Prospect / Company: ${h.prospect || '—'}
 - Contact: ${h.contact || '—'}
@@ -816,11 +820,15 @@ ${h.notes ? 'Call Notes: '+h.notes : ''}`.trim();
       ? `\nACTIVE NEXT STEP: "${_forgeActiveTask}"\nRESEARCH CONTEXT:\n${_forgeResearch}\n`
       : (_forgeActiveTask ? `\nACTIVE NEXT STEP TO EMPHASIZE: "${_forgeActiveTask}"\n` : '');
 
+    const knowledgeCtx = window._sirenOrgKnowledge
+      ? `\nPRODUCT & SERVICE CONTEXT:\n${window._sirenOrgKnowledge}\n`
+      : '';
+
     const prompts = {
       'call-brief': isClientBrief
-        ? `You are a professional sales consultant at your company. Write a polished post-call summary to send to the client contact. It should feel professional and collaborative — not salesy. Format with clear sections: DISCUSSION SUMMARY, KEY TAKEAWAYS, AGREED NEXT STEPS. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 250 words. Do not include internal scores, grades, coaching notes, or SPICED framework references.${researchCtx}\nCALL DATA:\n${clientCallData}`
-        : `You are a Solutions Engineer at your company. Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.${researchCtx}\nCALL DATA:\n${callData}`,
-      'exec-summary': `You are a Solutions Engineer at your company. Write a board-ready executive deal summary based on the following call data. Format it with sections: Deal Overview, Business Context, Risk Indicators, SPICED Status, Recommended Next Actions. Use plain text with section headers in ALL CAPS followed by a colon. Keep it professional, concise, under 300 words. Do not add meta-commentary.${researchCtx}\nCALL DATA:\n${callData}`
+        ? `You are a professional sales consultant at your company. Write a polished post-call summary to send to the client contact. It should feel professional and collaborative — not salesy. Format with clear sections: DISCUSSION SUMMARY, KEY TAKEAWAYS, AGREED NEXT STEPS. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 250 words. Do not include internal scores, grades, coaching notes, or SPICED framework references.${knowledgeCtx}${researchCtx}\nCALL DATA:\n${clientCallData}`
+        : `You are a Solutions Engineer at your company. Write a concise internal call brief based on the following call data. Format it as a clean internal document with clear sections: Overview, Key Strengths, Priority Gaps, SPICED Coverage (brief), Next Steps, and Coaching Notes. Use plain text with section headers in ALL CAPS followed by a colon. Keep it under 350 words. Do not add meta-commentary.${knowledgeCtx}${researchCtx}\nCALL DATA:\n${callData}`,
+      'exec-summary': `You are a Solutions Engineer at your company. Write a board-ready executive deal summary based on the following call data. Format it with sections: Deal Overview, Business Context, Risk Indicators, SPICED Status, Recommended Next Actions. Use plain text with section headers in ALL CAPS followed by a colon. Keep it professional, concise, under 300 words. Do not add meta-commentary.${knowledgeCtx}${researchCtx}\nCALL DATA:\n${callData}`
     };
 
     const systemPrompts = {

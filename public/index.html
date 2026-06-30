@@ -781,6 +781,19 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
     <!-- ── Grading Difficulty ── -->
     <div id="gradingDifficultySection"></div>
 
+    <!-- ── Product & Service Context (admin-only) ── -->
+    <div data-admin-only style="margin-bottom:28px;">
+      <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Product & Service Context</div>
+      <div class="card" style="padding:18px 20px;">
+        <p style="font-size:12px;color:var(--siren-text-muted);margin:0 0 14px;">Provide your product and service information here. FORGE uses this when generating documents so outputs are specific to your offerings — pricing tiers, features, differentiators, positioning, and anything else that should inform AI-generated content.</p>
+        <textarea id="orgKnowledgeInput" placeholder="Example:&#10;Product: SIREN Platform&#10;Description: AI-powered sales intelligence and call grading platform.&#10;Key features: real-time call grading, ATLAS account mapping, FORGE document generation, COACH rep enablement.&#10;Pricing: Starter $299/mo · Growth $699/mo · Enterprise custom.&#10;Key differentiators: sales-stage-aware grading, SPICED framework coverage, integrated coaching..." style="width:100%;min-height:220px;background:var(--siren-bg-input,#111113);color:var(--siren-text-body);border:1px solid var(--siren-border-mid);border-radius:7px;padding:12px;font-size:12px;font-family:inherit;resize:vertical;line-height:1.6;box-sizing:border-box;outline:none;"></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px;">
+          <span id="orgKnowledgeStatus" style="font-size:11px;color:var(--siren-text-muted);"></span>
+          <button onclick="saveOrgKnowledge(this)" style="background:var(--siren-cyan-20,rgba(0,200,255,.15));border:1px solid var(--siren-cyan-40,rgba(0,200,255,.3));color:var(--siren-cyan,#00c8ff);border-radius:6px;padding:6px 18px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;letter-spacing:.04em;">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Integration Roadmap ── -->
     <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Integration Roadmap</div>
     <div class="forge-integrations" style="margin-bottom:28px;">

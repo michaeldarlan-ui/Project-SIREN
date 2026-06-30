@@ -461,10 +461,11 @@ await client.batch([
     }
   }
 
-  // Add grading_level to orgs if missing
+  // Add grading_level and knowledge_base to orgs if missing
   if (tables.includes('orgs')) {
     const orgCols = (await client.execute('PRAGMA table_info(orgs)')).rows.map(r => String(r.name));
     if (!orgCols.includes('grading_level')) await client.execute('ALTER TABLE orgs ADD COLUMN grading_level INTEGER NOT NULL DEFAULT 3');
+    if (!orgCols.includes('knowledge_base')) await client.execute('ALTER TABLE orgs ADD COLUMN knowledge_base TEXT');
   }
 }
 
@@ -1326,6 +1327,25 @@ const server = http.createServer(async (req, res) => {
     await client.execute({ sql: 'UPDATE orgs SET grading_level = ? WHERE id = ?', args: [lvl, _session.orgId] });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, level: lvl }));
+    return;
+  }
+
+  // GET /api/org-knowledge — returns { content: string }
+  if (req.method === 'GET' && urlPath0 === '/api/org-knowledge') {
+    const orgRow = (await client.execute({ sql: 'SELECT knowledge_base FROM orgs WHERE id = ?', args: [_session.orgId] })).rows[0];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ content: orgRow?.knowledge_base ? String(orgRow.knowledge_base) : '' }));
+    return;
+  }
+
+  // PUT /api/org-knowledge — admin saves product/service context
+  if (req.method === 'PUT' && urlPath0 === '/api/org-knowledge') {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const { content } = await readBody(req);
+    const text = typeof content === 'string' ? content.slice(0, 20000) : '';
+    await client.execute({ sql: 'UPDATE orgs SET knowledge_base = ? WHERE id = ?', args: [text || null, _session.orgId] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

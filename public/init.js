@@ -67,6 +67,11 @@
   await _loadTeamFromDB();
   await _loadUsageFromDB();
   await initAccountProfiles();
+  try {
+    const kr = await fetch('/api/org-knowledge');
+    const kj = kr.ok ? await kr.json() : {};
+    window._sirenOrgKnowledge = kj.content || '';
+  } catch { window._sirenOrgKnowledge = ''; }
 
   // ── 3. Boot UI (each call wrapped so one failure doesn't block navTo) ──
   try { initKeyUI(); } catch(e) { console.error('[init] initKeyUI:', e); }

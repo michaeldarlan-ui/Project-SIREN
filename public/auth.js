@@ -794,3 +794,48 @@
     } catch { if (msg) { msg.style.color = '#ef4444'; msg.textContent = 'Network error.'; } }
   }
   window.selectGradingPreset = selectGradingPreset;
+
+  // ── Org Knowledge Base ────────────────────────────────────────────────
+  // Populate textarea when Settings page opens
+  async function _loadOrgKnowledgeUI() {
+    const el = document.getElementById('orgKnowledgeInput');
+    if (!el) return;
+    try {
+      const res = await fetch('/api/org-knowledge');
+      if (!res.ok) return;
+      const { content } = await res.json();
+      el.value = content || '';
+      window._sirenOrgKnowledge = content || '';
+    } catch {}
+  }
+
+  window.saveOrgKnowledge = async function(btn) {
+    const el = document.getElementById('orgKnowledgeInput');
+    const status = document.getElementById('orgKnowledgeStatus');
+    if (!el) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      const res = await fetch('/api/org-knowledge', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: el.value }),
+      });
+      if (!res.ok) throw new Error('status ' + res.status);
+      window._sirenOrgKnowledge = el.value;
+      if (status) { status.style.color = '#4ade80'; status.textContent = 'Saved — FORGE will use this context when generating documents.'; }
+      setTimeout(() => { if (status) status.textContent = ''; }, 4000);
+    } catch (e) {
+      if (status) { status.style.color = '#ef4444'; status.textContent = 'Save failed: ' + e.message; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+    }
+  };
+
+  // Hook into the settings page render so the textarea is always current
+  const _origRdmRender = window.rdmRender;
+  document.addEventListener('DOMContentLoaded', () => {
+    const origNavTo = window.navTo;
+    if (typeof origNavTo === 'function') return; // core.js sets navTo; hook via navTo override below
+  });
+  // Expose so core.js navTo can call it when settings page opens
+  window._loadOrgKnowledgeUI = _loadOrgKnowledgeUI;
