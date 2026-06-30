@@ -24,22 +24,23 @@
     }
 
 
-    // Assume-role banner (admin viewing as another role)
+    // Assume-role banner (admin viewing as a specific user)
     if (_authUser.assumedRole) {
       let assumeBanner = document.getElementById('assumeRoleBanner');
       if (!assumeBanner) {
         assumeBanner = document.createElement('div');
         assumeBanner.id = 'assumeRoleBanner';
         assumeBanner.style.cssText = 'position:fixed;top:52px;left:0;right:0;z-index:160;background:rgba(239,68,68,.15);border-bottom:2px solid rgba(239,68,68,.4);padding:6px 20px;display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(255,100,100,.9);';
-        assumeBanner.innerHTML = `<span style="font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:10px;">&#128100; Viewing as: ${escHtml(_authUser.assumedRole)}</span><span style="color:rgba(255,255,255,.35);font-size:11px;">You are seeing the app as a normal user would. Admin capabilities are hidden.</span><button onclick="exitAssumeRole()" style="margin-left:auto;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#fca5a5;border-radius:5px;padding:3px 12px;font-size:11px;cursor:pointer;font-weight:700;">Exit Preview</button>`;
+        const label = _authUser.assumedUserDisplay || _authUser.assumedRole;
+        assumeBanner.innerHTML = `<span style="font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:10px;">&#128100; Viewing as: ${escHtml(label)}</span><span style="color:rgba(255,255,255,.35);font-size:11px;">You are seeing the app as this user would. Admin capabilities are hidden.</span><button onclick="exitAssumeRole()" style="margin-left:auto;background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#fca5a5;border-radius:5px;padding:3px 12px;font-size:11px;cursor:pointer;font-weight:700;">Exit Preview</button>`;
         document.body.appendChild(assumeBanner);
         const pages = document.getElementById('pages') || document.querySelector('.pages');
         if (pages) pages.style.paddingTop = ((parseInt(pages.style.paddingTop)||0) + 36) + 'px';
       }
     }
 
-    // Admin "View as User" button in settings dropdown
-    if (_authUser.realRole === 'admin' || _authUser.realRole === 'superadmin') {
+    // Admin "Exit User Preview" button in settings dropdown (only when currently assuming)
+    if ((_authUser.realRole === 'admin' || _authUser.realRole === 'superadmin') && _authUser.assumedRole) {
       const settingsDropdown = document.getElementById('settingsDropdown');
       if (settingsDropdown && !document.getElementById('assumeRoleBtn')) {
         const divider = document.createElement('div');
@@ -48,10 +49,15 @@
         const btn = document.createElement('div');
         btn.id = 'assumeRoleBtn';
         btn.style.cssText = 'padding:8px 16px;cursor:pointer;font-size:12px;color:rgba(255,100,100,.7);white-space:nowrap;user-select:none;';
-        btn.textContent = _authUser.assumedRole ? '↩ Exit User Preview' : '👁 Preview as User';
-        btn.onclick = _authUser.assumedRole ? exitAssumeRole : assumeUserRole;
+        btn.textContent = '↩ Exit User Preview';
+        btn.onclick = exitAssumeRole;
         settingsDropdown.appendChild(btn);
       }
+    }
+
+    // Hide admin-only settings items for non-admin users
+    if (_authUser.realRole !== 'admin' && _authUser.realRole !== 'superadmin') {
+      document.querySelectorAll('[data-admin-only]').forEach(el => { el.style.display = 'none'; });
     }
 
     // Show demo banner if in demo org
@@ -75,10 +81,10 @@
     window.location.href = '/login';
   }
 
-  async function assumeUserRole() {
-    const res = await fetch('/api/auth/assume-role', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'user' }) });
+  async function assumeUserRole(userId) {
+    const res = await fetch('/api/auth/assume-role', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
     if (res.ok) location.reload();
-    else alert('Could not assume role.');
+    else { const d = await res.json().catch(() => ({})); alert(d.error || 'Could not assume role.'); }
   }
   window.assumeUserRole = assumeUserRole;
 
@@ -245,6 +251,7 @@
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'rgba(245,158,11,.8)':'rgba(255,255,255,.35)'};">${escHtml(u.role)}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Change pwd' : 'Active'}</td>
                 <td style="padding:8px 16px 8px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
+                  ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="assumeUserRole(${uid})" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="View app as this user">View as</button>` : ''}
                   <button onclick="usersResetPwd('${uid}','${uname}')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;">Reset pwd</button>
                   ${!isSelf ? `<button onclick="usersDelete('${uid}','${uname}')" style="background:none;border:1px solid rgba(239,68,68,.2);color:rgba(239,68,68,.5);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Remove</button>` : ''}
                 </td>
