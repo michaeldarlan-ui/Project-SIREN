@@ -96,10 +96,12 @@
     }
     el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">Loading…</div>';
     try {
-      const res = await fetch('/api/users');
-      if (!res.ok) { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Failed to load users.</div>'; return; }
-      const users = await res.json();
+      const [usersRes, orgsRes] = await Promise.all([fetch('/api/users'), fetch('/api/orgs')]);
+      if (!usersRes.ok) { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Failed to load users.</div>'; return; }
+      const users = await usersRes.json();
+      const orgs  = orgsRes.ok ? await orgsRes.json() : [];
       if (!users.length) { el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">No users found.</div>'; return; }
+      const orgOptions = orgs.map(o => `<option value="${o.id}">${escHtml(o.name)}</option>`).join('');
       el.innerHTML = `
         <table style="width:100%;border-collapse:collapse;">
           <thead>
@@ -116,10 +118,16 @@
             ${users.map(u => {
               const isSelf = u.username === _authUser?.username;
               const date   = u.createdAt ? new Date(u.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+              const orgSelect = orgs.length
+                ? `<select onchange="usersChangeOrg('${escHtml(u.id)}',this)"
+                     style="background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:rgba(255,255,255,.6);padding:3px 6px;font-size:11px;cursor:pointer;max-width:130px;">
+                     ${orgs.map(o => `<option value="${o.id}"${o.id===u.orgId?' selected':''}>${escHtml(o.name)}</option>`).join('')}
+                   </select>`
+                : escHtml(u.orgName || 'Production');
               return `<tr>
                 <td style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:rgba(255,255,255,.85);">${escHtml(u.username)}${isSelf ? ' <span style="font-size:10px;color:rgba(0,200,255,.5);">(you)</span>' : ''}</td>
                 <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'#00c8ff':'rgba(255,255,255,.45)'};">${escHtml(u.role)}</td>
-                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.45);">${escHtml(u.orgName || 'Production')}</td>
+                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);">${orgSelect}</td>
                 <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.3);">${date}</td>
                 <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Must change pwd' : 'Active'}</td>
                 <td style="padding:10px 16px 10px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
@@ -240,6 +248,32 @@
     const f = document.getElementById('usersAddForm');
     if (f) f.style.display = 'none';
     document.getElementById('uaErr').textContent = '';
+  }
+
+  async function usersChangeOrg(userId, selectEl) {
+    const orgId = Number(selectEl.value);
+    const prev  = selectEl.dataset.prev || selectEl.value;
+    selectEl.dataset.prev = selectEl.value;
+    selectEl.disabled = true;
+    try {
+      const res = await fetch(`/api/users/${userId}/org`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Failed to update org.');
+        selectEl.value = prev;
+      } else {
+        selectEl.dataset.prev = String(orgId);
+      }
+    } catch {
+      alert('Network error — org not changed.');
+      selectEl.value = prev;
+    } finally {
+      selectEl.disabled = false;
+    }
   }
 
   async function usersAddSubmit() {

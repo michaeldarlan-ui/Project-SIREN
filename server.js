@@ -1104,6 +1104,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'PATCH' && /^\/api\/users\/[^/]+\/org$/.test(urlPath0)) {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const userId = urlPath0.split('/')[3];
+    try {
+      const { orgId } = await readBody(req);
+      if (!orgId) { res.writeHead(400); res.end(JSON.stringify({ error: 'orgId required' })); return; }
+      const orgRow = (await client.execute({ sql: 'SELECT id FROM orgs WHERE id=?', args: [Number(orgId)] })).rows[0];
+      if (!orgRow) { res.writeHead(400); res.end(JSON.stringify({ error: 'Org not found' })); return; }
+      await client.execute({ sql: 'UPDATE users SET org_id=? WHERE id=?', args: [Number(orgId), userId] });
+      // Invalidate existing sessions so they pick up the new org on next login
+      await client.execute({ sql: 'DELETE FROM sessions WHERE user_id=?', args: [userId] });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+    return;
+  }
+
   if (req.method === 'DELETE' && /^\/api\/users\/[^/]+$/.test(urlPath0)) {
     if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
     const userId = urlPath0.split('/')[3];
