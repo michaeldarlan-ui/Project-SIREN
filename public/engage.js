@@ -2550,6 +2550,12 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     return h.callDate || h.ts.slice(0, 10);
   }
 
+  function _histParseRepScores(rs) {
+    if (!rs) return [];
+    if (Array.isArray(rs)) return rs;
+    try { const p = JSON.parse(rs); return Array.isArray(p) ? p : []; } catch { return []; }
+  }
+
   function buildHistCard(h, showCompany) {
     const displayDate = h.callDate
       ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
@@ -2557,6 +2563,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     const bannerBg = getBannerColor(h.letter_grade);
     const isAdmin = typeof sirenIsAdmin === 'function' ? sirenIsAdmin() : true;
     const myName = window._sirenUser?.displayName || '';
+    const parsedRepScores = _histParseRepScores(h.rep_scores);
 
     // Strip grader action buttons always
     let bodyHtml = (h.resultsHtml || '')
@@ -2580,8 +2587,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         // Remove the entire rep-toggle tab bar
         root.querySelectorAll('.rep-toggle').forEach(el => el.remove());
         // For each per-rep score view, remove if not the logged-in user
-        const repScores = Array.isArray(h.rep_scores) ? h.rep_scores : [];
-        repScores.forEach((rs, i) => {
+        parsedRepScores.forEach((rs, i) => {
           const el = root.querySelector(`[id="score-view-rep-${i}"]`);
           if (!el) return;
           if (_nameMatch(rs.name, myName)) {
@@ -2599,9 +2605,8 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       : escHtml(h.stage || 'Unknown stage');
     // Build attendee list: only the current user for non-admins, all reps for admins
     const team = loadTeam();
-    const allRepScores = Array.isArray(h.rep_scores) ? h.rep_scores : [];
-    const visibleReps = isAdmin ? allRepScores
-      : allRepScores.filter(rs => {
+    const visibleReps = isAdmin ? parsedRepScores
+      : parsedRepScores.filter(rs => {
           const n = (rs.name || '').toLowerCase().trim();
           const m = myName.toLowerCase().trim();
           return n === m || n.split(' ').some(w => w.length > 1 && m.includes(w)) || m.split(' ').some(w => w.length > 1 && n.includes(w));
