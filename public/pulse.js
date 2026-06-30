@@ -1390,9 +1390,15 @@
   //    paints its background up to where content ends, leaving the rest white.
   // 2. Waits for web fonts to finish loading before printing so text doesn't get
   //    rasterized with a fallback font and look soft/blurry.
-  function _vigilPrintHelperScript() {
+  function _vigilPrintHelperScript(filenameTitle) {
     return `
       function vigilPrepareAndPrint() {
+        // Re-affirm the title immediately before printing — some browsers compute the
+        // 'Save as PDF' suggested filename from document.title at the moment print() is
+        // invoked, and pages opened via window.open()+document.write() (no real navigation,
+        // still on about:blank) don't always carry the <title> parsed from the initial
+        // markup into that computation.
+        document.title = ${JSON.stringify(filenameTitle || '')};
         var pagePx = 297 * 96 / 25.4; // A4 height in CSS px at 96dpi
         var target = Math.ceil(document.body.scrollHeight / pagePx) * pagePx;
         document.body.style.minHeight = target + 'px';
@@ -1577,12 +1583,13 @@
     const latestGradeColor = gradeColor(latest.letter_grade);
     const latestGradeBg    = gradeBg(latest.letter_grade);
     const latestScore      = latest.normalized_score || latest.total || 0;
+    const pdfTitle = `${company} - ${reportDate} - Account Status Report`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>${esc(company)} - ${esc(reportDate)} - Account Status Report</title>
+<title>${esc(pdfTitle)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=block">
@@ -1650,7 +1657,7 @@ ${nextStepsHtml ? `<h2>Agreed Next Steps (Latest Call)</h2><div class="section-c
 ${scopeHtml ? `<h2>Scope Data</h2><div class="section-card">${scopeHtml}</div>` : ''}
 
 ${latest.overview ? `<h2>Call Overview</h2><div class="section-card"><p style="font-size:12px;color:rgba(250,250,250,.7);line-height:1.75;">${esc(latest.overview)}</p></div>` : ''}
-<script>${_vigilPrintHelperScript()}</script>
+<script>${_vigilPrintHelperScript(pdfTitle)}</script>
 </body>
 </html>`;
 
@@ -1703,11 +1710,12 @@ ${latest.overview ? `<h2>Call Overview</h2><div class="section-card"><p style="f
 
     const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const reportDate = new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+    const briefTitle = `${company} - ${reportDate} - Pre-Call Brief`;
     win.document.write(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SIREN · Pre-Call Brief — ${esc(company)}</title>
+<title>${esc(briefTitle)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=block">
@@ -1735,7 +1743,7 @@ ${_vigilReportStyleBlock()}
 </div>
 
 <div id="briefBody"><div style="color:rgba(255,255,255,.4);font-size:13px;">Generating brief…</div></div>
-<script>${_vigilPrintHelperScript()}</script>
+<script>${_vigilPrintHelperScript(briefTitle)}</script>
 </body>
 </html>`);
     win.document.close();
