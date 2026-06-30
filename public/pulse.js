@@ -1,7 +1,7 @@
 ﻿  // ── Pulse tile layout (drag-to-reorder + resize) ─────────────
   const _TILE_DEFAULTS = {
-    order: ['pt-score-trend','pt-rep-trends','pt-industry','pt-partners','pt-recent','pt-leaderboard'],
-    spans: { 'pt-score-trend':1, 'pt-rep-trends':2, 'pt-industry':2, 'pt-partners':1, 'pt-recent':1, 'pt-leaderboard':1 },
+    order: ['pt-score-trend','pt-calibration','pt-rep-trends','pt-industry','pt-partners','pt-recent','pt-leaderboard'],
+    spans: { 'pt-score-trend':1, 'pt-calibration':1, 'pt-rep-trends':2, 'pt-industry':2, 'pt-partners':1, 'pt-recent':1, 'pt-leaderboard':1 },
   };
 
   function _getPulseLayout() {
@@ -93,13 +93,16 @@
   function renderPulse() {
     const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
     // Hide admin-only tiles for non-admins
-    ['pt-rep-trends', 'pt-leaderboard'].forEach(id => {
+    ['pt-rep-trends', 'pt-leaderboard', 'pt-calibration'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = isAdmin ? '' : 'none';
     });
 
     const history = loadHistory();
     const allTime = loadAllTime();
+
+    // ── Grading Calibration (admin only): actual blended-difficulty avg vs L3-equivalent avg ──
+    if (isAdmin) drawCalibrationTile(history);
 
     // ── KPIs ──
     const total = history.length;
@@ -820,6 +823,46 @@
 
   window.industryDrillTo = function(name) { _industryDrill = name; drawIndustryBreakdown(loadHistory()); };
   window.industryDrillBack = function()   { _industryDrill = null; drawIndustryBreakdown(loadHistory()); };
+
+  // ── Grading Calibration Tile (admin only) ──────────────────────
+  // Compares the org-wide average actual grade (blended per-attendee difficulty) against
+  // what the same calls would have averaged at a flat L3 Standard scale (no adjustment).
+  function drawCalibrationTile(history) {
+    const actualEl = document.getElementById('pcv-actual');
+    const l3El      = document.getElementById('pcv-l3');
+    if (!actualEl || !l3El) return;
+
+    const graded = history.filter(h => typeof (h.normalized_score ?? h.total) === 'number' && (h.normalized_score ?? h.total) > 0);
+    if (!graded.length) {
+      actualEl.textContent = '—';
+      l3El.textContent = '—';
+      document.getElementById('pcs-actual').textContent = 'no calls graded yet';
+      document.getElementById('pcs-l3').textContent = 'no calls graded yet';
+      return;
+    }
+
+    let actualSum = 0, l3Sum = 0;
+    graded.forEach(h => {
+      const pct = h.normalized_score ?? h.total;
+      const repScoresArr = typeof _histParseRepScores === 'function' ? _histParseRepScores(h.rep_scores) : (Array.isArray(h.rep_scores) ? h.rep_scores : []);
+      const blendedOffset = typeof window._avgAttendeeOffset === 'function' ? window._avgAttendeeOffset(repScoresArr) : 0;
+      actualSum += Math.max(0, Math.min(100, pct + blendedOffset));
+      l3Sum += pct; // L3 Standard = +0 offset
+    });
+
+    const actualAvg = Math.round(actualSum / graded.length);
+    const l3Avg = Math.round(l3Sum / graded.length);
+    const actualGrade = typeof window._gradeFromOffsetPct === 'function' ? window._gradeFromOffsetPct(actualAvg, 0) : '';
+    const l3Grade = typeof window._gradeFromOffsetPct === 'function' ? window._gradeFromOffsetPct(l3Avg, 0) : '';
+
+    actualEl.textContent = `${actualGrade}  ${actualAvg}`;
+    l3El.textContent = `${l3Grade}  ${l3Avg}`;
+    document.getElementById('pcs-actual').textContent = `graded at each rep's own scale · ${graded.length} call${graded.length !== 1 ? 's' : ''}`;
+    const delta = actualAvg - l3Avg;
+    document.getElementById('pcs-l3').textContent = delta === 0
+      ? 'no difficulty adjustment · matches actual'
+      : `no difficulty adjustment · ${delta > 0 ? '+' : ''}${delta} pts vs actual`;
+  }
 
   // ── Partner Performance Tile ──────────────────────────────────
   let _partnerDrill = null;
