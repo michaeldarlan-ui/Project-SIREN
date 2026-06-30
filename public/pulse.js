@@ -1389,6 +1389,71 @@
       <tbody>${spicedRows}</tbody>
     </table>` : '';
 
+    // ── Next Meeting Prep: capture / reinforce / watch, built from cumulative account data ──
+    const spicedCumulative = {};
+    spicedKeys.forEach(k => { spicedCumulative[k] = false; });
+    calls.forEach(c => {
+      let cs = c.spiced;
+      if (typeof cs === 'string') { try { cs = JSON.parse(cs); } catch { cs = null; } }
+      if (!cs) return;
+      spicedKeys.forEach(k => { if (cs[k]?.touched) spicedCumulative[k] = true; });
+    });
+    const spicedGapLabels = spicedKeys.filter(k => !spicedCumulative[k]).map(k => spicedLabels[k]);
+    const spicedCoveredLabels = spicedKeys.filter(k => spicedCumulative[k]).map(k => spicedLabels[k]);
+
+    const scoresDesc = calls.map(c => c.normalized_score || c.total || 0).filter(s => s > 0);
+    let momentumNote = null;
+    if (scoresDesc.length >= 2) {
+      const delta = scoresDesc[0] - scoresDesc[Math.min(2, scoresDesc.length - 1)];
+      if (delta <= -5) momentumNote = `Score has dropped ${Math.abs(delta)} pts over the last ${Math.min(3, scoresDesc.length)} calls — address what changed before this slips further.`;
+    }
+
+    let weakestDim = null, weakestScore = Infinity;
+    let latestDims = latest.dimensions;
+    if (typeof latestDims === 'string') { try { latestDims = JSON.parse(latestDims); } catch { latestDims = null; } }
+    if (latestDims) Object.entries(latestDims).forEach(([n, d]) => {
+      if ((d.score ?? 100) < weakestScore) { weakestScore = d.score ?? 0; weakestDim = n; }
+    });
+
+    const lastCallDateStr = latest.callDate || latest.ts.slice(0, 10);
+    const daysSinceLast = Math.round((Date.now() - new Date(lastCallDateStr + 'T00:00:00Z').getTime()) / 86400000);
+
+    const captureItems = [
+      ...spicedGapLabels.map(l => `Confirm <strong>${esc(l)}</strong> — not yet established across any call on record.`),
+      latest.top_priority ? esc(latest.top_priority) : null,
+      weakestDim && weakestScore < 70 ? `Shore up <strong>${esc(weakestDim)}</strong> — weakest dimension on the last call (${weakestScore}/100).` : null,
+    ].filter(Boolean);
+
+    const reinforceItems = [
+      latest.top_strength ? esc(latest.top_strength) : null,
+      spicedCoveredLabels.length ? `Keep reinforcing what's working: <strong>${esc(spicedCoveredLabels.join(', '))}</strong>.` : null,
+    ].filter(Boolean);
+
+    const watchItems = [
+      momentumNote,
+      daysSinceLast > 14 ? `${daysSinceLast} days since the last call — cadence is slipping; re-engage soon.` : null,
+      openTasks.length ? `${openTasks.length} open action item${openTasks.length !== 1 ? 's' : ''} still outstanding from prior calls.` : null,
+    ].filter(Boolean);
+
+    const prepList = (items, emptyText) => items.length
+      ? `<ul>${items.map(t => `<li>${t}</li>`).join('')}</ul>`
+      : `<ul><li style="opacity:.35;">${esc(emptyText)}</li></ul>`;
+
+    const nextMeetingPrepHtml = `<div class="two-col" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="section-card">
+        <h3 style="margin-top:0;color:rgba(239,68,68,.7);">Capture Next Meeting</h3>
+        ${prepList(captureItems, 'No open gaps identified.')}
+      </div>
+      <div class="section-card">
+        <h3 style="margin-top:0;color:rgba(34,197,94,.7);">Reinforce</h3>
+        ${prepList(reinforceItems, 'No standout strengths captured yet.')}
+      </div>
+      <div class="section-card">
+        <h3 style="margin-top:0;color:rgba(245,158,11,.7);">Watch</h3>
+        ${prepList(watchItems, 'No risk flags right now.')}
+      </div>
+    </div>`;
+
     const reportDate = new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 
     const latestGradeColor = gradeColor(latest.letter_grade);
@@ -1492,6 +1557,9 @@
     <div class="grade-score">${latestScore} / 100</div>
   </div>
 </div>
+
+<h2>Next Meeting Prep</h2>
+${nextMeetingPrepHtml}
 
 <h2>Call History</h2>
 <div class="section-card" style="padding:0;overflow:hidden;">
