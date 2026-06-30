@@ -1309,10 +1309,9 @@
     gradeColor = gradeColor || '#f59e0b';
     gradeBg = gradeBg || 'rgba(245,158,11,.12)';
     return `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
   html{background:#09090b;min-height:100%;}
-  body{background:#09090b;color:rgba(250,250,250,.88);font-family:'Outfit',system-ui,sans-serif;font-size:13px;line-height:1.65;padding:40px 48px;min-height:100vh;}
+  body{background:#09090b;color:rgba(250,250,250,.88);font-family:'Outfit',system-ui,sans-serif;font-size:13px;line-height:1.65;padding:40px 48px;min-height:100vh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;}
 
   /* ── Top bar ── */
   .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid rgba(245,158,11,.18);}
@@ -1320,7 +1319,7 @@
   .report-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.15em;color:rgba(245,158,11,.35);text-transform:uppercase;}
 
   /* ── Header card ── */
-  .header-card{background:#111113;border:1px solid rgba(245,158,11,.18);border-radius:10px;padding:24px 28px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;}
+  .header-card{background:#111113;border:1px solid rgba(245,158,11,.18);border-radius:10px;padding:24px 28px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;break-inside:avoid;page-break-inside:avoid;}
   .company{font-size:24px;font-weight:800;color:rgba(250,250,250,.95);letter-spacing:.02em;margin-bottom:6px;}
   .meta-row{font-size:11px;color:rgba(161,161,170,.8);margin-top:3px;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;}
   .meta-row span{color:rgba(245,158,11,.55);margin:0 6px;}
@@ -1331,21 +1330,22 @@
   .grade-score{font-size:11px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.4);margin-top:6px;letter-spacing:.05em;}
 
   /* ── Section headers ── */
-  h2{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:rgba(245,158,11,.65);margin:28px 0 10px;padding-bottom:7px;border-bottom:1px solid rgba(245,158,11,.15);}
-  h3{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(245,158,11,.4);margin:14px 0 6px;}
+  h2{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:rgba(245,158,11,.75);margin:28px 0 10px;padding-bottom:7px;border-bottom:1px solid rgba(245,158,11,.15);break-after:avoid-page;}
+  h3{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);margin:14px 0 6px;break-after:avoid-page;}
 
   /* ── Body text ── */
-  p{margin:0 0 12px;color:rgba(250,250,250,.8);}
-  strong{color:rgba(250,250,250,.95);}
+  p{margin:0 0 12px;color:rgba(250,250,250,.85);}
+  strong{color:rgba(250,250,250,.97);font-weight:600;}
   hr{border:none;border-top:1px solid rgba(255,255,255,.1);margin:18px 0;}
 
   /* ── Tables ── */
-  table{width:100%;border-collapse:collapse;margin-bottom:4px;}
-  th{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(245,158,11,.45);text-align:left;padding:7px 10px;border-bottom:1px solid rgba(245,158,11,.12);background:rgba(245,158,11,.04);}
-  td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;font-size:12px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:4px;break-inside:avoid;page-break-inside:avoid;}
+  th{font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.6);text-align:left;padding:7px 10px;border-bottom:1px solid rgba(245,158,11,.12);background:rgba(245,158,11,.04);}
+  td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;font-size:12.5px;color:rgba(250,250,250,.85);}
+  tr{break-inside:avoid;page-break-inside:avoid;}
   tr:last-child td{border-bottom:none;}
   tr:hover td{background:rgba(255,255,255,.02);}
-  .scope-tbl td:first-child{color:rgba(161,161,170,.65);font-size:11px;width:42%;font-family:'JetBrains Mono',monospace;font-size:10px;}
+  .scope-tbl td:first-child{color:rgba(161,161,170,.75);width:42%;font-family:'JetBrains Mono',monospace;font-size:10.5px;}
   .sk{white-space:nowrap;}
 
   /* ── Grade cell pill ── */
@@ -1363,7 +1363,7 @@
 
   /* ── Layout ── */
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
-  .section-card{background:#111113;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:16px 18px;margin-bottom:4px;}
+  .section-card{background:#111113;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:16px 18px;margin-bottom:4px;break-inside:avoid;page-break-inside:avoid;}
 
   /* ── Print button ── */
   .save-btn{position:fixed;top:20px;right:20px;background:#f59e0b;color:#09090b;border:none;border-radius:6px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.06em;font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
@@ -1381,6 +1381,26 @@
     body{padding:30px 38px;}
     @page{margin:0;size:A4;}
   }`;
+  }
+
+  // Inline script injected into both VIGIL report tabs (must be inline — these are
+  // separate documents via window.open, not in the parent window's JS scope).
+  // 1. Pads body height to an exact multiple of one A4 page so the LAST printed page's
+  //    background fills the full sheet — without this, a page with little content only
+  //    paints its background up to where content ends, leaving the rest white.
+  // 2. Waits for web fonts to finish loading before printing so text doesn't get
+  //    rasterized with a fallback font and look soft/blurry.
+  function _vigilPrintHelperScript() {
+    return `
+      function vigilPrepareAndPrint() {
+        var pagePx = 297 * 96 / 25.4; // A4 height in CSS px at 96dpi
+        var target = Math.ceil(document.body.scrollHeight / pagePx) * pagePx;
+        document.body.style.minHeight = target + 'px';
+        var go = function(){ window.print(); };
+        if (document.fonts && document.fonts.ready) { document.fonts.ready.then(go); } else { go(); }
+      }
+      window.addEventListener('afterprint', function() { document.body.style.minHeight = ''; });
+    `;
   }
 
   window.vigilOpenPdfReport = function(company) {
@@ -1563,12 +1583,15 @@
 <head>
 <meta charset="UTF-8">
 <title>SIREN · VIGIL Report — ${esc(company)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=block">
 <style>
 ${_vigilReportStyleBlock(latestGradeColor, latestGradeBg)}
 </style>
 </head>
 <body>
-<button class="save-btn" onclick="window.print()">⬇ Save PDF</button>
+<button class="save-btn" onclick="vigilPrepareAndPrint()">⬇ Save PDF</button>
 
 <div class="topbar">
   <div class="brand">SIREN</div>
@@ -1627,6 +1650,7 @@ ${nextStepsHtml ? `<h2>Agreed Next Steps (Latest Call)</h2><div class="section-c
 ${scopeHtml ? `<h2>Scope Data</h2><div class="section-card">${scopeHtml}</div>` : ''}
 
 ${latest.overview ? `<h2>Call Overview</h2><div class="section-card"><p style="font-size:12px;color:rgba(250,250,250,.7);line-height:1.75;">${esc(latest.overview)}</p></div>` : ''}
+<script>${_vigilPrintHelperScript()}</script>
 </body>
 </html>`;
 
@@ -1684,13 +1708,16 @@ ${latest.overview ? `<h2>Call Overview</h2><div class="section-card"><p style="f
 <head>
 <meta charset="UTF-8">
 <title>SIREN · Pre-Call Brief — ${esc(company)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=block">
 <style>
 ${_vigilReportStyleBlock()}
 </style>
 </head>
 <body>
 <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('briefBody').innerText)">⧉ Copy</button>
-<button class="save-btn" onclick="window.print()">⬇ Save PDF</button>
+<button class="save-btn" onclick="vigilPrepareAndPrint()">⬇ Save PDF</button>
 
 <div class="topbar">
   <div class="brand">SIREN</div>
@@ -1708,6 +1735,7 @@ ${_vigilReportStyleBlock()}
 </div>
 
 <div id="briefBody"><div style="color:rgba(255,255,255,.4);font-size:13px;">Generating brief…</div></div>
+<script>${_vigilPrintHelperScript()}</script>
 </body>
 </html>`);
     win.document.close();
