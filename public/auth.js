@@ -357,7 +357,8 @@
       if (!users.length) { el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">No team members found.</div>'; return; }
       const thStyle = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(245,158,11,.1);';
       el.innerHTML = `
-        <table style="width:100%;border-collapse:collapse;">
+        <div style="overflow-x:auto;">
+        <table style="width:100%;min-width:900px;border-collapse:collapse;">
           <thead>
             <tr>
               <th style="${thStyle}padding-left:16px;">Display Name</th>
@@ -387,7 +388,7 @@
               const uGradingLevel = u.userGradingLevel || 1;
               const gradeLevelLabels = ['','Supportive','Coaching','Standard','Rigorous'];
               const gradeLevelColors = ['','rgba(34,197,94,.7)','rgba(245,158,11,.7)','rgba(99,102,241,.7)','rgba(239,68,68,.7)'];
-              const isNonAdminUser = u.role !== 'admin' && u.role !== 'superadmin';
+              const isNonAdminUser = true; // all users including admins can have grade level set
               return `<tr id="urow-${uid}">
                 <td style="padding:8px 8px 8px 16px;border-bottom:1px solid rgba(255,255,255,.04);">
                   <input value="${dn}" placeholder="Full name" data-uid="${uid}" data-field="displayName"
@@ -422,6 +423,7 @@
             }).join('')}
           </tbody>
         </table>
+        </div>
         ${invites.length ? `
         <div style="margin-top:20px;padding:14px 16px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.1);border-radius:8px;">
           <div style="font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(245,158,11,.6);text-transform:uppercase;margin-bottom:10px;">Pending Invitations</div>
