@@ -170,20 +170,6 @@
 
 
 
-<!-- VIGIL Pre-Call Brief Modal -->
-<div id="vigilBriefModal" onclick="if(event.target===this)closeVigilBriefModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
-  <div style="background:#0d1117;border:1px solid rgba(245,158,11,.18);border-radius:10px;width:min(760px,94vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);">
-      <div style="font-size:14px;font-weight:700;color:#f59e0b;letter-spacing:.06em;">PRE-CALL BRIEF — <span id="vigilBriefCompanyName"></span></div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button id="vigilBriefCopyBtn" onclick="vigilCopyBrief(this)" style="background:none;border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.04em;">Copy</button>
-        <button onclick="closeVigilBriefModal()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">&#215;</button>
-      </div>
-    </div>
-    <div id="vigilBriefBody" style="padding:22px 26px;overflow-y:auto;font-size:13px;color:rgba(255,255,255,.8);line-height:1.65;"></div>
-  </div>
-</div>
-
 <!-- Cost & Usage Modal -->
 <div id="costUsageModal" onclick="if(event.target===this)closeCostUsageModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
   <div style="background:#0d1117;border:1px solid rgba(0,200,255,.18);border-radius:10px;width:min(680px,94vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;">
