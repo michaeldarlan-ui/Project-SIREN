@@ -212,6 +212,8 @@
     document.querySelectorAll('.coach-module').forEach(m => m.classList.remove('active'));
     document.getElementById('ctab-' + tab).classList.add('active');
     document.getElementById('cmod-' + tab).classList.add('active');
+    const gradingCard = document.getElementById('coachGradingCard');
+    if (gradingCard) gradingCard.style.display = tab === 'arena' ? '' : 'none';
     if (tab === 'arena') _arenaApplyRoleFilter();
   }
   window.coachSwitchTab = coachSwitchTab;
@@ -256,11 +258,12 @@
         if (!isIsrBdr && /cold.outreach/i.test(h.stage || '')) return false;
         const rs = _parseRepScores(h.rep_scores);
         if (rs.length) {
-          // rep_scores present — only count if this rep actually spoke and has a score
+          // rep_scores present — check if this rep has a scored entry
           const rsEntry = rs.find(r => _repNameMatch(r.name, name));
-          return !!(rsEntry && rsEntry.total > 0);
+          if (rsEntry) return rsEntry.total > 0;
+          // rep_scores exist but name not found — fall back to primary rep field
+          // (handles name mismatches between AI output and roster)
         }
-        // No rep_scores (older call) — fall back to primary rep field
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })
       .sort((a,b) => { const da = a.callDate||a.ts.slice(0,10), db = b.callDate||b.ts.slice(0,10); return da > db ? 1 : da < db ? -1 : 0; });
@@ -1761,6 +1764,10 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
 
   // ── Init ──────────────────────────────────────────────────────────────────────
   function coachInit() {
+    // Grade Scale card only shown on RANGE tab
+    const gradingCard = document.getElementById('coachGradingCard');
+    const activeTab = document.querySelector('.coach-tab.active');
+    if (gradingCard) gradingCard.style.display = (activeTab?.id === 'ctab-arena') ? '' : 'none';
     const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
     if (!isAdmin) {
       // Non-admin: hide rep selector, auto-set rep to logged-in user's display name

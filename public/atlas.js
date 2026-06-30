@@ -55,6 +55,7 @@
     const company = document.getElementById('lcCompanySelect').value;
     const emptyEl = document.getElementById('lcGraphEmpty');
     if (!company) {
+      _lcNodes = []; _lcEdges = []; _lcCompany = null;
       document.getElementById('lcGraphRoot').innerHTML = '';
       if (emptyEl) emptyEl.style.display = 'flex';
       lcCloseSidebar();
@@ -978,8 +979,10 @@ Be direct and specific to this account. Use the company name. Reference actual g
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(prof),
     }).catch(e => console.warn('[atlas] profile save failed:', e.message));
-    // Refresh graph nodes to reflect populated state
-    updateLcGraphNodes(company);
+    // Refresh graph nodes only if ATLAS is currently showing this company
+    if (_lcCompany && _lcCompany.trim().toLowerCase() === company.trim().toLowerCase()) {
+      updateLcGraphNodes(company);
+    }
   }
 
   // Called at startup — loads all profiles from DB into cache, migrates localStorage if present

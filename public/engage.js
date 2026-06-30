@@ -1262,8 +1262,9 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   // Post-processing: compute normalized_score (0–100) for overall call and each rep.
   // Normalized = Math.round(raw_total / applicable_max * 100), clamped to 100.
   // Letter grades are re-derived from normalized score so they are always consistent.
-  function scoreToGradePct(pct) {
-    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(pct, window._sirenCoachGradingLevel) : pct;
+  function scoreToGradePct(pct, level) {
+    const lvl = level ?? window._sirenGradingLevel ?? 3;
+    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(pct, lvl) : pct;
     if (adj >= 97) return 'A+';
     if (adj >= 93) return 'A';
     if (adj >= 90) return 'A-';
@@ -1280,11 +1281,16 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   }
 
   function normalizeResult(r, primaryRep) {
+    // Overall call uses org-level grading scale
+    const orgLevel  = window._sirenGradingLevel  ?? 3;
+    // Per-rep uses the current user's personal grading level
+    const repLevel  = window._sirenUserGradingLevel ?? orgLevel;
+
     // Overall call: stage-only ceiling
     const stageMax = Object.values(stageDimCeilings()).reduce((a, b) => a + b, 0);
     const rawTotal = r.total || 0;
     r.normalized_score = Math.min(100, Math.round((rawTotal / stageMax) * 100));
-    r.letter_grade = scoreToGradePct(r.normalized_score);
+    r.letter_grade = scoreToGradePct(r.normalized_score, orgLevel);
 
     // Per-rep: role+stage ceiling, resolved from team list by name
     if (Array.isArray(r.rep_scores)) {
@@ -1292,7 +1298,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         const roleMax = rs.role_max || Object.values(repDimMaxesByName(rs.name)).reduce((a, b) => a + b, 0);
         const repRaw = rs.total || 0;
         rs.normalized_score = Math.min(100, Math.round((repRaw / roleMax) * 100));
-        rs.letter_grade = scoreToGradePct(rs.normalized_score);
+        rs.letter_grade = scoreToGradePct(rs.normalized_score, repLevel);
       });
     }
   }
@@ -1332,13 +1338,27 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     </div>`;
   }
 
-  function buildScoreView(viewData, metaLine, viewId) {
+  function _gradingScaleBadge(level) {
+    const presets = window.GRADING_PRESETS || [];
+    const preset  = presets.find(p => p.level === level) || presets[2];
+    if (!preset) return '';
+    const colors = ['','rgba(34,197,94,.25)','rgba(245,158,11,.25)','rgba(99,102,241,.25)','rgba(239,68,68,.25)'];
+    const textColors = ['','rgba(34,197,94,.9)','rgba(245,158,11,.9)','rgba(149,152,255,.9)','rgba(239,68,68,.9)'];
+    const bg   = colors[preset.level]   || 'rgba(255,255,255,.1)';
+    const col  = textColors[preset.level] || 'rgba(255,255,255,.6)';
+    return `<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;background:${bg};color:${col};font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;">Grading scale: L${preset.level} ${preset.label}</span>`;
+  }
+
+  function buildScoreView(viewData, metaLine, viewId, gradingLevel) {
     const bg = getBannerColor(viewData.letter_grade);
+    const lvl = gradingLevel ?? window._sirenUserGradingLevel ?? window._sirenGradingLevel ?? 3;
+    const scaleBadge = _gradingScaleBadge(lvl);
     return `<div class="score-view ${viewId === 'overall' ? 'active' : ''}" id="score-view-${viewId}">
       <div class="banner" style="background:${bg};">
         <div>
           <div class="banner-grade">${escHtml(viewData.letter_grade)} &nbsp; ${viewData.normalized_score ?? viewData.total}</div>
           <div class="banner-label">${escHtml(viewData.grade_label || '')}</div>
+          ${scaleBadge}
           ${metaLine ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:5px;">${metaLine}</div>` : ''}
         </div>
         <div class="banner-right">
@@ -1425,8 +1445,10 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         ${repScores.map((rs, i) => `<button class="rep-toggle-btn" id="toggle-rep-${i}" onclick="switchScoreView('rep-${i}',event)">${escHtml(rs.name)}</button>`).join('')}
       </div>` : '';
 
-    const overallView = buildScoreView(r, overallMeta, 'overall');
-    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`)).join('') : '';
+    const orgGradingLevel  = window._sirenGradingLevel  ?? 3;
+    const userGradingLevel = window._sirenUserGradingLevel ?? orgGradingLevel;
+    const overallView = buildScoreView(r, overallMeta, 'overall', orgGradingLevel);
+    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`, userGradingLevel)).join('') : '';
 
     const isColdCall = stageCtx.toLowerCase().includes('cold');
     const priorCalls = prospect
@@ -2528,31 +2550,78 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
     return h.callDate || h.ts.slice(0, 10);
   }
 
+  function _histParseRepScores(rs) {
+    if (!rs) return [];
+    if (Array.isArray(rs)) return rs;
+    try { const p = JSON.parse(rs); return Array.isArray(p) ? p : []; } catch { return []; }
+  }
+
   function buildHistCard(h, showCompany) {
     const displayDate = h.callDate
       ? new Date(h.callDate + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
       : new Date(h.ts).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
     const bannerBg = getBannerColor(h.letter_grade);
-    // Render report preserving the toggle — strip only the grader action buttons
-    const bodyHtml = (h.resultsHtml || '')
-      // Remove "Grade another call" reset button and "Export PDF" button from results-actions
+    const isAdmin = typeof sirenIsAdmin === 'function' ? sirenIsAdmin() : true;
+    const myName = window._sirenUser?.displayName || '';
+    const parsedRepScores = _histParseRepScores(h.rep_scores);
+
+    // Strip grader action buttons always
+    let bodyHtml = (h.resultsHtml || '')
       .replace(/<div class="results-actions">[\s\S]*?<\/div>/g, '')
-      // Ensure switchScoreView calls pass the event for .hist-card-body scoping
       .replace(/onclick="switchScoreView\('([^']+)'\)"/g, "onclick=\"switchScoreView('$1',event)\"");
+
+    if (!isAdmin && myName) {
+      // Use DOMParser to reliably remove unwanted elements from stored HTML
+      const _nm = s => (s || '').toLowerCase().trim();
+      const _nameMatch = (a, b) => {
+        const x = _nm(a), y = _nm(b);
+        if (!x || !y) return false;
+        if (x === y) return true;
+        const shorter = x.split(' ').length <= y.split(' ').length ? x : y;
+        const longer  = shorter === x ? y : x;
+        return shorter.split(' ').every(w => w.length > 1 && longer.includes(w));
+      };
+      try {
+        const doc = new DOMParser().parseFromString(`<div id="_hroot">${bodyHtml}</div>`, 'text/html');
+        const root = doc.getElementById('_hroot');
+        // Remove the entire rep-toggle tab bar
+        root.querySelectorAll('.rep-toggle').forEach(el => el.remove());
+        // For each per-rep score view, remove if not the logged-in user
+        parsedRepScores.forEach((rs, i) => {
+          const el = root.querySelector(`[id="score-view-rep-${i}"]`);
+          if (!el) return;
+          if (_nameMatch(rs.name, myName)) {
+            el.style.display = '';  // ensure visible (was hidden by default toggle logic)
+          } else {
+            el.remove();
+          }
+        });
+        bodyHtml = root.innerHTML;
+      } catch {}
+    }
+
     const titleLine = showCompany && h.prospect
       ? `${escHtml(h.prospect)} — ${escHtml(h.stage || 'Unknown stage')}`
       : escHtml(h.stage || 'Unknown stage');
-    // Build attendee list: OneAxiom reps from rep_scores + third parties from partner_scores
+    // Build attendee list: only the current user for non-admins, all reps for admins
     const team = loadTeam();
-    const repChips = Array.isArray(h.rep_scores) && h.rep_scores.length
-      ? h.rep_scores.map(rs => {
+    const visibleReps = isAdmin ? parsedRepScores
+      : parsedRepScores.filter(rs => {
+          const n = (rs.name || '').toLowerCase().trim();
+          const m = myName.toLowerCase().trim();
+          return n === m || n.split(' ').some(w => w.length > 1 && m.includes(w)) || m.split(' ').some(w => w.length > 1 && n.includes(w));
+        });
+    const repChips = visibleReps.length
+      ? visibleReps.map(rs => {
           const member = team.find(m => m.name && m.name.toLowerCase() === (rs.name || '').toLowerCase());
           const role = member?.role || rs.role || '';
           return { label: role ? `${rs.name} · ${role}` : rs.name, type: 'rep' };
         })
-      : [h.rep, h.repRole].filter(Boolean).join(' · ')
-        ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }]
-        : [];
+      : (!isAdmin && myName)
+        ? (h.rep ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }] : [])
+        : [h.rep, h.repRole].filter(Boolean).join(' · ')
+          ? [{ label: [h.rep, h.repRole].filter(Boolean).join(' · '), type: 'rep' }]
+          : [];
     const partnerChips = Array.isArray(h.partner_scores) && h.partner_scores.length
       ? h.partner_scores.map(ps => {
           const label = [ps.name, ps.role || ps.organization].filter(Boolean).join(' · ');
@@ -2575,16 +2644,16 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       <div class="hist-card-body" id="hist-body-${h.id}">
         ${bodyHtml}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;gap:10px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${isAdmin ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span style="font-size:11px;color:var(--siren-text-faint);">Rep:</span>
             <span id="hist-rep-display-${h.id}" style="font-size:12px;color:${h.rep ? 'var(--siren-cyan-90)' : 'rgba(255,255,255,.2)'};cursor:pointer;" onclick="startEditHistRep(${h.id})" title="Click to edit rep">${escHtml(h.rep || '— unassigned')}</span>
             ${h.repRole ? `<span style="font-size:11px;color:var(--siren-text-faint);">${escHtml(h.repRole)}</span>` : ''}
-          </div>
+          </div>` : '<div></div>'}
           <div style="display:flex;gap:6px;align-items:center;">
-            <button class="hist-regrade-btn" id="hist-regrade-${h.id}" onclick="regradeFromHistory('${h.id}',event)">&#8635; Re-grade</button>
+            ${isAdmin ? `<button class="hist-regrade-btn" id="hist-regrade-${h.id}" onclick="regradeFromHistory('${h.id}',event)">&#8635; Re-grade</button>` : ''}
             <button class="pdf-btn pdf-btn-sm" onclick="exportHistoryPDF(${h.id});event.stopPropagation()">&#8595; PDF</button>
             <button class="pdf-btn pdf-btn-sm" onclick="window.open('/transcript/'+encodeURIComponent('${h.id}'),'_blank');event.stopPropagation()" title="Open raw transcript in new tab">&#128196; Transcript</button>
-            <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
+            ${isAdmin ? `<button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>` : ''}
           </div>
         </div>
       </div>
