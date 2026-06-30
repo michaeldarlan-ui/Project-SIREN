@@ -212,6 +212,8 @@
     document.querySelectorAll('.coach-module').forEach(m => m.classList.remove('active'));
     document.getElementById('ctab-' + tab).classList.add('active');
     document.getElementById('cmod-' + tab).classList.add('active');
+    const gradingCard = document.getElementById('coachGradingCard');
+    if (gradingCard) gradingCard.style.display = tab === 'arena' ? '' : 'none';
     if (tab === 'arena') _arenaApplyRoleFilter();
   }
   window.coachSwitchTab = coachSwitchTab;
@@ -1761,6 +1763,10 @@ Be specific — quote directly from the transcript. Address ${_coachCurrentRep||
 
   // ── Init ──────────────────────────────────────────────────────────────────────
   function coachInit() {
+    // Grade Scale card only shown on RANGE tab
+    const gradingCard = document.getElementById('coachGradingCard');
+    const activeTab = document.querySelector('.coach-tab.active');
+    if (gradingCard) gradingCard.style.display = (activeTab?.id === 'ctab-arena') ? '' : 'none';
     const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
     if (!isAdmin) {
       // Non-admin: hide rep selector, auto-set rep to logged-in user's display name
