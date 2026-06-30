@@ -91,6 +91,13 @@
 
   // ── PULSE Dashboard ────────────────────────────────────────
   function renderPulse() {
+    const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
+    // Hide admin-only tiles for non-admins
+    ['pt-rep-trends', 'pt-leaderboard'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = isAdmin ? '' : 'none';
+    });
+
     const history = loadHistory();
     const allTime = loadAllTime();
 

@@ -117,6 +117,7 @@
     {
       id: 'rep_leaderboard',
       label: 'Rep Leaderboard',
+      adminOnly: true,
       module: 'PULSE',
       defaultSpan: 3,
       render(el) {
@@ -203,6 +204,7 @@
     {
       id: 'usage_by_feature',
       label: 'Spend by Feature',
+      adminOnly: true,
       module: 'USAGE',
       defaultSpan: 2,
       async render(el) {
@@ -232,6 +234,7 @@
     {
       id: 'usage_spend',
       label: 'API Spend (30d)',
+      adminOnly: true,
       module: 'USAGE',
       defaultSpan: 2,
       async render(el) {
@@ -282,7 +285,13 @@
   function _dashRender() {
     const grid = document.getElementById('dashGrid');
     if (!grid) return;
-    const tiles = _dashGetTiles();
+    const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
+    const allTiles = _dashGetTiles();
+    // Non-admins never see adminOnly tiles regardless of saved config
+    const tiles = isAdmin ? allTiles : allTiles.filter(slot => {
+      const def = _DASH_TILES.find(t => t.id === slot.id);
+      return def && !def.adminOnly;
+    });
     grid.innerHTML = '';
     tiles.forEach((slot, idx) => {
       const def = _DASH_TILES.find(t => t.id === slot.id);
@@ -356,9 +365,11 @@
   function _dashRenderPicker() {
     const list = document.getElementById('dashPickerList');
     if (!list) return;
+    const isAdmin = window.sirenIsAdmin ? window.sirenIsAdmin() : true;
+    const availableTiles = isAdmin ? _DASH_TILES : _DASH_TILES.filter(t => !t.adminOnly);
     const current = new Set(_dashGetTiles().map(t => t.id));
     const byModule = {};
-    _DASH_TILES.forEach(t => { (byModule[t.module] = byModule[t.module]||[]).push(t); });
+    availableTiles.forEach(t => { (byModule[t.module] = byModule[t.module]||[]).push(t); });
     list.innerHTML = Object.entries(byModule).map(([mod, tiles]) =>
       `<div class="dpick-module-hdr">${escHtml(mod)}</div>` +
       tiles.map(t => `
