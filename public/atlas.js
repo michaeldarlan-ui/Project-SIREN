@@ -1044,6 +1044,12 @@ Be direct and specific to this account. Use the company name. Reference actual g
     });
   }
 
+  window.getAccountProfileContacts = function(company) {
+    if (!company) return [];
+    const prof = loadAccountProfile(company);
+    return (prof.contacts || []).filter(c => c.name && c.name.trim());
+  };
+
   window.atlasAutoPopulate = function(company, atlasData) {
     if (!company || !atlasData) return;
     const prof = loadAccountProfile(company);

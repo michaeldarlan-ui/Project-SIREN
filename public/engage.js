@@ -815,6 +815,12 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
         ? 'Known third-party participants (NOT sales team, NOT customer — always classify these as "unknown"): ' +
           storedTPs.map(p => `${p.name}${p.organization ? ' (' + p.organization + ')' : ''}`).join(', ')
         : '';
+      const knownContacts = (typeof window.getAccountProfileContacts === 'function' && prospect)
+        ? window.getAccountProfileContacts(prospect)
+        : [];
+      const knownCustomerContacts = knownContacts.length
+        ? `Known customer contacts for ${prospect}: ` + knownContacts.map(c => c.name + (c.title ? ` (${c.title})` : '')).join(', ')
+        : '';
 
       // Only the head of the transcript is sent to the scan (cost control).
       // Sweep the remainder for speaker labels so participants who first
@@ -838,7 +844,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
           stream: false,
           system: 'You identify call participants. Return ONLY valid JSON, no markdown.',
           messages: [{ role: 'user', content:
-            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- CRITICAL: Only include people who have actual spoken lines in the transcript (e.g. "Name (timestamp): ..."). Do NOT include anyone who is merely mentioned, referenced, or named by another speaker without speaking themselves.\n- "sales_team": name matches a known team member\n- "customer": clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc. Known third-party participants above must always be classified as "unknown".\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript (excerpt):\n${head}${lateCtx}`
+            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}${knownCustomerContacts ? knownCustomerContacts + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- CRITICAL: Only include people who have actual spoken lines in the transcript (e.g. "Name (timestamp): ..."). Do NOT include anyone who is merely mentioned, referenced, or named by another speaker without speaking themselves.\n- "sales_team": name matches a known team member\n- "customer": name matches a known customer contact for this company, or clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc. Known third-party participants above must always be classified as "unknown".\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript (excerpt):\n${head}${lateCtx}`
           }]
         })
       });
