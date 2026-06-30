@@ -1018,35 +1018,42 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
   };
 
   // Repairs common JSON malformations in AI-generated grading output before parsing.
-  // Models occasionally emit literal newlines/tabs inside string values, which are
-  // syntactically invalid JSON (must be escaped as \n) and throw "Unterminated string".
+  // Models occasionally (a) emit literal newlines/tabs inside string values, which must
+  // be escaped as \n, or (b) quote something verbatim (e.g. what the customer said) using
+  // an unescaped " — which prematurely closes the JSON string and leaves the rest of the
+  // quote as a bare invalid token. Both are repaired by walking the text with a one-token
+  // lookahead: a quote only really ends a string if what follows it is valid JSON
+  // continuation syntax (comma, colon, closing brace/bracket, or end of input); otherwise
+  // it's treated as a literal quote inside the string and escaped.
   function _parseAiJson(raw) {
     try {
       return JSON.parse(raw);
     } catch (firstErr) {
-      // Walk the string and escape any literal control character that falls
-      // inside a JSON string literal (tracking quote state, respecting escapes).
       let out = '';
       let inString = false;
       let escaped = false;
       for (let i = 0; i < raw.length; i++) {
         const ch = raw[i];
-        if (inString) {
-          if (escaped) {
-            out += ch;
-            escaped = false;
-            continue;
-          }
-          if (ch === '\\') { out += ch; escaped = true; continue; }
-          if (ch === '"') { out += ch; inString = false; continue; }
-          if (ch === '\n') { out += '\\n'; continue; }
-          if (ch === '\r') { out += '\\r'; continue; }
-          if (ch === '\t') { out += '\\t'; continue; }
-          out += ch;
-        } else {
+        if (!inString) {
           out += ch;
           if (ch === '"') inString = true;
+          continue;
         }
+        if (escaped) { out += ch; escaped = false; continue; }
+        if (ch === '\\') { out += ch; escaped = true; continue; }
+        if (ch === '\n') { out += '\\n'; continue; }
+        if (ch === '\r') { out += '\\r'; continue; }
+        if (ch === '\t') { out += '\\t'; continue; }
+        if (ch === '"') {
+          let j = i + 1;
+          while (j < raw.length && /\s/.test(raw[j])) j++;
+          const next = raw[j];
+          const isRealEnd = next === undefined || ',:}]'.includes(next);
+          if (isRealEnd) { out += ch; inString = false; }
+          else out += '\\"'; // literal quote inside the string value — escape and keep going
+          continue;
+        }
+        out += ch;
       }
       try {
         return JSON.parse(out);
