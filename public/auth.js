@@ -21,15 +21,6 @@
       pill.style.display = 'flex';
     }
 
-    // Show admin-only items
-    if (_authUser.role === 'admin') {
-      const div = document.getElementById('usersMenuDivider');
-      const btn = document.getElementById('usersMenuItem');
-      const mobileBtn = document.getElementById('mobileUsersItem');
-      if (div) div.style.display = '';
-      if (btn) btn.style.display = '';
-      if (mobileBtn) mobileBtn.style.display = '';
-    }
 
     // Show demo banner if in demo org
     if (_authUser.isDemo) {
@@ -86,62 +77,97 @@
     } catch { err.textContent = 'Network error.'; }
   }
 
-  // ── Users page ────────────────────────────────────────────────
+  // ── Team page (merged Sales Team + Users) ─────────────────────
   async function usersLoad() {
     const el = document.getElementById('usersList');
     if (!el) return;
-    if (_authUser?.role !== 'admin') {
-      el.innerHTML = '<div style="padding:20px;color:rgba(255,255,255,.3);font-size:13px;">Admin access required.</div>';
-      return;
-    }
+    const isAdmin = _authUser?.role === 'admin';
+
+    // Show/hide the Add Member button
+    const addBtn = document.getElementById('addUserBtn');
+    if (addBtn) addBtn.style.display = isAdmin ? '' : 'none';
+
     el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">Loading…</div>';
     try {
+      if (!isAdmin) {
+        // Non-admins: read-only team list from /api/team
+        const res = await fetch('/api/team');
+        const team = res.ok ? await res.json() : [];
+        if (!team.length) {
+          el.innerHTML = '<div style="padding:20px;color:rgba(255,255,255,.3);font-size:13px;">No team members yet.</div>';
+          return;
+        }
+        el.innerHTML = `
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);text-align:left;padding:10px 16px;border-bottom:1px solid rgba(245,158,11,.1);">Name</th>
+                <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(245,158,11,.1);">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${team.map(m => `<tr>
+                <td style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:rgba(255,255,255,.85);">${escHtml(m.name)}</td>
+                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.45);">${escHtml(m.role || '—')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
+        return;
+      }
+
+      // Admin view: full account management table
       const [usersRes, orgsRes] = await Promise.all([fetch('/api/users'), fetch('/api/orgs')]);
-      if (!usersRes.ok) { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Failed to load users.</div>'; return; }
+      if (!usersRes.ok) { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Failed to load team.</div>'; return; }
       const users = await usersRes.json();
       const orgs  = orgsRes.ok ? await orgsRes.json() : [];
-      if (!users.length) { el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">No users found.</div>'; return; }
-      const orgOptions = orgs.map(o => `<option value="${o.id}">${escHtml(o.name)}</option>`).join('');
+      if (!users.length) { el.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,.3);font-size:12px;">No team members found.</div>'; return; }
+      const thStyle = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(245,158,11,.1);';
       el.innerHTML = `
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
-              <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:10px 16px;border-bottom:1px solid rgba(0,200,255,.1);">Username</th>
-              <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(0,200,255,.1);">Role</th>
-              <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(0,200,255,.1);">Org</th>
-              <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(0,200,255,.1);">Created</th>
-              <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:10px 8px;border-bottom:1px solid rgba(0,200,255,.1);">Status</th>
-              <th style="padding:10px 16px 10px 8px;border-bottom:1px solid rgba(0,200,255,.1);"></th>
+              <th style="${thStyle}padding-left:16px;">Display Name</th>
+              <th style="${thStyle}">Sales Role</th>
+              <th style="${thStyle}">Username</th>
+              <th style="${thStyle}">Platform Role</th>
+              <th style="${thStyle}">Status</th>
+              <th style="${thStyle}padding-right:16px;"></th>
             </tr>
           </thead>
           <tbody>
             ${users.map(u => {
               const isSelf = u.username === _authUser?.username;
-              const date   = u.createdAt ? new Date(u.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-              const orgSelect = orgs.length
-                ? `<select onchange="usersChangeOrg('${escHtml(u.id)}',this)"
-                     style="background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:rgba(255,255,255,.6);padding:3px 6px;font-size:11px;cursor:pointer;max-width:130px;">
-                     ${orgs.map(o => `<option value="${o.id}"${o.id===u.orgId?' selected':''}>${escHtml(o.name)}</option>`).join('')}
-                   </select>`
-                : escHtml(u.orgName || 'Production');
-              return `<tr>
-                <td style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;color:rgba(255,255,255,.85);">${escHtml(u.username)}${isSelf ? ' <span style="font-size:10px;color:rgba(0,200,255,.5);">(you)</span>' : ''}</td>
-                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'#00c8ff':'rgba(255,255,255,.45)'};">${escHtml(u.role)}</td>
-                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);">${orgSelect}</td>
-                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.3);">${date}</td>
-                <td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Must change pwd' : 'Active'}</td>
-                <td style="padding:10px 16px 10px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
-                  <button onclick="usersResetPwd('${escHtml(u.id)}','${escHtml(u.username)}')" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;">Reset pwd</button>
-                  ${!isSelf ? `<button onclick="usersDelete('${escHtml(u.id)}','${escHtml(u.username)}')" style="background:none;border:1px solid rgba(239,68,68,.2);color:rgba(239,68,68,.5);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Delete</button>` : ''}
+              const uid = escHtml(u.id);
+              const uname = escHtml(u.username);
+              const dn = escHtml(u.displayName || '');
+              const sr = escHtml(u.salesRole || '');
+              return `<tr id="urow-${uid}">
+                <td style="padding:8px 8px 8px 16px;border-bottom:1px solid rgba(255,255,255,.04);">
+                  <input value="${dn}" placeholder="Full name" data-uid="${uid}" data-field="displayName"
+                    onblur="usersUpdateProfile(this)"
+                    style="background:rgba(255,255,255,.04);border:1px solid rgba(245,158,11,.12);border-radius:4px;color:rgba(255,255,255,.85);padding:4px 8px;font-size:12px;font-family:inherit;width:140px;outline:none;"
+                    onfocus="this.style.borderColor='rgba(245,158,11,.4)'" onblur2="this.style.borderColor='rgba(245,158,11,.12)'">
+                </td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);">
+                  <input value="${sr}" placeholder="e.g. AE" data-uid="${uid}" data-field="salesRole"
+                    onblur="usersUpdateProfile(this)"
+                    style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:4px;color:rgba(255,255,255,.6);padding:4px 8px;font-size:12px;font-family:inherit;width:120px;outline:none;"
+                    onfocus="this.style.borderColor='rgba(245,158,11,.3)'" onblur2="this.style.borderColor='rgba(255,255,255,.08)'">
+                </td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace;">${uname}${isSelf ? ' <span style="font-size:9px;color:rgba(245,158,11,.5);">(you)</span>' : ''}</td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'rgba(245,158,11,.8)':'rgba(255,255,255,.35)'};">${escHtml(u.role)}</td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Change pwd' : 'Active'}</td>
+                <td style="padding:8px 16px 8px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
+                  <button onclick="usersResetPwd('${uid}','${uname}')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;">Reset pwd</button>
+                  ${!isSelf ? `<button onclick="usersDelete('${uid}','${uname}')" style="background:none;border:1px solid rgba(239,68,68,.2);color:rgba(239,68,68,.5);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Remove</button>` : ''}
                 </td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>`;
 
-      // Load org management section for admins
       await orgsLoad();
-    } catch { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Error loading users.</div>'; }
+    } catch { el.innerHTML = '<div style="padding:16px;color:#ef4444;font-size:12px;">Error loading team.</div>'; }
   }
 
   // ── Org management section ────────────────────────────────────
@@ -305,25 +331,50 @@
   }
 
   async function usersAddSubmit() {
-    const username = document.getElementById('uaUsername').value.trim();
-    const password = document.getElementById('uaPassword').value;
-    const role     = document.getElementById('uaRole').value;
+    const displayName = document.getElementById('uaDisplayName').value.trim();
+    const salesRole   = document.getElementById('uaSalesRole').value.trim();
+    const username    = document.getElementById('uaUsername').value.trim();
+    const password    = document.getElementById('uaPassword').value;
+    const role        = document.getElementById('uaRole').value;
     const err = document.getElementById('uaErr');
     err.textContent = '';
+    if (!displayName) { err.textContent = 'Display name is required.'; return; }
     if (!username || !password) { err.textContent = 'Username and password are required.'; return; }
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, role }),
+        body: JSON.stringify({ username, password, role, displayName, salesRole }),
       });
       const data = await res.json();
-      if (!res.ok) { err.textContent = data.error || 'Failed to create user.'; return; }
+      if (!res.ok) { err.textContent = data.error || 'Failed to create member.'; return; }
       usersCloseAdd();
+      document.getElementById('uaDisplayName').value = '';
+      document.getElementById('uaSalesRole').value = '';
       document.getElementById('uaUsername').value = '';
       document.getElementById('uaPassword').value = '';
       usersLoad();
     } catch { err.textContent = 'Network error.'; }
+  }
+
+  async function usersUpdateProfile(input) {
+    input.style.borderColor = '';
+    const uid = input.dataset.uid;
+    const field = input.dataset.field;
+    // Collect both fields from the same row
+    const row = document.getElementById('urow-' + uid);
+    if (!row) return;
+    const dnInput = row.querySelector('[data-field="displayName"]');
+    const srInput = row.querySelector('[data-field="salesRole"]');
+    const displayName = dnInput ? dnInput.value.trim() : '';
+    const salesRole   = srInput ? srInput.value.trim() : '';
+    try {
+      await fetch(`/api/users/${encodeURIComponent(uid)}/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName, salesRole }),
+      });
+    } catch { /* silent */ }
   }
 
   async function usersResetPwd(id, username) {

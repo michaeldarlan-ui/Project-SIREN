@@ -47,9 +47,9 @@
         <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 16 3.05 11 8 11"/></svg>
         Call History
       </button>
-      <button class="mobile-nav-action" onclick="navTo('team');closeMobileNav()">
+      <button class="mobile-nav-action" onclick="navTo('users');closeMobileNav()">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Sales Team
+        Team
       </button>
       <button class="mobile-nav-action" onclick="navTo('audit');closeMobileNav()">
         <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
@@ -71,10 +71,6 @@
         <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Landing page ↗
       </a>
-      <button class="mobile-nav-action" id="mobileUsersItem" onclick="navTo('users');closeMobileNav()" style="display:none;">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Users
-      </button>
       <div class="mobile-nav-section-label">Account</div>
       <button class="mobile-nav-action" onclick="authChangePwdOpen();closeMobileNav()">
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -104,9 +100,9 @@
         <svg viewBox="0 0 24 24"><polyline points="12 8 12 12 14 14"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 16 3.05 11 8 11"/></svg>
         Call History
       </button>
-      <button class="settings-item" onclick="navTo('team');closeSettingsMenu()">
+      <button class="settings-item" onclick="navTo('users');closeSettingsMenu()">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Sales Team
+        Team
       </button>
       <button class="settings-item" onclick="navTo('audit');closeSettingsMenu()">
         <svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:none;stroke:var(--siren-text-muted);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
@@ -129,11 +125,6 @@
         <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         Landing page ↗
       </a>
-      <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;" id="usersMenuDivider" style="display:none;"></div>
-      <button class="settings-item" id="usersMenuItem" onclick="navTo('users');closeSettingsMenu()" style="display:none;">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Users
-      </button>
       <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;"></div>
       <button class="settings-item" onclick="authChangePwdOpen();closeSettingsMenu()">
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -1147,26 +1138,6 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
 </div>
 
 <!-- ══ TEAM PAGE ══ -->
-<div class="page" id="page-team">
-  <div class="shell">
-    <div class="page-heading">
-      <h2>Sales Team</h2>
-      <p>Manage team members and their roles. The selected rep and role are used to tailor grading on the ENGAGE page.</p>
-    </div>
-
-    <div class="card">
-      <div class="team-section-label">Team members</div>
-      <div id="memberList"></div>
-      <div class="add-row">
-        <input type="text" id="newMemberName" placeholder="Name" />
-        <input type="text" id="newMemberRole" placeholder="Role (e.g. Account Executive)" />
-        <button class="add-btn" onclick="addMember()">Add</button>
-      </div>
-    </div>
-
-    <div class="footer">SIREN · Internal use only</div>
-  </div>
-</div>
 
 <!-- ══ LIBRARY PAGE ══ -->
 <div class="page" id="page-library">
@@ -2040,35 +2011,45 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
   <div class="shell">
     <div class="page-heading" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
       <div>
-        <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">Users</h2>
-        <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Manage SIREN user accounts.</p>
+        <h2 style="font-size:20px;font-weight:700;letter-spacing:.06em;color:var(--siren-text-primary);margin:0 0 4px;">Team</h2>
+        <p style="font-size:13px;color:var(--siren-text-muted);margin:0;">Team members and their SIREN accounts. Each person's display name is used for call grading.</p>
       </div>
-      <button onclick="usersOpenAdd()" style="background:rgba(0,200,255,.1);border:1px solid rgba(0,200,255,.3);color:#00c8ff;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.04em;">+ Add User</button>
+      <button id="addUserBtn" onclick="usersOpenAdd()" style="display:none;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.04em;">+ Add Member</button>
     </div>
     <div id="usersList" style="background:var(--siren-bg-card);border:1px solid var(--siren-border);border-radius:8px;overflow:hidden;"></div>
     <div id="orgsList"></div>
 
-    <!-- Add User form -->
-    <div id="usersAddForm" style="display:none;background:var(--siren-bg-card);border:1px solid rgba(0,200,255,.18);border-radius:8px;padding:20px;margin-top:16px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(0,200,255,.7);text-transform:uppercase;margin-bottom:14px;">New User</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap;">
+    <!-- Add Member form (admin only) -->
+    <div id="usersAddForm" style="display:none;background:var(--siren-bg-card);border:1px solid rgba(245,158,11,.18);border-radius:8px;padding:20px;margin-top:16px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(245,158,11,.7);text-transform:uppercase;margin-bottom:14px;">New Team Member</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
-          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Username</label>
-          <input id="uaUsername" type="text" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Display Name <span style="color:rgba(245,158,11,.6);">*</span></label>
+          <input id="uaDisplayName" type="text" placeholder="e.g. Jane Smith" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(245,158,11,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Sales Role</label>
+          <input id="uaSalesRole" type="text" placeholder="e.g. Account Executive" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(245,158,11,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
+        <div>
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Username (login)</label>
+          <input id="uaUsername" type="text" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
         </div>
         <div>
           <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Password</label>
-          <input id="uaPassword" type="password" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          <input id="uaPassword" type="password" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
         </div>
         <div>
-          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Role</label>
-          <select id="uaRole" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
+          <label style="display:block;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Platform Role</label>
+          <select id="uaRole" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:5px;color:rgba(255,255,255,.9);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;">
             <option value="user">User</option>
             <option value="admin">Admin</option>
           </select>
         </div>
         <div style="display:flex;gap:8px;">
-          <button onclick="usersAddSubmit()" style="background:#00c8ff;color:#040f14;border:none;border-radius:5px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+          <button onclick="usersAddSubmit()" style="background:#f59e0b;color:#09090b;border:none;border-radius:5px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
           <button onclick="usersCloseAdd()" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:5px;padding:7px 10px;font-size:12px;cursor:pointer;">Cancel</button>
         </div>
       </div>

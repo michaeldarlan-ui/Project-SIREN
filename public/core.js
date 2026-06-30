@@ -3,6 +3,7 @@
 
   // ── Navigation ─────────────────────────────────────────────
   function navTo(page) {
+    if (page === 'team') page = 'users'; // Sales Team merged into Team page
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');

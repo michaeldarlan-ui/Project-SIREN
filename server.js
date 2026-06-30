@@ -323,12 +323,12 @@ await client.batch([
     }
   }
 
-  // Add org_id to users if missing
+  // Add org_id / display_name / sales_role to users if missing
   if (tables.includes('users')) {
     const uCols = (await client.execute('PRAGMA table_info(users)')).rows.map(r => String(r.name));
-    if (!uCols.includes('org_id')) {
-      await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
-    }
+    if (!uCols.includes('org_id'))      await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    if (!uCols.includes('display_name')) await client.execute('ALTER TABLE users ADD COLUMN display_name TEXT');
+    if (!uCols.includes('sales_role'))   await client.execute('ALTER TABLE users ADD COLUMN sales_role TEXT');
   }
 
   // Migrate prospects to compound PK (org_id, name)
@@ -1075,9 +1075,9 @@ const server = http.createServer(async (req, res) => {
   // ── User management (admin only) ───────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/users') {
     if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
-    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id ORDER BY u.created_at')).rows;
+    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at) }))));
+    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '' }))));
     return;
   }
 
@@ -1087,9 +1087,18 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => { body += c; });
     req.on('end', async () => {
       try {
-        const { username, password, role, orgId } = JSON.parse(body);
+        const { username, password, role, orgId, displayName, salesRole } = JSON.parse(body);
         if (!username || !password) { res.writeHead(400); res.end(JSON.stringify({ error: 'username and password required' })); return; }
-        const id = await createUser(username, password, role || 'user', false, orgId || _session.orgId);
+        const targetOrg = orgId || _session.orgId;
+        const id = await createUser(username, password, role || 'user', false, targetOrg);
+        const dn = (displayName || '').trim();
+        const sr = (salesRole || '').trim();
+        if (dn) {
+          await client.execute({ sql: 'UPDATE users SET display_name=?, sales_role=? WHERE id=?', args: [dn, sr || null, id] });
+          // Sync to team table so grading picks up the new member immediately
+          const teamIdx = (await client.execute({ sql: 'SELECT COUNT(*) as n FROM team WHERE org_id=?', args: [targetOrg] })).rows[0].n;
+          await client.execute({ sql: 'INSERT OR REPLACE INTO team (org_id, name, role, idx) VALUES (?,?,?,?)', args: [targetOrg, dn, sr || '', Number(teamIdx)] });
+        }
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, id }));
       } catch (e) {
@@ -1138,14 +1147,42 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'PATCH' && /^\/api\/users\/[^/]+\/profile$/.test(urlPath0)) {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const userId = urlPath0.split('/')[3];
+    try {
+      const { displayName, salesRole } = await readBody(req);
+      const dn = (displayName || '').trim();
+      const sr = (salesRole || '').trim();
+      const userRow = (await client.execute({ sql: 'SELECT display_name, org_id FROM users WHERE id=?', args: [userId] })).rows[0];
+      if (!userRow) { res.writeHead(404); res.end(); return; }
+      const oldDn = userRow.display_name ? String(userRow.display_name) : '';
+      const orgId = Number(userRow.org_id) || 1;
+      await client.execute({ sql: 'UPDATE users SET display_name=?, sales_role=? WHERE id=?', args: [dn || null, sr || null, userId] });
+      // Remove old team entry if display_name changed
+      if (oldDn && oldDn !== dn) {
+        await client.execute({ sql: 'DELETE FROM team WHERE org_id=? AND name=?', args: [orgId, oldDn] });
+      }
+      if (dn) {
+        await client.execute({ sql: 'INSERT OR REPLACE INTO team (org_id, name, role, idx) VALUES (?,?,?,(SELECT COALESCE(MAX(idx)+1,0) FROM team WHERE org_id=?))', args: [orgId, dn, sr || '', orgId] });
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+    return;
+  }
+
   if (req.method === 'DELETE' && /^\/api\/users\/[^/]+$/.test(urlPath0)) {
     if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
     const userId = urlPath0.split('/')[3];
-    const targetRow = (await client.execute({ sql: 'SELECT id FROM users WHERE id=?', args: [userId] })).rows[0];
+    const targetRow = (await client.execute({ sql: 'SELECT id, display_name, org_id FROM users WHERE id=?', args: [userId] })).rows[0];
     if (!targetRow) { res.writeHead(404); res.end(); return; }
     if (String(targetRow.id) === _session.userId) { res.writeHead(400); res.end(JSON.stringify({ error: 'Cannot delete yourself' })); return; }
+    const dn = targetRow.display_name ? String(targetRow.display_name) : '';
+    const orgId = Number(targetRow.org_id) || 1;
     await client.execute({ sql: 'DELETE FROM sessions WHERE user_id=?', args: [userId] });
     await client.execute({ sql: 'DELETE FROM users WHERE id=?', args: [userId] });
+    if (dn) await client.execute({ sql: 'DELETE FROM team WHERE org_id=? AND name=?', args: [orgId, dn] });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
     return;
@@ -1594,12 +1631,15 @@ const server = http.createServer(async (req, res) => {
   // ── Team API ───────────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/team') {
-    const rows = (await client.execute({ sql: 'SELECT name, role, idx FROM team WHERE org_id = ? ORDER BY idx ASC, name ASC', args: [_session.orgId] })).rows;
+    // Users with a display_name are the canonical team members
+    const userRows = (await client.execute({ sql: 'SELECT display_name as name, sales_role as role FROM users WHERE org_id=? AND display_name IS NOT NULL AND display_name != \'\' ORDER BY display_name ASC', args: [_session.orgId] })).rows;
+    const userNames = new Set(userRows.map(r => String(r.name).toLowerCase()));
+    // Also include legacy team table entries not already covered by a user
+    const teamRows = (await client.execute({ sql: 'SELECT name, role FROM team WHERE org_id=? ORDER BY idx ASC, name ASC', args: [_session.orgId] })).rows;
+    const legacyRows = teamRows.filter(r => !userNames.has(String(r.name).toLowerCase()));
+    const all = [...userRows, ...legacyRows].map(r => ({ name: String(r.name), role: r.role ? String(r.role) : '' }));
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(rows.map(r => ({
-      name: String(r.name),
-      role: r.role ? String(r.role) : '',
-    }))));
+    res.end(JSON.stringify(all));
     return;
   }
 
