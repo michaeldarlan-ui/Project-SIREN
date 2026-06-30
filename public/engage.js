@@ -1338,26 +1338,62 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     }
     return matchKey ? levels[matchKey] : orgLevel;
   }
+  window._repGradingLevel = _repGradingLevel;
+
+  function _offsetForLevel(level) {
+    const presets = window.GRADING_PRESETS || [];
+    const preset = presets.find(p => p.level === level) || presets[2];
+    return preset ? preset.offset : 0;
+  }
+
+  // Overall call difficulty = average of each present rep's own offset (continuous blend,
+  // not snapped to a preset). Reps with no individual level fall back to org level.
+  function _avgAttendeeOffset(repScores) {
+    if (!Array.isArray(repScores) || !repScores.length) return _offsetForLevel(window._sirenGradingLevel ?? 3);
+    const offsets = repScores.map(rs => _offsetForLevel(_repGradingLevel(rs.name)));
+    return offsets.reduce((a, b) => a + b, 0) / offsets.length;
+  }
+  window._avgAttendeeOffset = _avgAttendeeOffset;
+
+  // Same threshold table as scoreToGradePct, but takes a raw point offset directly
+  // instead of resolving one through a named preset level — needed for blended offsets.
+  function _gradeFromOffsetPct(pct, offset) {
+    const adj = Math.max(0, Math.min(100, pct + offset));
+    if (adj >= 97) return 'A+';
+    if (adj >= 93) return 'A';
+    if (adj >= 90) return 'A-';
+    if (adj >= 87) return 'B+';
+    if (adj >= 83) return 'B';
+    if (adj >= 80) return 'B-';
+    if (adj >= 77) return 'C+';
+    if (adj >= 73) return 'C';
+    if (adj >= 70) return 'C-';
+    if (adj >= 67) return 'D+';
+    if (adj >= 63) return 'D';
+    if (adj >= 60) return 'D-';
+    return 'F';
+  }
+  window._gradeFromOffsetPct = _gradeFromOffsetPct;
 
   function normalizeResult(r, primaryRep) {
-    // Overall call uses org-level grading scale
-    const orgLevel  = window._sirenGradingLevel  ?? 3;
-
     // Overall call: stage-only ceiling
     const stageMax = Object.values(stageDimCeilings()).reduce((a, b) => a + b, 0);
     const rawTotal = r.total || 0;
     r.normalized_score = Math.min(100, Math.round((rawTotal / stageMax) * 100));
-    r.letter_grade = scoreToGradePct(r.normalized_score, orgLevel);
+
+    // Overall grade reflects the blended difficulty of everyone present on the call,
+    // not a single fixed org-level scale.
+    const repScoresArr = Array.isArray(r.rep_scores) ? r.rep_scores : [];
+    const overallOffset = _avgAttendeeOffset(repScoresArr);
+    r.letter_grade = _gradeFromOffsetPct(r.normalized_score, overallOffset);
 
     // Per-rep: role+stage ceiling, graded against that specific rep's own personal level
-    if (Array.isArray(r.rep_scores)) {
-      r.rep_scores.forEach(rs => {
-        const roleMax = rs.role_max || Object.values(repDimMaxesByName(rs.name)).reduce((a, b) => a + b, 0);
-        const repRaw = rs.total || 0;
-        rs.normalized_score = Math.min(100, Math.round((repRaw / roleMax) * 100));
-        rs.letter_grade = scoreToGradePct(rs.normalized_score, _repGradingLevel(rs.name));
-      });
-    }
+    repScoresArr.forEach(rs => {
+      const roleMax = rs.role_max || Object.values(repDimMaxesByName(rs.name)).reduce((a, b) => a + b, 0);
+      const repRaw = rs.total || 0;
+      rs.normalized_score = Math.min(100, Math.round((repRaw / roleMax) * 100));
+      rs.letter_grade = scoreToGradePct(rs.normalized_score, _repGradingLevel(rs.name));
+    });
   }
 
   function buildDimsHtml(dimensions) {
@@ -1406,10 +1442,31 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     return `<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;background:${bg};color:${col};font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;">Grading scale: L${preset.level} ${preset.label}</span>`;
   }
 
-  function buildScoreView(viewData, metaLine, viewId, gradingLevel) {
+  // Badge for the overall call view, where difficulty is a continuous blend of every
+  // attendee's own offset rather than a single named preset level.
+  function _gradingScaleBadgeBlended(repScores) {
+    const offset = _avgAttendeeOffset(repScores);
+    const rounded = Math.round(offset * 10) / 10;
+    const sign = rounded > 0 ? '−' : rounded < 0 ? '+' : '±';
+    const pts = Math.abs(rounded);
+    // Pick badge color from whichever named preset the blended offset is closest to, for visual consistency
+    const presets = window.GRADING_PRESETS || [];
+    const nearest = presets.reduce((best, p) => (Math.abs(p.offset - offset) < Math.abs((best?.offset ?? Infinity) - offset) ? p : best), null);
+    const colors = ['','rgba(34,197,94,.25)','rgba(245,158,11,.25)','rgba(99,102,241,.25)','rgba(239,68,68,.25)'];
+    const textColors = ['','rgba(34,197,94,.9)','rgba(245,158,11,.9)','rgba(149,152,255,.9)','rgba(239,68,68,.9)'];
+    const bg  = nearest ? (colors[nearest.level] || 'rgba(255,255,255,.1)') : 'rgba(255,255,255,.1)';
+    const col = nearest ? (textColors[nearest.level] || 'rgba(255,255,255,.6)') : 'rgba(255,255,255,.6)';
+    const label = Array.isArray(repScores) && repScores.length
+      ? 'Blended scale (' + repScores.map(rs => rs.name).join(' + ') + ')'
+      : 'Blended scale';
+    return `<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;background:${bg};color:${col};font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;">${escHtml(label)} — thresholds shift ${sign}${pts} pts</span>`;
+  }
+
+  function buildScoreView(viewData, metaLine, viewId, gradingLevel, repScoresForBlend) {
     const bg = getBannerColor(viewData.letter_grade);
-    const lvl = gradingLevel ?? window._sirenUserGradingLevel ?? window._sirenGradingLevel ?? 3;
-    const scaleBadge = _gradingScaleBadge(lvl);
+    const scaleBadge = repScoresForBlend
+      ? _gradingScaleBadgeBlended(repScoresForBlend)
+      : _gradingScaleBadge(gradingLevel ?? window._sirenUserGradingLevel ?? window._sirenGradingLevel ?? 3);
     return `<div class="score-view ${viewId === 'overall' ? 'active' : ''}" id="score-view-${viewId}">
       <div class="banner" style="background:${bg};">
         <div>
@@ -1502,8 +1559,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         ${repScores.map((rs, i) => `<button class="rep-toggle-btn" id="toggle-rep-${i}" onclick="switchScoreView('rep-${i}',event)">${escHtml(rs.name)}</button>`).join('')}
       </div>` : '';
 
-    const orgGradingLevel  = window._sirenGradingLevel  ?? 3;
-    const overallView = buildScoreView(r, overallMeta, 'overall', orgGradingLevel);
+    const overallView = buildScoreView(r, overallMeta, 'overall', null, repScores);
     const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`, _repGradingLevel(rs.name))).join('') : '';
 
     const isColdCall = stageCtx.toLowerCase().includes('cold');
@@ -2123,10 +2179,21 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
   // ── End reference documents ────────────────────────────────
 
   // ── History ────────────────────────────────────────────────
+  // Re-derives letter grades on every load so that changing a rep's (or the org's) grading
+  // level retroactively updates how past calls display, without needing a manual regrade.
   function loadHistory() {
     try {
       const data = _histCache.map(h => ({ ...h }));
-      data.forEach(h => { if (typeof h.total === 'number' && h.total > 0) h.letter_grade = scoreToGrade(h.total); });
+      data.forEach(h => {
+        const pct = h.normalized_score ?? h.total;
+        if (typeof pct !== 'number' || pct <= 0) return;
+        const repScoresArr = _histParseRepScores(h.rep_scores);
+        h.letter_grade = _gradeFromOffsetPct(pct, _avgAttendeeOffset(repScoresArr));
+        repScoresArr.forEach(rs => {
+          if (typeof rs.normalized_score === 'number') rs.letter_grade = scoreToGradePct(rs.normalized_score, _repGradingLevel(rs.name));
+        });
+        if (repScoresArr.length) h.rep_scores = repScoresArr;
+      });
       return data;
     } catch { return []; }
   }

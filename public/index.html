@@ -1401,6 +1401,29 @@ TURSO_AUTH_TOKEN=your-token-here</pre>
         </div>
       </div>
 
+      <div class="pulse-tile" id="pt-calibration" draggable="true">
+        <div class="pulse-card">
+          <div class="pulse-card-title" style="display:flex;align-items:center;gap:8px;">
+            <span class="pulse-tile-drag" title="Drag to reorder">⠿</span>
+            <span style="flex:1;">Grading Calibration</span>
+            <button class="pulse-tile-sz" onclick="pulseTileResize('pt-calibration')" title="Make full width">⊞</button>
+          </div>
+          <div id="pulseCalibrationBody" style="display:flex;gap:18px;align-items:center;padding:6px 0;">
+            <div style="flex:1;">
+              <div style="font-size:11px;color:var(--siren-text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Actual avg score</div>
+              <div id="pcv-actual" style="font-size:28px;font-weight:700;color:var(--siren-text-primary);">—</div>
+              <div id="pcs-actual" style="font-size:11px;color:var(--siren-text-faint);">graded at each rep's own scale</div>
+            </div>
+            <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.08);"></div>
+            <div style="flex:1;">
+              <div style="font-size:11px;color:var(--siren-text-faint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">If graded at L3 Standard</div>
+              <div id="pcv-l3" style="font-size:28px;font-weight:700;color:var(--siren-text-primary);">—</div>
+              <div id="pcs-l3" style="font-size:11px;color:var(--siren-text-faint);">no difficulty adjustment</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="pulse-tile" id="pt-rep-trends" draggable="true">
         <div class="pulse-card">
           <div class="pulse-card-title" style="display:flex;align-items:center;gap:8px;">
