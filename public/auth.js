@@ -194,6 +194,14 @@
             </div>
             <div id="oaErr" style="margin-top:8px;font-size:11px;color:#ef4444;"></div>
           </div>
+        </div>
+        <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.25);margin-bottom:12px;">Database Maintenance</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <button onclick="adminCleanupOrphans()" id="cleanupOrphansBtn" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:4px;padding:5px 12px;font-size:11px;cursor:pointer;">Clean Up Orphaned Call Records</button>
+            <span id="cleanupOrphansMsg" style="font-size:11px;color:rgba(255,255,255,.3);"></span>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px;">Removes call_spiced, call_reps, call_dimensions, and other normalized rows that have no matching call in history.</div>
         </div>`;
     } catch {}
   }
@@ -237,6 +245,26 @@
       const res = await fetch(`/api/orgs/${id}/reset-demo`, { method: 'POST' });
       if (res.ok) { alert('Demo data reset successfully.'); } else { alert('Failed to reset demo data.'); }
     } catch { alert('Network error.'); }
+  }
+
+  async function adminCleanupOrphans() {
+    const btn = document.getElementById('cleanupOrphansBtn');
+    const msg = document.getElementById('cleanupOrphansMsg');
+    if (btn) btn.disabled = true;
+    if (msg) msg.textContent = 'Running…';
+    try {
+      const res = await fetch('/api/admin/cleanup-orphans', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        if (msg) msg.textContent = data.deleted > 0 ? `Done — ${data.deleted} orphaned row(s) removed.` : 'Done — no orphaned rows found.';
+      } else {
+        if (msg) msg.textContent = 'Error: ' + (data.error || 'unknown');
+      }
+    } catch {
+      if (msg) msg.textContent = 'Network error.';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   function usersOpenAdd() {

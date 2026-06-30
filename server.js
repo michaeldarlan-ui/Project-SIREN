@@ -1055,6 +1055,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Admin: orphan cleanup ───────────────────────────────────
+  if (req.method === 'POST' && urlPath0 === '/api/admin/cleanup-orphans') {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    try {
+      const tables = ['call_spiced', 'call_reps', 'call_partners', 'call_dimensions',
+                      'call_rep_summary', 'call_next_steps'];
+      let total = 0;
+      for (const t of tables) {
+        const r = await client.execute(`DELETE FROM ${t} WHERE call_id NOT IN (SELECT id FROM history_prod)`);
+        total += Number(r.rowsAffected) || 0;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, deleted: total }));
+    } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+    return;
+  }
+
   // ── User management (admin only) ───────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/users') {
     if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
