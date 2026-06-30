@@ -978,7 +978,7 @@
     if (btn) btn.disabled = true;
     if (icon) icon.style.transform = 'rotate(360deg)';
 
-    await _loadHistoryFromDB();
+    await _loadHistFromDB();
 
     renderPulse();
 
