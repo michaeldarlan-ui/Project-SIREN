@@ -742,6 +742,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Public pages — accessible without a session
+  const PUBLIC_PATHS = ['/landing.html', '/landing'];
+  if (PUBLIC_PATHS.includes(urlPath0)) {
+    const filePath = path.join(__dirname, 'public', 'landing.html');
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
+    res.end(fs.readFileSync(filePath));
+    return;
+  }
+
   // ── Auth middleware (all other routes require session) ─────
   const _sessionToken = parseCookie(req.headers.cookie).siren_session;
   const _session = await getSession(_sessionToken);
