@@ -22,7 +22,10 @@
       <span class="topbar-siren-sub">Sales Intelligence, Review &amp; Enablement Network</span>
     </div>
   </div>
-  <nav class="nav-tabs">
+  <button class="nav-hamburger" id="navHamburger" onclick="toggleMobileNav(event)" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <nav class="nav-tabs" id="navTabs">
     <button class="nav-tab active" onclick="navTo('pulse')">PULSE</button>
     <button class="nav-tab" onclick="navTo('vigil')">VIGIL</button>
     <button class="nav-tab" onclick="navTo('forge')">FORGE</button>

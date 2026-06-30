@@ -20,6 +20,7 @@
       }
     });
     currentPage = page;
+    closeMobileNav();
     window.scrollTo(0, 0);
     if (page === 'grader')    typeof renderSavedTranscripts === 'function' && renderSavedTranscripts();
     if (page === 'pulse')     renderPulse();
@@ -35,6 +36,20 @@
     if (page === 'audit')       typeof auditLoad === 'function' && auditLoad();
     if (page === 'users')       typeof usersLoad === 'function' && usersLoad();
   }
+
+  // ── Mobile nav ─────────────────────────────────────────────
+  function toggleMobileNav(e) {
+    e.stopPropagation();
+    document.getElementById('navTabs').classList.toggle('mobile-open');
+    document.getElementById('navHamburger').classList.toggle('open');
+  }
+  function closeMobileNav() {
+    document.getElementById('navTabs').classList.remove('mobile-open');
+    document.getElementById('navHamburger').classList.remove('open');
+  }
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#navTabs') && !e.target.closest('#navHamburger')) closeMobileNav();
+  });
 
   // ── Settings menu ──────────────────────────────────────────
   function toggleSettingsMenu(e) {
