@@ -149,10 +149,11 @@
                     onfocus="this.style.borderColor='rgba(245,158,11,.4)'" onblur2="this.style.borderColor='rgba(245,158,11,.12)'">
                 </td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);">
-                  <input value="${sr}" placeholder="e.g. AE" data-uid="${uid}" data-field="salesRole"
-                    onblur="usersUpdateProfile(this)"
-                    style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:4px;color:rgba(255,255,255,.6);padding:4px 8px;font-size:12px;font-family:inherit;width:120px;outline:none;"
-                    onfocus="this.style.borderColor='rgba(245,158,11,.3)'" onblur2="this.style.borderColor='rgba(255,255,255,.08)'">
+                  <select data-uid="${uid}" data-field="salesRole"
+                    onchange="usersUpdateProfile(this)"
+                    style="background:#18181b;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:rgba(255,255,255,.6);padding:4px 6px;font-size:11px;font-family:inherit;max-width:160px;outline:none;cursor:pointer;">
+                    ${typeof buildRoleOptions === 'function' ? buildRoleOptions(u.salesRole, '— role —') : `<option value="${sr}">${sr || '— role —'}</option>`}
+                  </select>
                 </td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace;">${uname}${isSelf ? ' <span style="font-size:9px;color:rgba(245,158,11,.5);">(you)</span>' : ''}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'rgba(245,158,11,.8)':'rgba(255,255,255,.35)'};">${escHtml(u.role)}</td>
@@ -295,7 +296,12 @@
 
   function usersOpenAdd() {
     const f = document.getElementById('usersAddForm');
-    if (f) { f.style.display = ''; document.getElementById('uaUsername').focus(); }
+    if (!f) return;
+    // Populate role dropdown each time (core.js builds it)
+    const sel = document.getElementById('uaSalesRole');
+    if (sel && typeof buildRoleOptions === 'function') sel.innerHTML = buildRoleOptions('', '— Select role —');
+    f.style.display = '';
+    document.getElementById('uaDisplayName').focus();
   }
 
   function usersCloseAdd() {

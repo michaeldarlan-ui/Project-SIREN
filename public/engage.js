@@ -384,8 +384,8 @@
     const stage = (selectedStage || '').toLowerCase();
 
     const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
-    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
-    const isManager = role.includes('manager') && !role.includes('account manager') || role.includes('director') || role.includes('vp') || role.includes('leader');
+    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales') || role.includes('architect') || role.includes('solutions consultant') || role.includes('technical advisor');
+    const isManager = (role.includes('manager') && !role.includes('account manager')) || role.includes('director') || role.includes('vp') || role.includes('leader') || role.includes('chief') || role.includes('cro') || role.includes('cso');
     const isAM      = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
 
     const isCold      = stage.includes('cold');
@@ -481,9 +481,9 @@
     if (!rep) return { d: 20, vf: 15, dd: 0, ep: 0, t: 25, q: 15, c: 15 };
     const role = (rep.role || '').toLowerCase();
     const isSDR     = role.includes('sdr') || role.includes('bdr') || role.includes('development');
-    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales');
+    const isSE      = role.includes('engineer') || role.includes(' se') || role === 'se' || role.includes('presales') || role.includes('pre-sales') || role.includes('architect') || role.includes('solutions consultant') || role.includes('technical advisor');
     const isAM      = role === 'am' || role.includes('account manager') || role.includes('csm') || role.includes('customer success') || role.includes('renewal');
-    const isManager = (role.includes('manager') && !role.includes('account manager')) || role.includes('director') || role.includes('vp') || role.includes('chief') || role.includes('leader') || role.includes('executive') || role.includes('president');
+    const isManager = (role.includes('manager') && !role.includes('account manager')) || role.includes('director') || role.includes('vp') || role.includes('chief') || role.includes('leader') || role.includes('executive') || role.includes('president') || role.includes('cro') || role.includes('cso');
 
     if (isSDR) {
       // Pipeline focus: can frame value briefly, never expected to demo, lighter on qualification
