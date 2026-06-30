@@ -1582,7 +1582,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SIREN · VIGIL Report — ${esc(company)}</title>
+<title>${esc(company)} - ${esc(reportDate)} - Account Status Report</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=block">
