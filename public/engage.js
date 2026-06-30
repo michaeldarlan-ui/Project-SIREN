@@ -354,7 +354,7 @@
   }
 
   function scoreToGrade(n) {
-    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(n) : n;
+    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(n, window._sirenUserGradingLevel ?? window._sirenGradingLevel) : n;
     if (adj >= 97) return 'A+';
     if (adj >= 93) return 'A';
     if (adj >= 90) return 'A-';

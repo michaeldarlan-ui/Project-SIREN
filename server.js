@@ -378,7 +378,8 @@ await client.batch([
     if (!uCols.includes('display_name'))   await client.execute('ALTER TABLE users ADD COLUMN display_name TEXT');
     if (!uCols.includes('sales_role'))     await client.execute('ALTER TABLE users ADD COLUMN sales_role TEXT');
     if (!uCols.includes('email'))          await client.execute('ALTER TABLE users ADD COLUMN email TEXT');
-    if (!uCols.includes('last_login_at'))  await client.execute('ALTER TABLE users ADD COLUMN last_login_at TEXT');
+    if (!uCols.includes('last_login_at'))      await client.execute('ALTER TABLE users ADD COLUMN last_login_at TEXT');
+    if (!uCols.includes('user_grading_level')) await client.execute('ALTER TABLE users ADD COLUMN user_grading_level INTEGER NOT NULL DEFAULT 1');
   }
 
   // Per-user spend tracking
@@ -800,6 +801,37 @@ async function bulkUpsert(records) {
 // match the Claude console's "spend this month" window.
 
 function _usageMonthKey() { return 'm' + new Date().toISOString().slice(0, 7); }
+
+// ── Grading auto-promotion ────────────────────────────────────────────────────
+// Levels 1→2→3 auto-promote; Level 4 is admin-manual only. No regression.
+async function _checkGradingPromotion(userId, orgId) {
+  try {
+    const uRow = (await client.execute({ sql: 'SELECT user_grading_level, created_at, display_name FROM users WHERE id = ?', args: [userId] })).rows[0];
+    if (!uRow) return 1;
+    const currentLevel = Number(uRow.user_grading_level) || 1;
+    if (currentLevel >= 3) return currentLevel; // Level 4 requires admin; cap auto at 3
+
+    // Condition 1: 90 days since account creation
+    const daysSinceJoined = (Date.now() - new Date(String(uRow.created_at)).getTime()) / 86400000;
+    const tenureMet = daysSinceJoined >= 90;
+
+    // Condition 2: last 10 calls all have normalized_score >= 90
+    let streakMet = false;
+    const repName = uRow.display_name ? String(uRow.display_name).trim() : null;
+    if (repName) {
+      const recent = (await client.execute({
+        sql: 'SELECT normalized_score FROM history_prod WHERE org_id = ? AND rep = ? AND is_demo = 0 ORDER BY ts DESC LIMIT 10',
+        args: [orgId, repName],
+      })).rows;
+      if (recent.length >= 10 && recent.every(r => Number(r.normalized_score) >= 90)) streakMet = true;
+    }
+
+    if (!tenureMet && !streakMet) return currentLevel;
+    const newLevel = currentLevel + 1;
+    await client.execute({ sql: 'UPDATE users SET user_grading_level = ? WHERE id = ?', args: [newLevel, userId] });
+    return newLevel;
+  } catch { return 1; }
+}
 
 async function meterApiCall(model, usage, feature, userId) {
   if (!usage) return;
@@ -1250,6 +1282,15 @@ const server = http.createServer(async (req, res) => {
       const tabRows = (await client.execute({ sql: 'SELECT tab FROM user_tab_permissions WHERE user_id = ?', args: [tabUserId] })).rows;
       if (tabRows.length > 0) allowedTabs = tabRows.map(r => String(r.tab));
     }
+    // Personal grading level: auto-promote non-admins; admins use org level
+    let userGradingLevel = orgRow ? Number(orgRow.grading_level) || 3 : 3;
+    if (_session.assumedUserId) {
+      // Admin viewing as a user — show that user's personal level
+      const auLvlRow = (await client.execute({ sql: 'SELECT user_grading_level FROM users WHERE id = ?', args: [_session.assumedUserId] })).rows[0];
+      userGradingLevel = auLvlRow ? Number(auLvlRow.user_grading_level) || 1 : 1;
+    } else if (_session.realRole === 'user') {
+      userGradingLevel = await _checkGradingPromotion(_session.userId, _session.orgId);
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       username: _session.username,
@@ -1264,6 +1305,7 @@ const server = http.createServer(async (req, res) => {
       orgName: orgRow ? String(orgRow.name) : 'Production',
       isDemo: orgRow ? !!orgRow.is_demo : false,
       gradingLevel: orgRow ? Number(orgRow.grading_level) || 3 : 3,
+      userGradingLevel,
     }));
     return;
   }
@@ -1465,9 +1507,9 @@ const server = http.createServer(async (req, res) => {
   // ── User management (admin only) ───────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/users') {
     if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
-    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, u.last_login_at, o.name as org_name, s.cost as spend_cost, s.calls as spend_calls FROM users u LEFT JOIN orgs o ON o.id = u.org_id LEFT JOIN user_spend s ON s.user_id = u.id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
+    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, u.last_login_at, u.user_grading_level, o.name as org_name, s.cost as spend_cost, s.calls as spend_calls FROM users u LEFT JOIN orgs o ON o.id = u.org_id LEFT JOIN user_spend s ON s.user_id = u.id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '', lastLoginAt: r.last_login_at ? String(r.last_login_at) : null, totalSpend: r.spend_cost != null ? Number(r.spend_cost) : 0, totalCalls: r.spend_calls != null ? Number(r.spend_calls) : 0 }))));
+    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '', lastLoginAt: r.last_login_at ? String(r.last_login_at) : null, totalSpend: r.spend_cost != null ? Number(r.spend_cost) : 0, totalCalls: r.spend_calls != null ? Number(r.spend_calls) : 0, userGradingLevel: r.user_grading_level != null ? Number(r.user_grading_level) : 1 }))));
     return;
   }
 
@@ -1494,6 +1536,18 @@ const server = http.createServer(async (req, res) => {
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // PUT /api/users/:id/grading-level — admin manually sets user grading level (1-4)
+  if (req.method === 'PUT' && /^\/api\/users\/[^/]+\/grading-level$/.test(urlPath0)) {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const uid = urlPath0.split('/')[3];
+    const { level } = await readBody(req);
+    const lvl = Math.max(1, Math.min(4, Number(level) || 1));
+    await client.execute({ sql: 'UPDATE users SET user_grading_level = ? WHERE id = ? AND org_id = ?', args: [lvl, uid, _session.orgId] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, level: lvl }));
     return;
   }
 

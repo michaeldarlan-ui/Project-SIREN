@@ -15,6 +15,8 @@
     window._sirenUser = { role: _authUser.role, username: _authUser.username, displayName: _authUser.displayName || _authUser.username, orgId: _authUser.orgId };
     window.sirenIsAdmin = () => ['admin','superadmin'].includes(window._sirenUser?.role);
     window._sirenGradingLevel = _authUser.gradingLevel || 3;
+    // Personal grading level: non-admins get their own auto-promoted level; admins use org level
+    window._sirenUserGradingLevel = _authUser.userGradingLevel || window._sirenGradingLevel;
 
     window.GRADING_PRESETS = [
       {
@@ -229,6 +231,10 @@
   }
   window.openTabPermissions = openTabPermissions;
 
+  window.setUserGradingLevel = async function(userId, level) {
+    await fetch(`/api/users/${userId}/grading-level`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level: Number(level) }) });
+  };
+
   function authChangePwdOpen() {
     document.getElementById('cpCurPwd').value = '';
     document.getElementById('cpNewPwd').value = '';
@@ -358,6 +364,7 @@
               <th style="${thStyle}">Platform Role</th>
               <th style="${thStyle}">Last Login</th>
               <th style="${thStyle}">Spend</th>
+              <th style="${thStyle}">Grade Level</th>
               <th style="${thStyle}">Status</th>
               <th style="${thStyle}padding-right:16px;"></th>
             </tr>
@@ -375,6 +382,10 @@
               const spendStr = u.totalSpend > 0
                 ? `$${u.totalSpend.toFixed(4)} <span style="color:rgba(255,255,255,.25);font-size:10px;">(${u.totalCalls} call${u.totalCalls !== 1 ? 's' : ''})</span>`
                 : '<span style="color:rgba(255,255,255,.2);">—</span>';
+              const uGradingLevel = u.userGradingLevel || 1;
+              const gradeLevelLabels = ['','Supportive','Coaching','Standard','Rigorous'];
+              const gradeLevelColors = ['','rgba(34,197,94,.7)','rgba(245,158,11,.7)','rgba(99,102,241,.7)','rgba(239,68,68,.7)'];
+              const isNonAdminUser = u.role !== 'admin' && u.role !== 'superadmin';
               return `<tr id="urow-${uid}">
                 <td style="padding:8px 8px 8px 16px;border-bottom:1px solid rgba(255,255,255,.04);">
                   <input value="${dn}" placeholder="Full name" data-uid="${uid}" data-field="displayName"
@@ -393,6 +404,11 @@
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'rgba(245,158,11,.8)':'rgba(255,255,255,.35)'};">${escHtml(u.role)}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.4);white-space:nowrap;">${lastLogin}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.5);white-space:nowrap;">${spendStr}</td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;white-space:nowrap;">
+                  ${isNonAdminUser ? `<select onchange="setUserGradingLevel('${uid}',this.value)" style="background:#18181b;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:${gradeLevelColors[uGradingLevel]};padding:3px 6px;font-size:10px;font-family:inherit;outline:none;cursor:pointer;">
+                    ${[1,2,3,4].map(l => `<option value="${l}" ${l===uGradingLevel?'selected':''} style="color:${gradeLevelColors[l]};">${l} – ${gradeLevelLabels[l]}</option>`).join('')}
+                  </select>` : '<span style="color:rgba(255,255,255,.15);">—</span>'}
+                </td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Change pwd' : 'Active'}</td>
                 <td style="padding:8px 16px 8px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
                   ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="assumeUserRole('${uid}')" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="View app as this user">View as</button>` : ''}
