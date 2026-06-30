@@ -1262,8 +1262,9 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   // Post-processing: compute normalized_score (0–100) for overall call and each rep.
   // Normalized = Math.round(raw_total / applicable_max * 100), clamped to 100.
   // Letter grades are re-derived from normalized score so they are always consistent.
-  function scoreToGradePct(pct) {
-    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(pct, window._sirenCoachGradingLevel) : pct;
+  function scoreToGradePct(pct, level) {
+    const lvl = level ?? window._sirenGradingLevel ?? 3;
+    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(pct, lvl) : pct;
     if (adj >= 97) return 'A+';
     if (adj >= 93) return 'A';
     if (adj >= 90) return 'A-';
@@ -1280,11 +1281,16 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   }
 
   function normalizeResult(r, primaryRep) {
+    // Overall call uses org-level grading scale
+    const orgLevel  = window._sirenGradingLevel  ?? 3;
+    // Per-rep uses the current user's personal grading level
+    const repLevel  = window._sirenUserGradingLevel ?? orgLevel;
+
     // Overall call: stage-only ceiling
     const stageMax = Object.values(stageDimCeilings()).reduce((a, b) => a + b, 0);
     const rawTotal = r.total || 0;
     r.normalized_score = Math.min(100, Math.round((rawTotal / stageMax) * 100));
-    r.letter_grade = scoreToGradePct(r.normalized_score);
+    r.letter_grade = scoreToGradePct(r.normalized_score, orgLevel);
 
     // Per-rep: role+stage ceiling, resolved from team list by name
     if (Array.isArray(r.rep_scores)) {
@@ -1292,7 +1298,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         const roleMax = rs.role_max || Object.values(repDimMaxesByName(rs.name)).reduce((a, b) => a + b, 0);
         const repRaw = rs.total || 0;
         rs.normalized_score = Math.min(100, Math.round((repRaw / roleMax) * 100));
-        rs.letter_grade = scoreToGradePct(rs.normalized_score);
+        rs.letter_grade = scoreToGradePct(rs.normalized_score, repLevel);
       });
     }
   }
