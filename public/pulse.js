@@ -1368,6 +1368,27 @@
         : '<span style="opacity:.4;">—</span>';
     })();
 
+    // SPICED breakdown (latest call)
+    const spicedKeys = ['situation','pain','impact','critical_event','evolution','decision'];
+    const spicedLabels = { situation: 'Situation', pain: 'Pain', impact: 'Impact', critical_event: 'Critical Event', evolution: 'Evolution', decision: 'Decision' };
+    let spicedData = latest.spiced;
+    if (typeof spicedData === 'string') { try { spicedData = JSON.parse(spicedData); } catch { spicedData = null; } }
+    const spicedRows = spicedData ? spicedKeys.map(k => {
+      const entry = spicedData[k];
+      if (!entry) return '';
+      const touched = !!entry.touched;
+      const dotColor = touched ? '#22c55e' : '#ef4444';
+      return `<tr>
+        <td style="white-space:nowrap;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor};margin-right:8px;"></span><strong style="color:rgba(250,250,250,.85);">${esc(spicedLabels[k])}</strong></td>
+        <td><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${dotColor};">${touched ? 'Covered' : 'Gap'}</span></td>
+        <td style="color:rgba(250,250,250,.65);">${esc(entry.summary || '—')}</td>
+      </tr>`;
+    }).filter(Boolean).join('') : '';
+    const spicedHtml = spicedRows ? `<table>
+      <thead><tr><th>Component</th><th>Status</th><th>Summary</th></tr></thead>
+      <tbody>${spicedRows}</tbody>
+    </table>` : '';
+
     const reportDate = new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 
     const latestGradeColor = gradeColor(latest.letter_grade);
@@ -1479,6 +1500,8 @@
   <tbody>${callRows}</tbody>
 </table>
 </div>
+
+${spicedHtml ? `<h2>SPICED Breakdown (Latest Call)</h2><div class="section-card" style="padding:0;overflow:hidden;">${spicedHtml}</div>` : ''}
 
 <h2>Next Steps &amp; Action Items</h2>
 <div class="two-col">
