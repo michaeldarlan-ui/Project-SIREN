@@ -1262,18 +1262,19 @@ Set touched to true only if the rep meaningfully engaged with that component in 
   // Normalized = Math.round(raw_total / applicable_max * 100), clamped to 100.
   // Letter grades are re-derived from normalized score so they are always consistent.
   function scoreToGradePct(pct) {
-    if (pct >= 97) return 'A+';
-    if (pct >= 93) return 'A';
-    if (pct >= 90) return 'A-';
-    if (pct >= 87) return 'B+';
-    if (pct >= 83) return 'B';
-    if (pct >= 80) return 'B-';
-    if (pct >= 77) return 'C+';
-    if (pct >= 73) return 'C';
-    if (pct >= 70) return 'C-';
-    if (pct >= 67) return 'D+';
-    if (pct >= 63) return 'D';
-    if (pct >= 60) return 'D-';
+    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(pct, window._sirenCoachGradingLevel) : pct;
+    if (adj >= 97) return 'A+';
+    if (adj >= 93) return 'A';
+    if (adj >= 90) return 'A-';
+    if (adj >= 87) return 'B+';
+    if (adj >= 83) return 'B';
+    if (adj >= 80) return 'B-';
+    if (adj >= 77) return 'C+';
+    if (adj >= 73) return 'C';
+    if (adj >= 70) return 'C-';
+    if (adj >= 67) return 'D+';
+    if (adj >= 63) return 'D';
+    if (adj >= 60) return 'D-';
     return 'F';
   }
 
@@ -3315,4 +3316,37 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       })
       .catch(() => { _brgRunning = false; navTo('history'); });
   }
+
+  function initCoachGradingSelector() {
+    const btns = document.getElementById('coachGradingBtns');
+    const desc = document.getElementById('coachGradingDesc');
+    if (!btns || !window.GRADING_PRESETS) return;
+    const saved = Number(localStorage.getItem('siren_coach_grade_level')) || window._sirenGradingLevel || 3;
+    window._sirenCoachGradingLevel = saved;
+    btns.innerHTML = window.GRADING_PRESETS.map(p => {
+      const active = p.level === saved;
+      return `<button onclick="setCoachGradingLevel(${p.level})" id="cgbtn-${p.level}" style="background:${active ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.04)'};border:1px solid ${active ? 'rgba(245,158,11,.5)' : 'rgba(255,255,255,.1)'};color:${active ? '#f59e0b' : 'rgba(255,255,255,.4)'};border-radius:5px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">${p.level} — ${p.label}</button>`;
+    }).join('');
+    if (desc) desc.textContent = window.GRADING_PRESETS.find(p => p.level === saved)?.tagline || '';
+  }
+
+  function setCoachGradingLevel(level) {
+    window._sirenCoachGradingLevel = level;
+    localStorage.setItem('siren_coach_grade_level', level);
+    window.GRADING_PRESETS.forEach(p => {
+      const btn = document.getElementById('cgbtn-' + p.level);
+      if (!btn) return;
+      const active = p.level === level;
+      btn.style.background = active ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.04)';
+      btn.style.borderColor = active ? 'rgba(245,158,11,.5)' : 'rgba(255,255,255,.1)';
+      btn.style.color = active ? '#f59e0b' : 'rgba(255,255,255,.4)';
+    });
+    const desc = document.getElementById('coachGradingDesc');
+    if (desc) desc.textContent = window.GRADING_PRESETS.find(p => p.level === level)?.tagline || '';
+    // Re-render any displayed grades
+    if (typeof coachOnRepChange === 'function') coachOnRepChange();
+  }
+  window.setCoachGradingLevel = setCoachGradingLevel;
+
+  document.addEventListener('DOMContentLoaded', () => { setTimeout(initCoachGradingSelector, 500); });
 

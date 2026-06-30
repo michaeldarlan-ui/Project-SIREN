@@ -14,6 +14,57 @@
     window._sirenOrg  = { id: _authUser.orgId, name: _authUser.orgName, isDemo: _authUser.isDemo };
     window._sirenUser = { role: _authUser.role, username: _authUser.username, orgId: _authUser.orgId };
     window.sirenIsAdmin = () => ['admin','superadmin'].includes(window._sirenUser?.role);
+    window._sirenGradingLevel = _authUser.gradingLevel || 3;
+
+    window.GRADING_PRESETS = [
+      {
+        level: 1, label: 'Supportive', offset: 12,
+        tagline: 'Grade thresholds shift down 12 points',
+        description: 'Designed for reps in their first 90 days or teams handling high-complexity deals. A raw score of 71 displays as a B-. Builds confidence while still surfacing meaningful coaching gaps.'
+      },
+      {
+        level: 2, label: 'Coaching', offset: 6,
+        tagline: 'Grade thresholds shift down 6 points',
+        description: 'Recommended for mid-tenure reps or moderate deal complexity. A raw score of 77 displays as a B-. Recognizes solid effort while still making coaching priorities visible.'
+      },
+      {
+        level: 3, label: 'Standard', offset: 0,
+        tagline: 'No adjustment — unmodified AI assessment',
+        description: 'The default calibration for experienced reps in typical enterprise deals. An 83 is a B, a 70 is a C-. Scores reflect the AI\'s direct evaluation with no offset applied.'
+      },
+      {
+        level: 4, label: 'Rigorous', offset: -8,
+        tagline: 'Grade thresholds shift up 8 points',
+        description: 'For elite teams, competitive benchmarking, or promotion evaluations. A raw score of 91 displays as a B+. Expects near-flawless execution — very few calls will reach A range.'
+      },
+    ];
+
+    window.applyGradingOffset = function(rawScore, level) {
+      const preset = window.GRADING_PRESETS.find(p => p.level === (level ?? window._sirenGradingLevel)) || window.GRADING_PRESETS[2];
+      return Math.max(0, Math.min(100, rawScore + preset.offset));
+    };
+
+    window.adjustedScoreDisplay = function(rawScore, level) {
+      return window.applyGradingOffset(rawScore, level);
+    };
+
+    window.adjustedGradeFromRaw = function(rawScore, level) {
+      const adj = window.applyGradingOffset(rawScore, level);
+      const n = adj;
+      if (n >= 97) return 'A+';
+      if (n >= 93) return 'A';
+      if (n >= 90) return 'A-';
+      if (n >= 87) return 'B+';
+      if (n >= 83) return 'B';
+      if (n >= 80) return 'B-';
+      if (n >= 77) return 'C+';
+      if (n >= 73) return 'C';
+      if (n >= 70) return 'C-';
+      if (n >= 67) return 'D+';
+      if (n >= 63) return 'D';
+      if (n >= 60) return 'D-';
+      return 'F';
+    };
 
     // Show user pill
     const pill = document.getElementById('userPill');
@@ -652,3 +703,64 @@
     const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (res.ok) { usersLoad(); } else { alert('Failed to delete user.'); }
   }
+
+  async function renderGradingDifficultyUI() {
+    const el = document.getElementById('gradingDifficultySection');
+    if (!el) return;
+    const isAdmin = _authUser?.realRole === 'admin' || _authUser?.realRole === 'superadmin';
+    const currentLevel = window._sirenGradingLevel || 3;
+
+    el.innerHTML = `
+      <div style="font-family:var(--siren-font-hud);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--siren-text-muted);margin-bottom:12px;">Grading Difficulty</div>
+      <div class="cd-panel" style="padding:20px 24px;margin-bottom:28px;">
+        <p style="font-size:12px;color:rgba(255,255,255,.4);margin:0 0 16px;line-height:1.6;">Controls how scores are translated into letter grades. The AI always scores the same way — this offset shifts where each grade boundary falls, making the grading scale easier or harder. Raw scores are preserved; changing this setting retroactively updates all displayed grades.</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;" id="gradingPresetGrid">
+          ${window.GRADING_PRESETS.map(p => {
+            const active = p.level === currentLevel;
+            const canClick = isAdmin ? `onclick="selectGradingPreset(${p.level})"` : '';
+            return `<div id="gpreset-${p.level}" ${canClick} style="border:2px solid ${active ? 'rgba(245,158,11,.6)' : 'rgba(255,255,255,.08)'};border-radius:8px;padding:14px 12px;cursor:${isAdmin ? 'pointer' : 'default'};background:${active ? 'rgba(245,158,11,.06)' : 'rgba(255,255,255,.02)'};transition:border-color .15s,background .15s;">
+              <div style="font-size:18px;font-weight:800;color:${active ? '#f59e0b' : 'rgba(255,255,255,.3)'};font-family:var(--siren-font-hud);letter-spacing:.04em;margin-bottom:4px;">${p.level}</div>
+              <div style="font-size:11px;font-weight:700;color:${active ? '#f59e0b' : 'rgba(255,255,255,.5)'};margin-bottom:6px;">${p.label}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.3);line-height:1.4;">${p.tagline}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div id="gradingPresetDesc" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:6px;padding:12px 14px;font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;"></div>
+        ${!isAdmin ? '<p style="font-size:11px;color:rgba(255,255,255,.2);margin-top:12px;margin-bottom:0;">Only admins can change the grading difficulty.</p>' : ''}
+        <div id="gradingPresetMsg" style="font-size:11px;margin-top:10px;min-height:16px;"></div>
+      </div>`;
+
+    updateGradingPresetDesc(currentLevel);
+  }
+  window.renderGradingDifficultyUI = renderGradingDifficultyUI;
+
+  function updateGradingPresetDesc(level) {
+    const preset = window.GRADING_PRESETS.find(p => p.level === level);
+    const el = document.getElementById('gradingPresetDesc');
+    if (el && preset) el.textContent = preset.description;
+  }
+
+  async function selectGradingPreset(level) {
+    if (_authUser?.realRole !== 'admin' && _authUser?.realRole !== 'superadmin') return;
+    const msg = document.getElementById('gradingPresetMsg');
+    if (msg) { msg.style.color = 'rgba(255,255,255,.3)'; msg.textContent = 'Saving…'; }
+    try {
+      const res = await fetch('/api/settings/grading', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level }) });
+      if (!res.ok) { if (msg) { msg.style.color = '#ef4444'; msg.textContent = 'Failed to save.'; } return; }
+      window._sirenGradingLevel = level;
+      // Update card styles
+      window.GRADING_PRESETS.forEach(p => {
+        const card = document.getElementById('gpreset-' + p.level);
+        if (!card) return;
+        const active = p.level === level;
+        card.style.borderColor = active ? 'rgba(245,158,11,.6)' : 'rgba(255,255,255,.08)';
+        card.style.background = active ? 'rgba(245,158,11,.06)' : 'rgba(255,255,255,.02)';
+        card.querySelector('div').style.color = active ? '#f59e0b' : 'rgba(255,255,255,.3)';
+        card.querySelectorAll('div')[1].style.color = active ? '#f59e0b' : 'rgba(255,255,255,.5)';
+      });
+      updateGradingPresetDesc(level);
+      if (msg) { msg.style.color = '#4ade80'; msg.textContent = 'Grading difficulty updated. All displayed grades now reflect the new scale.'; }
+      setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
+    } catch { if (msg) { msg.style.color = '#ef4444'; msg.textContent = 'Network error.'; } }
+  }
+  window.selectGradingPreset = selectGradingPreset;

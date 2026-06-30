@@ -58,6 +58,7 @@ await client.batch([
       name TEXT NOT NULL,
       slug TEXT UNIQUE NOT NULL,
       is_demo INTEGER NOT NULL DEFAULT 0,
+      grading_level INTEGER DEFAULT 3,
       created_at TEXT NOT NULL
     )` },
   { sql: `CREATE TABLE IF NOT EXISTS history_prod (${HISTORY_COLS})` },
@@ -449,6 +450,12 @@ await client.batch([
       await client.execute('DROP TABLE account_profiles_old');
       console.log(`[db] Migrated account_profiles to compound PK (org_id, company)`);
     }
+  }
+
+  // Add grading_level to orgs if missing
+  if (tables.includes('orgs')) {
+    const orgCols = (await client.execute('PRAGMA table_info(orgs)')).rows.map(r => String(r.name));
+    if (!orgCols.includes('grading_level')) await client.execute('ALTER TABLE orgs ADD COLUMN grading_level INTEGER NOT NULL DEFAULT 3');
   }
 }
 
@@ -1215,7 +1222,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && urlPath0 === '/api/auth/me') {
-    const orgRow = (await client.execute({ sql: 'SELECT name, is_demo FROM orgs WHERE id = ?', args: [_session.orgId] })).rows[0];
+    const orgRow = (await client.execute({ sql: 'SELECT name, is_demo, grading_level FROM orgs WHERE id = ?', args: [_session.orgId] })).rows[0];
     let assumedUserDisplay = null;
     if (_session.assumedUserId) {
       const auRow = (await client.execute({ sql: 'SELECT display_name, username FROM users WHERE id = ?', args: [_session.assumedUserId] })).rows[0];
@@ -1240,7 +1247,27 @@ const server = http.createServer(async (req, res) => {
       orgId: _session.orgId,
       orgName: orgRow ? String(orgRow.name) : 'Production',
       isDemo: orgRow ? !!orgRow.is_demo : false,
+      gradingLevel: orgRow ? Number(orgRow.grading_level) || 3 : 3,
     }));
+    return;
+  }
+
+  // GET /api/settings/grading — returns { level }
+  if (req.method === 'GET' && urlPath0 === '/api/settings/grading') {
+    const orgRow = (await client.execute({ sql: 'SELECT grading_level FROM orgs WHERE id = ?', args: [_session.orgId] })).rows[0];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ level: Number(orgRow?.grading_level) || 3 }));
+    return;
+  }
+
+  // PUT /api/settings/grading — admin sets { level: 1|2|3|4 }
+  if (req.method === 'PUT' && urlPath0 === '/api/settings/grading') {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const { level } = await readBody(req);
+    const lvl = Math.max(1, Math.min(4, Number(level) || 3));
+    await client.execute({ sql: 'UPDATE orgs SET grading_level = ? WHERE id = ?', args: [lvl, _session.orgId] });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, level: lvl }));
     return;
   }
 
