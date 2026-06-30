@@ -186,8 +186,8 @@
     <div class="card" id="loginCard">
       <div class="card-title">Sign In</div>
       <div class="field">
-        <label for="usr">Username</label>
-        <input id="usr" type="text" autocomplete="username" autofocus>
+        <label for="usr">Email or Username</label>
+        <input id="usr" type="text" autocomplete="username email" autofocus>
       </div>
       <div class="field">
         <label for="pwd">Password</label>
@@ -234,7 +234,7 @@
     const btn = document.getElementById('loginBtn');
     const err = document.getElementById('loginErr');
     err.textContent = '';
-    if (!username || !password) { err.textContent = 'Enter your username and password.'; return; }
+    if (!username || !password) { err.textContent = 'Enter your email/username and password.'; return; }
     btn.disabled = true; btn.textContent = 'Signing in…';
     try {
       const res  = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });

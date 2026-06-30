@@ -805,8 +805,9 @@ spiced: evaluate each of the 6 SPICED components (Situation, Pain, Impact, Criti
 
     // Toggle + score views
     const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
-    // Only show toggle when 2+ reps are on the call — single rep = no meaningful distinction
-    const showToggle = repScores.length > 1;
+    const _adminView = typeof sirenIsAdmin === 'function' ? sirenIsAdmin() : true;
+    // Only show toggle when 2+ reps on the call and user is admin
+    const showToggle = _adminView && repScores.length > 1;
 
     const toggleHtml = showToggle ? `
       <div class="rep-toggle">
@@ -1398,9 +1399,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
       </div>
       <div class="hist-card-body" id="hist-body-${h.id}">
         ${bodyHtml}
-        <div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;">
-          <button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button>
-        </div>
+        ${typeof sirenIsAdmin === 'function' && sirenIsAdmin() ? `<div style="display:flex;justify-content:flex-end;margin-top:1rem;border-top:1px solid var(--siren-border);padding-top:12px;"><button class="hist-delete-btn" onclick="deleteHistEntry(${h.id},event)">Delete this entry</button></div>` : ''}
       </div>
     </div>`;
   }

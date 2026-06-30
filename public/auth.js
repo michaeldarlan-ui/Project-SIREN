@@ -10,8 +10,10 @@
       _authUser = await res.json();
     } catch { window.location.href = '/login'; return; }
 
-    // Store org context globally
-    window._sirenOrg = { id: _authUser.orgId, name: _authUser.orgName, isDemo: _authUser.isDemo };
+    // Store org + user context globally for other modules
+    window._sirenOrg  = { id: _authUser.orgId, name: _authUser.orgName, isDemo: _authUser.isDemo };
+    window._sirenUser = { role: _authUser.role, username: _authUser.username, orgId: _authUser.orgId };
+    window.sirenIsAdmin = () => ['admin','superadmin'].includes(window._sirenUser?.role);
 
     // Show user pill
     const pill = document.getElementById('userPill');
@@ -297,11 +299,9 @@
   function usersOpenAdd() {
     const f = document.getElementById('usersAddForm');
     if (!f) return;
-    // Populate role dropdown each time (core.js builds it)
-    const sel = document.getElementById('uaSalesRole');
-    if (sel && typeof buildRoleOptions === 'function') sel.innerHTML = buildRoleOptions('', '— Select role —');
     f.style.display = '';
-    document.getElementById('uaDisplayName').focus();
+    const emailEl = document.getElementById('uaEmail');
+    if (emailEl) emailEl.focus();
   }
 
   function usersCloseAdd() {
@@ -337,30 +337,25 @@
   }
 
   async function usersAddSubmit() {
-    const displayName = document.getElementById('uaDisplayName').value.trim();
-    const salesRole   = document.getElementById('uaSalesRole').value.trim();
-    const username    = document.getElementById('uaUsername').value.trim();
-    const password    = document.getElementById('uaPassword').value;
-    const role        = document.getElementById('uaRole').value;
-    const err = document.getElementById('uaErr');
+    const email = (document.getElementById('uaEmail')?.value || '').trim();
+    const role  = document.getElementById('uaRole').value;
+    const err   = document.getElementById('uaErr');
+    err.style.color = '#ef4444';
     err.textContent = '';
-    if (!displayName) { err.textContent = 'Display name is required.'; return; }
-    if (!username || !password) { err.textContent = 'Username and password are required.'; return; }
+    if (!email || !email.includes('@')) { err.textContent = 'A valid email address is required.'; return; }
     try {
-      const res = await fetch('/api/users', {
+      const res  = await fetch('/api/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, role, displayName, salesRole }),
+        body: JSON.stringify({ email, role }),
       });
       const data = await res.json();
-      if (!res.ok) { err.textContent = data.error || 'Failed to create member.'; return; }
-      usersCloseAdd();
-      document.getElementById('uaDisplayName').value = '';
-      document.getElementById('uaSalesRole').value = '';
-      document.getElementById('uaUsername').value = '';
-      document.getElementById('uaPassword').value = '';
-      usersLoad();
-    } catch { err.textContent = 'Network error.'; }
+      if (!res.ok) { err.textContent = data.error || 'Failed to send invitation.'; return; }
+      err.style.color = '#4ade80';
+      err.textContent = `Invitation sent to ${email}.` + (data.inviteUrl ? ' (No SMTP configured — check server console for the link.)' : '');
+      document.getElementById('uaEmail').value = '';
+      setTimeout(() => { usersCloseAdd(); usersLoad(); }, 3000);
+    } catch { err.textContent = 'Network error — could not send invitation.'; }
   }
 
   async function usersUpdateProfile(input) {

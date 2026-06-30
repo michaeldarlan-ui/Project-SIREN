@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SIREN · Management Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --p-bg:       #07080a;
+    --p-surface:  #0e0f12;
+    --p-card:     #13151a;
+    --p-border:   rgba(255,255,255,.07);
+    --p-amber:    #f59e0b;
+    --p-amber-dim: rgba(245,158,11,.15);
+    --p-red:      #ef4444;
+    --p-green:    rgba(34,197,94,.7);
+    --p-cyan:     #00c8ff;
+    --p-text:     rgba(255,255,255,.85);
+    --p-muted:    rgba(255,255,255,.35);
+    --p-sidebar:  200px;
+  }
+
+  body { background: var(--p-bg); color: var(--p-text); font-family: 'Outfit', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--p-sidebar); flex-shrink: 0; background: var(--p-surface);
+    border-right: 1px solid var(--p-border); display: flex; flex-direction: column;
+    padding: 0; overflow: hidden;
+  }
+  .sidebar-brand {
+    padding: 20px 16px 16px; border-bottom: 1px solid var(--p-border);
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+  }
+  .sidebar-logo svg { width: 18px; height: 18px; fill: none; stroke: var(--p-amber); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sidebar-wordmark { font-size: 13px; font-weight: 700; letter-spacing: .12em; color: var(--p-amber); font-family: 'JetBrains Mono', monospace; }
+  .sidebar-subtitle { font-size: 9px; font-weight: 600; letter-spacing: .14em; color: var(--p-muted); text-transform: uppercase; }
+
+  .sidebar-nav { flex: 1; padding: 12px 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-section { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.2); padding: 12px 8px 4px; }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; color: var(--p-muted); cursor: pointer;
+    border: none; background: none; width: 100%; text-align: left; transition: all .12s;
+  }
+  .sidebar-item svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .sidebar-item:hover { background: rgba(255,255,255,.05); color: var(--p-text); }
+  .sidebar-item.active { background: var(--p-amber-dim); color: var(--p-amber); }
+  .sidebar-item .badge { margin-left: auto; background: rgba(239,68,68,.15); color: #ef4444; border-radius: 10px; font-size: 9px; font-weight: 700; padding: 1px 6px; font-family: 'JetBrains Mono', monospace; display: none; }
+  .sidebar-item .badge.visible { display: block; }
+
+  .sidebar-footer { padding: 12px 8px; border-top: 1px solid var(--p-border); }
+  .sidebar-user { font-size: 11px; color: var(--p-muted); padding: 6px 10px; display: flex; align-items: center; gap: 8px; }
+  .sidebar-user svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .sidebar-signout { width: 100%; text-align: left; background: none; border: none; color: rgba(239,68,68,.5); font-size: 11px; padding: 6px 10px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+  .sidebar-signout:hover { color: #ef4444; background: rgba(239,68,68,.06); }
+  .sidebar-signout svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── Main ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    height: 52px; border-bottom: 1px solid var(--p-border); background: var(--p-surface);
+    display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0;
+  }
+  .topbar-title { font-size: 13px; font-weight: 700; letter-spacing: .06em; color: var(--p-text); }
+  .topbar-env {
+    font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    background: rgba(239,68,68,.12); color: #ef4444; border: 1px solid rgba(239,68,68,.2);
+    border-radius: 4px; padding: 2px 8px; font-family: 'JetBrains Mono', monospace;
+  }
+  .topbar-spacer { flex: 1; }
+  .topbar-search {
+    background: rgba(255,255,255,.04); border: 1px solid var(--p-border); border-radius: 6px;
+    padding: 6px 12px; font-size: 12px; color: var(--p-text); font-family: inherit; outline: none;
+    width: 220px; transition: border-color .15s;
+  }
+  .topbar-search:focus { border-color: rgba(245,158,11,.3); }
+  .topbar-search::placeholder { color: var(--p-muted); }
+
+  .content { flex: 1; overflow-y: auto; padding: 28px 28px; }
+
+  /* ── Sections ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .section-header { margin-bottom: 24px; }
+  .section-header h1 { font-size: 18px; font-weight: 700; letter-spacing: .04em; color: var(--p-text); margin-bottom: 4px; }
+  .section-header p { font-size: 13px; color: var(--p-muted); }
+
+  /* ── KPI strip ── */
+  .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
+  .kpi-card {
+    background: var(--p-card); border: 1px solid var(--p-border); border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .kpi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--p-muted); margin-bottom: 8px; }
+  .kpi-value { font-size: 26px; font-weight: 700; color: var(--p-text); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+  .kpi-sub { font-size: 10px; color: var(--p-muted); margin-top: 4px; }
+
+  /* ── Table ── */
+  .p-table-wrap { background: var(--p-card); border: 1px solid var(--p-border); border-radius: 8px; overflow: hidden; }
+  .p-table { width: 100%; border-collapse: collapse; }
+  .p-table th { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(245,158,11,.55); text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--p-border); white-space: nowrap; }
+  .p-table td { padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,.03); font-size: 12px; color: var(--p-text); vertical-align: middle; }
+  .p-table tr:last-child td { border-bottom: none; }
+  .p-table tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── Badges ── */
+  .badge-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; letter-spacing: .04em; white-space: nowrap; }
+  .badge-open    { background: rgba(245,158,11,.12); color: #f59e0b; }
+  .badge-in-progress { background: rgba(0,200,255,.1); color: #00c8ff; }
+  .badge-resolved, .badge-closed, .badge-shipped { background: rgba(34,197,94,.1); color: rgba(34,197,94,.8); }
+  .badge-submitted { background: rgba(255,255,255,.07); color: rgba(255,255,255,.5); }
+  .badge-planned   { background: rgba(139,92,246,.1); color: rgba(139,92,246,.8); }
+  .badge-in-review { background: rgba(0,200,255,.1); color: #00c8ff; }
+  .badge-declined  { background: rgba(239,68,68,.1); color: #ef4444; }
+  .badge-demo { background: rgba(245,158,11,.1); color: rgba(245,158,11,.65); }
+  .badge-prod { background: rgba(34,197,94,.1); color: rgba(34,197,94,.65); }
+
+  .priority-high   { color: #ef4444; font-weight: 700; }
+  .priority-normal { color: var(--p-muted); }
+  .priority-low    { color: rgba(255,255,255,.2); }
+
+  /* ── Empty state ── */
+  .empty-state { padding: 48px 24px; text-align: center; color: var(--p-muted); }
+  .empty-state svg { width: 36px; height: 36px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: .3; margin: 0 auto 12px; display: block; }
+  .empty-state p { font-size: 13px; }
+
+  /* ── Action bar ── */
+  .action-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .p-btn {
+    border: 1px solid rgba(245,158,11,.25); background: rgba(245,158,11,.08);
+    color: var(--p-amber); border-radius: 6px; padding: 7px 14px; font-size: 12px;
+    font-weight: 600; cursor: pointer; font-family: inherit; transition: all .12s; white-space: nowrap;
+  }
+  .p-btn:hover { background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.4); }
+  .p-btn-ghost { background: none; border-color: rgba(255,255,255,.1); color: var(--p-muted); }
+  .p-btn-ghost:hover { background: rgba(255,255,255,.05); color: var(--p-text); }
+  .p-select {
+    background: rgba(255,255,255,.04); border: 1px solid var(--p-border); border-radius: 6px;
+    color: var(--p-muted); padding: 7px 10px; font-size: 12px; font-family: inherit; outline: none; cursor: pointer;
+  }
+  .p-select option { background: #18181b; color: #e2e8f0; }
+  .filter-spacer { flex: 1; }
+
+  /* ── Placeholder panels ── */
+  .placeholder-panel {
+    background: var(--p-card); border: 1px dashed rgba(255,255,255,.1); border-radius: 8px;
+    padding: 40px 24px; text-align: center; color: var(--p-muted);
+  }
+  .placeholder-panel svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: .25; margin: 0 auto 10px; display: block; }
+  .placeholder-panel .ph-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.25); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+  .placeholder-panel .ph-desc { font-size: 11px; color: rgba(255,255,255,.15); }
+
+  /* ── Org create form ── */
+  .inline-form {
+    background: var(--p-card); border: 1px solid rgba(245,158,11,.15); border-radius: 8px;
+    padding: 20px; margin-bottom: 16px; display: none;
+  }
+  .inline-form.open { display: block; }
+  .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--p-muted); }
+  .form-input {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 5px;
+    color: var(--p-text); padding: 7px 10px; font-size: 12px; font-family: inherit; outline: none;
+    transition: border-color .15s; min-width: 180px;
+  }
+  .form-input:focus { border-color: rgba(245,158,11,.35); }
+  .form-err { color: #ef4444; font-size: 11px; margin-top: 8px; min-height: 16px; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 3px; }
+
+  /* ── Loader ── */
+  .p-loading { padding: 32px; text-align: center; color: var(--p-muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="sidebar-wordmark">SIREN</span>
+    </div>
+    <div class="sidebar-subtitle">Management Portal</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">Overview</div>
+    <button class="sidebar-item active" data-section="dashboard" onclick="portalNav('dashboard', this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+
+    <div class="sidebar-section">Customer Success</div>
+    <button class="sidebar-item" data-section="accounts" onclick="portalNav('accounts', this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Accounts
+    </button>
+    <button class="sidebar-item" data-section="users" onclick="portalNav('users', this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      All Users
+      <span class="badge" id="badgeUsers"></span>
+    </button>
+    <button class="sidebar-item" data-section="tickets" onclick="portalNav('tickets', this)">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Help Tickets
+      <span class="badge" id="badgeTickets"></span>
+    </button>
+    <button class="sidebar-item" data-section="features" onclick="portalNav('features', this)">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Feature Requests
+      <span class="badge" id="badgeFeatures"></span>
+    </button>
+
+    <div class="sidebar-section">Operations</div>
+    <button class="sidebar-item" data-section="system" onclick="portalNav('system', this)">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      System
+    </button>
+    <button class="sidebar-item" data-section="billing" onclick="portalNav('billing', this)">
+      <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Billing
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span id="portalUsername" style="font-family:'JetBrains Mono',monospace;font-size:10px;"></span>
+    </div>
+    <button class="sidebar-signout" onclick="portalSignOut()">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign out
+    </button>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">SIREN Management Portal</span>
+    <span class="topbar-env">INTERNAL ONLY</span>
+    <div class="topbar-spacer"></div>
+    <input class="topbar-search" type="text" placeholder="Search accounts, users…" oninput="portalSearch(this.value)" />
+  </div>
+
+  <div class="content">
+
+    <!-- Dashboard -->
+    <div class="section active" id="section-dashboard">
+      <div class="section-header">
+        <h1>Dashboard</h1>
+        <p>Cross-account overview of SIREN activity.</p>
+      </div>
+      <div class="kpi-strip" id="kpiStrip">
+        <div class="kpi-card"><div class="kpi-label">Accounts</div><div class="kpi-value" id="kpiOrgs">—</div><div class="kpi-sub">active orgs</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Users</div><div class="kpi-value" id="kpiUsers">—</div><div class="kpi-sub">across all orgs</div></div>
+        <div class="kpi-card"><div class="kpi-label">Calls Graded</div><div class="kpi-value" id="kpiCalls">—</div><div class="kpi-sub">all time</div></div>
+        <div class="kpi-card"><div class="kpi-label">Open Tickets</div><div class="kpi-value" id="kpiTickets" style="color:#f59e0b;">—</div><div class="kpi-sub">need attention</div></div>
+        <div class="kpi-card"><div class="kpi-label">Feature Requests</div><div class="kpi-value" id="kpiFeatures">—</div><div class="kpi-sub">submitted</div></div>
+      </div>
+      <div class="placeholder-panel">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div class="ph-label">Activity Charts</div>
+        <div class="ph-desc">Usage trends, call volume by account, and engagement metrics — coming soon.</div>
+      </div>
+    </div>
+
+    <!-- Accounts -->
+    <div class="section" id="section-accounts">
+      <div class="section-header">
+        <h1>Accounts</h1>
+        <p>All SIREN customer orgs. Create, view, and manage accounts.</p>
+      </div>
+
+      <div class="action-bar">
+        <button class="p-btn" onclick="portalToggleNewOrg()">+ New Account</button>
+        <select class="p-select" onchange="portalFilterAccounts(this.value)" id="accountTypeFilter">
+          <option value="">All types</option>
+          <option value="prod">Production</option>
+          <option value="demo">Demo</option>
+        </select>
+      </div>
+
+      <div class="inline-form" id="newOrgForm">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(245,158,11,.6);margin-bottom:14px;">New Account</div>
+        <div class="form-row">
+          <div class="form-field">
+            <div class="form-label">Account Name</div>
+            <input class="form-input" id="newOrgName" type="text" placeholder="e.g. Acme Corp" />
+          </div>
+          <div class="form-field" style="justify-content:flex-end;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--p-muted);cursor:pointer;padding-bottom:8px;">
+              <input type="checkbox" id="newOrgDemo" /> Demo account
+            </label>
+          </div>
+          <div class="form-field" style="justify-content:flex-end;flex-direction:row;gap:8px;align-items:flex-end;">
+            <button class="p-btn" onclick="portalCreateOrg()">Create</button>
+            <button class="p-btn p-btn-ghost" onclick="portalToggleNewOrg()">Cancel</button>
+          </div>
+        </div>
+        <div class="form-err" id="newOrgErr"></div>
+      </div>
+
+      <div class="p-table-wrap" id="accountsTable"><div class="p-loading">Loading…</div></div>
+    </div>
+
+    <!-- Users -->
+    <div class="section" id="section-users">
+      <div class="section-header">
+        <h1>All Users</h1>
+        <p>Every user across all accounts.</p>
+      </div>
+      <div class="action-bar">
+        <select class="p-select" onchange="portalFilterUsers(this.value)" id="userOrgFilter">
+          <option value="">All accounts</option>
+        </select>
+        <select class="p-select" onchange="portalFilterUsers()" id="userRoleFilter">
+          <option value="">All roles</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+        </select>
+      </div>
+      <div class="p-table-wrap" id="usersTable"><div class="p-loading">Loading…</div></div>
+    </div>
+
+    <!-- Tickets -->
+    <div class="section" id="section-tickets">
+      <div class="section-header">
+        <h1>Help Tickets</h1>
+        <p>Support requests from all accounts.</p>
+      </div>
+      <div class="action-bar">
+        <select class="p-select" onchange="portalFilterTickets()" id="ticketStatusFilter">
+          <option value="">All statuses</option>
+          <option value="open">Open</option>
+          <option value="in-progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select class="p-select" onchange="portalFilterTickets()" id="ticketPriorityFilter">
+          <option value="">All priorities</option>
+          <option value="high">High</option>
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+        </select>
+        <select class="p-select" onchange="portalFilterTickets()" id="ticketCategoryFilter">
+          <option value="">All categories</option>
+          <option value="support">Support</option>
+          <option value="bug">Bug</option>
+          <option value="access">Access</option>
+          <option value="billing">Billing</option>
+          <option value="other">Other</option>
+        </select>
+        <div class="filter-spacer"></div>
+        <span id="ticketCount" style="font-size:11px;color:var(--p-muted);"></span>
+      </div>
+      <div class="p-table-wrap" id="ticketsTable"><div class="p-loading">Loading…</div></div>
+    </div>
+
+    <!-- Feature Requests -->
+    <div class="section" id="section-features">
+      <div class="section-header">
+        <h1>Feature Requests</h1>
+        <p>Product ideas and enhancement requests from customers.</p>
+      </div>
+      <div class="action-bar">
+        <select class="p-select" onchange="portalFilterFeatures()" id="featureStatusFilter">
+          <option value="">All statuses</option>
+          <option value="submitted">Submitted</option>
+          <option value="planned">Planned</option>
+          <option value="in-review">In Review</option>
+          <option value="shipped">Shipped</option>
+          <option value="declined">Declined</option>
+        </select>
+        <div class="filter-spacer"></div>
+        <span id="featureCount" style="font-size:11px;color:var(--p-muted);"></span>
+      </div>
+      <div class="p-table-wrap" id="featuresTable"><div class="p-loading">Loading…</div></div>
+    </div>
+
+    <!-- System -->
+    <div class="section" id="section-system">
+      <div class="section-header">
+        <h1>System</h1>
+        <p>Infrastructure health, API usage, and database status.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="placeholder-panel">
+          <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <div class="ph-label">API Health</div>
+          <div class="ph-desc">Anthropic API status, latency, and error rates across all orgs.</div>
+        </div>
+        <div class="placeholder-panel">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          <div class="ph-label">Database</div>
+          <div class="ph-desc">Turso DB metrics, row counts, and storage usage.</div>
+        </div>
+        <div class="placeholder-panel">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <div class="ph-label">Cost Tracking</div>
+          <div class="ph-desc">Blended Claude API cost per org per month and margin view.</div>
+        </div>
+        <div class="placeholder-panel">
+          <svg viewBox="0 0 24 24"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
+          <div class="ph-label">Integrations</div>
+          <div class="ph-desc">Webhook delivery, CRM sync status, and SSO connections.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Billing -->
+    <div class="section" id="section-billing">
+      <div class="section-header">
+        <h1>Billing</h1>
+        <p>Subscription plans, MRR, and invoices per account.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div class="kpi-card">
+          <div class="kpi-label">MRR</div>
+          <div class="kpi-value" style="color:var(--p-green);">—</div>
+          <div class="kpi-sub">monthly recurring revenue</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Paying Accounts</div>
+          <div class="kpi-value">—</div>
+          <div class="kpi-sub">active subscriptions</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Trial Accounts</div>
+          <div class="kpi-value" style="color:#f59e0b;">—</div>
+          <div class="kpi-sub">in trial period</div>
+        </div>
+      </div>
+      <div class="placeholder-panel">
+        <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        <div class="ph-label">Stripe / Billing Integration</div>
+        <div class="ph-desc">Per-account plan details, invoice history, and upgrade/downgrade actions — coming soon.</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script src="portal.js"></script>
+</body>
+</html>

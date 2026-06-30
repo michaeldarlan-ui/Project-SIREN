@@ -7,6 +7,7 @@ import readline from 'readline';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { createClient } from '@libsql/client';
+import nodemailer from 'nodemailer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -69,6 +70,45 @@ await client.batch([
   { sql: `CREATE TABLE IF NOT EXISTS roadmap (id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '', status TEXT DEFAULT 'planned', created_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY, action TEXT NOT NULL, entity_id TEXT, entity_label TEXT, rep TEXT, stage TEXT, score TEXT, letter_grade TEXT, details TEXT, created_at TEXT NOT NULL)` },
   { sql: `CREATE TABLE IF NOT EXISTS account_profiles (company TEXT PRIMARY KEY, profile TEXT NOT NULL, updated_at TEXT NOT NULL)` },
+  { sql: `CREATE TABLE IF NOT EXISTS portal_tickets (
+      id INTEGER PRIMARY KEY,
+      org_id INTEGER NOT NULL DEFAULT 1,
+      subject TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      category TEXT NOT NULL DEFAULT 'support',
+      reporter_name TEXT,
+      reporter_email TEXT,
+      assigned_to TEXT,
+      resolution TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS invite_tokens (
+      token TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      org_id INTEGER NOT NULL DEFAULT 1,
+      role TEXT NOT NULL DEFAULT 'user',
+      sales_role TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0
+    )` },
+  { sql: `CREATE TABLE IF NOT EXISTS portal_feature_requests (
+      id INTEGER PRIMARY KEY,
+      org_id INTEGER NOT NULL DEFAULT 1,
+      title TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'submitted',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      votes INTEGER NOT NULL DEFAULT 0,
+      tags TEXT,
+      submitted_by TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )` },
   { sql: `CREATE TABLE IF NOT EXISTS usage_daily (
       day TEXT, model TEXT,
       cost REAL DEFAULT 0, calls INTEGER DEFAULT 0,
@@ -323,12 +363,13 @@ await client.batch([
     }
   }
 
-  // Add org_id / display_name / sales_role to users if missing
+  // Add org_id / display_name / sales_role / email to users if missing
   if (tables.includes('users')) {
     const uCols = (await client.execute('PRAGMA table_info(users)')).rows.map(r => String(r.name));
-    if (!uCols.includes('org_id'))      await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    if (!uCols.includes('org_id'))       await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
     if (!uCols.includes('display_name')) await client.execute('ALTER TABLE users ADD COLUMN display_name TEXT');
     if (!uCols.includes('sales_role'))   await client.execute('ALTER TABLE users ADD COLUMN sales_role TEXT');
+    if (!uCols.includes('email'))        await client.execute('ALTER TABLE users ADD COLUMN email TEXT');
   }
 
   // Migrate prospects to compound PK (org_id, name)
@@ -411,6 +452,34 @@ function hashPassword(password, salt) {
   );
 }
 
+// ── Email (invitation) ─────────────────────────────────────────
+const _emailTransport = (() => {
+  const host = process.env.SMTP_HOST;
+  if (!host) return null;
+  return nodemailer.createTransport({
+    host,
+    port:   parseInt(process.env.SMTP_PORT  || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+})();
+
+async function sendInviteEmail(to, inviteUrl, orgName) {
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@siren.app';
+  if (_emailTransport) {
+    await _emailTransport.sendMail({
+      from, to,
+      subject: `You've been invited to SIREN — ${orgName}`,
+      html: `<p>You have been invited to join <strong>${orgName}</strong> on SIREN.</p>
+             <p><a href="${inviteUrl}" style="background:#f59e0b;color:#000;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700;">Accept invitation</a></p>
+             <p style="color:#888;font-size:12px;">This link expires in 72 hours. If you didn't expect this email, you can ignore it.</p>`,
+    });
+    console.log(`[invite] Email sent to ${to}`);
+  } else {
+    console.log(`\n[invite] ⚠  No SMTP configured — send this link manually:\n  ${inviteUrl}\n`);
+  }
+}
+
 async function createUser(username, password, role = 'user', mustChange = false, orgId = 1) {
   const id   = crypto.randomUUID();
   const salt = crypto.randomBytes(16).toString('hex');
@@ -424,7 +493,8 @@ async function createUser(username, password, role = 'user', mustChange = false,
 }
 
 async function verifyPassword(username, password) {
-  const row = (await client.execute({ sql: 'SELECT * FROM users WHERE username = ?', args: [username] })).rows[0];
+  // Allow login by username OR email
+  const row = (await client.execute({ sql: 'SELECT * FROM users WHERE username = ? OR email = ?', args: [username, username] })).rows[0];
   if (!row) return null;
   const hash = await hashPassword(password, String(row.salt));
   if (hash !== String(row.password_hash)) return null;
@@ -928,6 +998,71 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Registration (public — invite token required) ─────────────
+  if (urlPath0 === '/register') {
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
+    res.end(fs.readFileSync(path.join(__dirname, 'public', 'register.html')));
+    return;
+  }
+
+  // POST /api/register — complete registration from invite token
+  if (req.method === 'POST' && urlPath0 === '/api/register') {
+    try {
+      const { token, displayName, password, salesRole } = await readBody(req);
+      if (!token || !displayName || !password) { res.writeHead(400); res.end(JSON.stringify({ error: 'token, displayName, and password are required' })); return; }
+      const inv = (await client.execute({ sql: 'SELECT * FROM invite_tokens WHERE token=? AND used=0', args: [token] })).rows[0];
+      if (!inv) { res.writeHead(400); res.end(JSON.stringify({ error: 'Invalid or expired invitation link.' })); return; }
+      if (new Date(String(inv.expires_at)) < new Date()) { res.writeHead(400); res.end(JSON.stringify({ error: 'This invitation link has expired. Ask your admin to send a new one.' })); return; }
+      // Use email as username (guarantees uniqueness)
+      const email = String(inv.email);
+      const existing = (await client.execute({ sql: 'SELECT id FROM users WHERE username=? OR email=?', args: [email, email] })).rows[0];
+      if (existing) { res.writeHead(400); res.end(JSON.stringify({ error: 'An account with this email already exists.' })); return; }
+      const id   = crypto.randomUUID();
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = await hashPassword(password, salt);
+      const orgId = Number(inv.org_id) || 1;
+      const role  = String(inv.role || 'user');
+      const dn    = String(displayName).trim();
+      const sr    = (salesRole || inv.sales_role || '').trim();
+      await client.execute({ sql: 'INSERT INTO users (id,username,email,password_hash,salt,role,must_change_password,org_id,display_name,sales_role,created_at) VALUES (?,?,?,?,?,?,0,?,?,?,?)', args: [id, email, email, hash, salt, role, orgId, dn, sr||null, new Date().toISOString()] });
+      // Sync team table
+      const teamIdx = (await client.execute({ sql: 'SELECT COUNT(*) as n FROM team WHERE org_id=?', args: [orgId] })).rows[0].n;
+      if (dn) await client.execute({ sql: 'INSERT OR REPLACE INTO team (org_id,name,role,idx) VALUES (?,?,?,?)', args: [orgId, dn, sr||'', Number(teamIdx)] });
+      // Mark token used
+      await client.execute({ sql: 'UPDATE invite_tokens SET used=1 WHERE token=?', args: [token] });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      const msg = String(e.message||'').includes('UNIQUE') ? 'An account with this email already exists.' : e.message;
+      res.writeHead(400); res.end(JSON.stringify({ error: msg }));
+    }
+    return;
+  }
+
+  // GET /api/invite/check?token=xxx — validate invite token (public)
+  if (req.method === 'GET' && urlPath0 === '/api/invite/check') {
+    const token = new URL(req.url, 'http://x').searchParams.get('token');
+    const inv = token ? (await client.execute({ sql: 'SELECT email,org_id,role,sales_role,expires_at,used FROM invite_tokens WHERE token=?', args: [token] })).rows[0] : null;
+    if (!inv || inv.used) { res.writeHead(404); res.end(JSON.stringify({ error: 'Invalid or already used invitation link.' })); return; }
+    if (new Date(String(inv.expires_at)) < new Date()) { res.writeHead(410); res.end(JSON.stringify({ error: 'Invitation expired.' })); return; }
+    const orgRow = (await client.execute({ sql: 'SELECT name FROM orgs WHERE id=?', args: [inv.org_id] })).rows[0];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ email: String(inv.email), orgName: orgRow ? String(orgRow.name) : 'SIREN', role: String(inv.role), salesRole: inv.sales_role ? String(inv.sales_role) : '' }));
+    return;
+  }
+
+  // ── SIREN Portal (superadmin only) ────────────────────────────
+  if (urlPath0 === '/portal' || urlPath0 === '/portal.html') {
+    const tok = parseCookie(req.headers.cookie).siren_session;
+    const sess = await getSession(tok);
+    if (!sess || sess.role !== 'superadmin') {
+      res.writeHead(302, { Location: '/login' }); res.end(); return;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' });
+    res.end(fs.readFileSync(path.join(__dirname, 'public', 'portal.html')));
+    return;
+  }
+
   // Public pages — accessible without a session
   const PUBLIC_PATHS = ['/landing.html', '/landing'];
   if (PUBLIC_PATHS.includes(urlPath0)) {
@@ -1078,6 +1213,28 @@ const server = http.createServer(async (req, res) => {
     const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '' }))));
+    return;
+  }
+
+  // POST /api/invite — admin sends invitation email to a new user
+  if (req.method === 'POST' && urlPath0 === '/api/invite') {
+    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    try {
+      const { email, role, salesRole, orgId } = await readBody(req);
+      if (!email || !String(email).includes('@')) { res.writeHead(400); res.end(JSON.stringify({ error: 'Valid email required' })); return; }
+      const targetOrg = Number(orgId) || _session.orgId;
+      const token     = crypto.randomBytes(32).toString('hex');
+      const expires   = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+      // Delete any prior unused invite for same email+org
+      await client.execute({ sql: 'DELETE FROM invite_tokens WHERE email=? AND org_id=? AND used=0', args: [email, targetOrg] });
+      await client.execute({ sql: 'INSERT INTO invite_tokens (token,email,org_id,role,sales_role,created_at,expires_at,used) VALUES (?,?,?,?,?,?,?,0)', args: [token, email, targetOrg, role||'user', salesRole||null, new Date().toISOString(), expires] });
+      const proto     = process.env.APP_URL || `http://localhost:${PORT}`;
+      const inviteUrl = `${proto}/register?token=${token}`;
+      const orgRow    = (await client.execute({ sql: 'SELECT name FROM orgs WHERE id=?', args: [targetOrg] })).rows[0];
+      await sendInviteEmail(email, inviteUrl, orgRow ? String(orgRow.name) : 'SIREN');
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, invited: true, inviteUrl }));
+    } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
     return;
   }
 
@@ -1249,8 +1406,22 @@ const server = http.createServer(async (req, res) => {
   // GET /api/history
   if (req.method === 'GET' && req.url.startsWith('/api/history') &&
       !req.url.startsWith('/api/history/')) {
+    // Non-admins only see their own calls (matched by display_name)
+    let histSql = 'SELECT * FROM history_prod WHERE org_id = ? ORDER BY ts DESC';
+    let histArgs = [_session.orgId];
+    if (_session.role === 'user') {
+      const userRow = (await client.execute({ sql: 'SELECT display_name FROM users WHERE id = ?', args: [_session.userId] })).rows[0];
+      const displayName = userRow?.display_name ? String(userRow.display_name) : null;
+      if (displayName) {
+        histSql = 'SELECT * FROM history_prod WHERE org_id = ? AND rep = ? ORDER BY ts DESC';
+        histArgs = [_session.orgId, displayName];
+      } else {
+        histSql = 'SELECT * FROM history_prod WHERE org_id = ? AND 0=1 ORDER BY ts DESC'; // no display_name → no results
+        histArgs = [_session.orgId];
+      }
+    }
     const [histRows, repRows, dimRows, summaryRows, stepRows, spicedRows, partnerRows] = await Promise.all([
-      client.execute({ sql: 'SELECT * FROM history_prod WHERE org_id = ? ORDER BY ts DESC', args: [_session.orgId] }),
+      client.execute({ sql: histSql, args: histArgs }),
       client.execute('SELECT * FROM call_reps'),
       client.execute('SELECT * FROM call_dimensions'),
       client.execute('SELECT * FROM call_rep_summary ORDER BY idx'),
@@ -1403,6 +1574,7 @@ const server = http.createServer(async (req, res) => {
 
   // DELETE /api/history/real
   if (req.method === 'DELETE' && req.url === '/api/history/real') {
+    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     await client.execute({ sql: 'DELETE FROM history_prod WHERE org_id = ?', args: [_session.orgId] });
     res.writeHead(200); res.end();
     return;
@@ -1410,6 +1582,7 @@ const server = http.createServer(async (req, res) => {
 
   // DELETE /api/history/:id
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
+    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
     await client.execute({ sql: 'DELETE FROM history_prod WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
     res.writeHead(200); res.end();
@@ -1836,10 +2009,15 @@ const server = http.createServer(async (req, res) => {
   // ── Transcripts API ────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/transcripts') {
-    const rows = (await client.execute({
-      sql: 'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts WHERE org_id = ? ORDER BY saved_at DESC',
-      args: [_session.orgId],
-    })).rows;
+    let tSql = 'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts WHERE org_id = ? ORDER BY saved_at DESC';
+    let tArgs = [_session.orgId];
+    if (_session.role === 'user') {
+      const uRow = (await client.execute({ sql: 'SELECT display_name FROM users WHERE id = ?', args: [_session.userId] })).rows[0];
+      const dn = uRow?.display_name ? String(uRow.display_name) : null;
+      if (dn) { tSql = 'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts WHERE org_id = ? AND rep = ? ORDER BY saved_at DESC'; tArgs = [_session.orgId, dn]; }
+      else     { tSql = 'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts WHERE org_id = ? AND 0=1 ORDER BY saved_at DESC'; }
+    }
+    const rows = (await client.execute({ sql: tSql, args: tArgs })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({
       id: String(r.id), label: String(r.label),
@@ -1853,6 +2031,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && req.url === '/api/transcripts') {
+    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     try {
       const { id, label, prospect, stage, rep, call_date, transcript } = await readBody(req);
       await client.execute({
@@ -1911,9 +2090,148 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'DELETE' && req.url.startsWith('/api/transcripts/')) {
+    if (_session.role !== 'admin' && _session.role !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
     const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
     await client.execute({ sql: 'DELETE FROM transcripts WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
     res.writeHead(200); res.end();
+    return;
+  }
+
+  // ── SIREN Portal API (superadmin only) ────────────────────────
+  if (urlPath0.startsWith('/api/portal')) {
+    if (_session.role !== 'superadmin') { res.writeHead(403); res.end(JSON.stringify({ error: 'Forbidden' })); return; }
+
+    // GET /api/portal/stats — dashboard summary
+    if (req.method === 'GET' && urlPath0 === '/api/portal/stats') {
+      const [orgsR, usersR, callsR, ticketsR, featsR] = await Promise.all([
+        client.execute('SELECT COUNT(*) as n FROM orgs'),
+        client.execute('SELECT COUNT(*) as n FROM users'),
+        client.execute('SELECT COUNT(*) as n FROM history_prod'),
+        client.execute('SELECT COUNT(*) as n FROM portal_tickets'),
+        client.execute('SELECT COUNT(*) as n FROM portal_feature_requests'),
+      ]);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        orgs:     Number(orgsR.rows[0].n),
+        users:    Number(usersR.rows[0].n),
+        calls:    Number(callsR.rows[0].n),
+        tickets:  Number(ticketsR.rows[0].n),
+        features: Number(featsR.rows[0].n),
+      }));
+      return;
+    }
+
+    // GET /api/portal/orgs — all orgs with user counts
+    if (req.method === 'GET' && urlPath0 === '/api/portal/orgs') {
+      const rows = (await client.execute(`
+        SELECT o.id, o.name, o.slug, o.is_demo, o.created_at,
+               COUNT(u.id) as user_count,
+               COUNT(DISTINCT h.id) as call_count
+        FROM orgs o
+        LEFT JOIN users u ON u.org_id = o.id
+        LEFT JOIN history_prod h ON h.org_id = o.id
+        GROUP BY o.id ORDER BY o.created_at DESC`)).rows;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(rows.map(r => ({
+        id: Number(r.id), name: String(r.name), slug: String(r.slug),
+        isDemo: !!r.is_demo, createdAt: String(r.created_at),
+        userCount: Number(r.user_count), callCount: Number(r.call_count),
+      }))));
+      return;
+    }
+
+    // GET /api/portal/users — all users across all orgs
+    if (req.method === 'GET' && urlPath0 === '/api/portal/users') {
+      const rows = (await client.execute(`
+        SELECT u.id, u.username, u.email, u.display_name, u.role, u.org_id, u.created_at,
+               o.name as org_name
+        FROM users u LEFT JOIN orgs o ON o.id = u.org_id
+        ORDER BY u.created_at DESC LIMIT 500`)).rows;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(rows.map(r => ({
+        id: String(r.id), username: String(r.username),
+        email: r.email ? String(r.email) : '',
+        displayName: r.display_name ? String(r.display_name) : '',
+        role: String(r.role), orgId: Number(r.org_id),
+        orgName: r.org_name ? String(r.org_name) : '', createdAt: String(r.created_at),
+      }))));
+      return;
+    }
+
+    // GET /api/portal/tickets
+    if (req.method === 'GET' && urlPath0 === '/api/portal/tickets') {
+      const rows = (await client.execute(`
+        SELECT t.*, o.name as org_name FROM portal_tickets t
+        LEFT JOIN orgs o ON o.id = t.org_id
+        ORDER BY t.created_at DESC LIMIT 200`)).rows;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(rows.map(r => ({
+        id: Number(r.id), orgId: Number(r.org_id), orgName: r.org_name ? String(r.org_name) : '',
+        subject: String(r.subject), description: r.description ? String(r.description) : '',
+        status: String(r.status), priority: String(r.priority), category: String(r.category),
+        reporterName: r.reporter_name ? String(r.reporter_name) : '',
+        assignedTo: r.assigned_to ? String(r.assigned_to) : '',
+        createdAt: String(r.created_at), updatedAt: String(r.updated_at),
+      }))));
+      return;
+    }
+
+    // GET /api/portal/features
+    if (req.method === 'GET' && urlPath0 === '/api/portal/features') {
+      const rows = (await client.execute(`
+        SELECT f.*, o.name as org_name FROM portal_feature_requests f
+        LEFT JOIN orgs o ON o.id = f.org_id
+        ORDER BY f.votes DESC, f.created_at DESC LIMIT 200`)).rows;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(rows.map(r => ({
+        id: Number(r.id), orgId: Number(r.org_id), orgName: r.org_name ? String(r.org_name) : '',
+        title: String(r.title), description: r.description ? String(r.description) : '',
+        status: String(r.status), priority: String(r.priority), votes: Number(r.votes),
+        tags: r.tags ? String(r.tags) : '', submittedBy: r.submitted_by ? String(r.submitted_by) : '',
+        createdAt: String(r.created_at),
+      }))));
+      return;
+    }
+
+    // POST /api/portal/orgs — create a new org
+    if (req.method === 'POST' && urlPath0 === '/api/portal/orgs') {
+      const { name, isDemo } = await readBody(req);
+      if (!name) { res.writeHead(400); res.end(JSON.stringify({ error: 'name required' })); return; }
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      try {
+        await client.execute({ sql: 'INSERT INTO orgs (name, slug, is_demo, created_at) VALUES (?,?,?,?)', args: [name, slug, isDemo ? 1 : 0, new Date().toISOString()] });
+        res.writeHead(201, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true }));
+      } catch (e) { res.writeHead(400); res.end(JSON.stringify({ error: e.message })); }
+      return;
+    }
+
+    // PATCH /api/portal/tickets/:id — update ticket status/assignment
+    if (req.method === 'PATCH' && /^\/api\/portal\/tickets\/\d+$/.test(urlPath0)) {
+      const id = urlPath0.split('/').pop();
+      const fields = await readBody(req);
+      const allowed = ['status','priority','assigned_to','resolution'];
+      const sets = Object.keys(fields).filter(k => allowed.includes(k)).map(k => `${k}=?`);
+      if (!sets.length) { res.writeHead(400); res.end(JSON.stringify({ error: 'No valid fields' })); return; }
+      const vals = Object.keys(fields).filter(k => allowed.includes(k)).map(k => fields[k]);
+      await client.execute({ sql: `UPDATE portal_tickets SET ${sets.join(',')}, updated_at=? WHERE id=?`, args: [...vals, new Date().toISOString(), Number(id)] });
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
+    // PATCH /api/portal/features/:id — update feature status/notes
+    if (req.method === 'PATCH' && /^\/api\/portal\/features\/\d+$/.test(urlPath0)) {
+      const id = urlPath0.split('/').pop();
+      const fields = await readBody(req);
+      const allowed = ['status','priority','notes','votes'];
+      const sets = Object.keys(fields).filter(k => allowed.includes(k)).map(k => `${k}=?`);
+      if (!sets.length) { res.writeHead(400); res.end(JSON.stringify({ error: 'No valid fields' })); return; }
+      const vals = Object.keys(fields).filter(k => allowed.includes(k)).map(k => fields[k]);
+      await client.execute({ sql: `UPDATE portal_feature_requests SET ${sets.join(',')}, updated_at=? WHERE id=?`, args: [...vals, new Date().toISOString(), Number(id)] });
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+
+    res.writeHead(404); res.end();
     return;
   }
 

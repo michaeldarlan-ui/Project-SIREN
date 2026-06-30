@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIREN — Accept Invitation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0f14;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #16181f;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: #f59e0b;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,.4);
+      margin-bottom: 28px;
+    }
+    .field { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      color: rgba(255,255,255,.45);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    input, select {
+      width: 100%;
+      background: #0d0f14;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 7px;
+      color: #e2e8f0;
+      font-size: 14px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus { border-color: rgba(245,158,11,.6); }
+    input[readonly] { color: rgba(255,255,255,.35); cursor: default; }
+    .btn {
+      width: 100%;
+      background: #f59e0b;
+      color: #000;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background .15s;
+    }
+    .btn:hover { background: #fbbf24; }
+    .btn:disabled { background: rgba(245,158,11,.4); cursor: not-allowed; }
+    .err {
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 7px;
+      color: #fca5a5;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .ok {
+      background: rgba(34,197,94,.1);
+      border: 1px solid rgba(34,197,94,.3);
+      border-radius: 7px;
+      color: #86efac;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .hint {
+      font-size: 11px;
+      color: rgba(255,255,255,.25);
+      margin-top: 4px;
+    }
+    select option { background: #18181b; color: #e2e8f0; }
+    optgroup { background: #111113; color: rgba(245,158,11,.65); }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">SIREN</div>
+  <div class="subtitle" id="regSubtitle">Accept your invitation to get started.</div>
+
+  <div id="errBox" class="err"></div>
+  <div id="okBox" class="ok"></div>
+  <div id="expiredBox" class="err" style="display:none;">This invitation link is invalid or has expired. Please contact your administrator for a new invitation.</div>
+
+  <form id="regForm" onsubmit="submitReg(event)">
+    <div class="field">
+      <label>Email</label>
+      <input id="regEmail" type="email" readonly>
+    </div>
+    <div class="field">
+      <label>Your full name</label>
+      <input id="regName" type="text" placeholder="Jane Smith" required autocomplete="name">
+      <div class="hint">This is how your name will appear in call records.</div>
+    </div>
+    <div class="field">
+      <label>Sales role</label>
+      <select id="regRole" style="background:#0d0f14;color:#e2e8f0;"></select>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="regPass" type="password" placeholder="Min 8 characters" required minlength="8" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>Confirm password</label>
+      <input id="regPass2" type="password" placeholder="Repeat password" required autocomplete="new-password">
+    </div>
+    <button class="btn" type="submit" id="regBtn">Create account</button>
+  </form>
+</div>
+
+<script>
+  const SIREN_SALES_ROLES = [
+    { group: 'SDR / BDR',   value: 'SDR',                               label: 'SDR – Sales Development Rep' },
+    { group: 'SDR / BDR',   value: 'BDR',                               label: 'BDR – Business Development Rep' },
+    { group: 'Account Executive', value: 'Account Executive',            label: 'Account Executive' },
+    { group: 'Account Executive', value: 'Enterprise Account Executive', label: 'Enterprise AE' },
+    { group: 'Account Executive', value: 'Mid-Market Account Executive', label: 'Mid-Market AE' },
+    { group: 'Account Executive', value: 'SMB Account Executive',        label: 'SMB / Commercial AE' },
+    { group: 'Presales / SE', value: 'Sales Engineer',                   label: 'Sales Engineer' },
+    { group: 'Presales / SE', value: 'Solutions Engineer',               label: 'Solutions Engineer' },
+    { group: 'Presales / SE', value: 'Solutions Architect',              label: 'Solutions Architect' },
+    { group: 'Presales / SE', value: 'Solutions Consultant',             label: 'Solutions Consultant' },
+    { group: 'Presales / SE', value: 'Presales Consultant',              label: 'Presales Consultant' },
+    { group: 'Account Manager / CSM', value: 'Account Manager',          label: 'Account Manager' },
+    { group: 'Account Manager / CSM', value: 'Customer Success Manager', label: 'Customer Success Manager (CSM)' },
+    { group: 'Account Manager / CSM', value: 'Renewal Manager',          label: 'Renewal Manager' },
+    { group: 'Leadership',   value: 'Sales Manager',                     label: 'Sales Manager' },
+    { group: 'Leadership',   value: 'Director of Sales',                 label: 'Director of Sales' },
+    { group: 'Leadership',   value: 'VP of Sales',                       label: 'VP of Sales' },
+    { group: 'Leadership',   value: 'CRO',                               label: 'CRO – Chief Revenue Officer' },
+  ];
+
+  const token = new URLSearchParams(location.search).get('token');
+  const form  = document.getElementById('regForm');
+  const err   = document.getElementById('errBox');
+  const ok    = document.getElementById('okBox');
+  const sel   = document.getElementById('regRole');
+
+  // Build role dropdown
+  const groups = {};
+  SIREN_SALES_ROLES.forEach(r => { (groups[r.group] = groups[r.group] || []).push(r); });
+  sel.innerHTML = '<option value="" style="background:#18181b;color:rgba(255,255,255,.3);">— Select your role —</option>' +
+    Object.entries(groups).map(([g, roles]) =>
+      `<optgroup label="${g}">${roles.map(r => `<option value="${r.value}" style="background:#18181b;color:#e2e8f0;">${r.label}</option>`).join('')}</optgroup>`
+    ).join('');
+
+  async function init() {
+    if (!token) {
+      document.getElementById('expiredBox').style.display = '';
+      form.style.display = 'none';
+      return;
+    }
+    try {
+      const res  = await fetch('/api/invite/check?token=' + encodeURIComponent(token));
+      const data = await res.json();
+      if (!res.ok) {
+        document.getElementById('expiredBox').textContent = data.error || 'Invalid invitation.';
+        document.getElementById('expiredBox').style.display = '';
+        form.style.display = 'none';
+        return;
+      }
+      document.getElementById('regEmail').value = data.email;
+      document.getElementById('regSubtitle').textContent = `You've been invited to join ${data.orgName}.`;
+      if (data.salesRole) sel.value = data.salesRole;
+    } catch {
+      document.getElementById('expiredBox').style.display = '';
+      form.style.display = 'none';
+    }
+  }
+
+  async function submitReg(e) {
+    e.preventDefault();
+    err.style.display = 'none';
+    const displayName = document.getElementById('regName').value.trim();
+    const password    = document.getElementById('regPass').value;
+    const pass2       = document.getElementById('regPass2').value;
+    const salesRole   = sel.value;
+    if (password !== pass2) { err.textContent = 'Passwords do not match.'; err.style.display = ''; return; }
+    if (password.length < 8) { err.textContent = 'Password must be at least 8 characters.'; err.style.display = ''; return; }
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    try {
+      const res  = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, displayName, password, salesRole }) });
+      const data = await res.json();
+      if (!res.ok) { err.textContent = data.error || 'Registration failed.'; err.style.display = ''; btn.disabled = false; btn.textContent = 'Create account'; return; }
+      form.style.display = 'none';
+      ok.textContent = 'Account created! Redirecting to login…';
+      ok.style.display = '';
+      setTimeout(() => { location.href = '/login'; }, 2000);
+    } catch (e) {
+      err.textContent = 'Network error — please try again.';
+      err.style.display = '';
+      btn.disabled = false; btn.textContent = 'Create account';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

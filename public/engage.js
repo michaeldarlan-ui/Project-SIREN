@@ -1357,7 +1357,8 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     const overallMeta = [rep ? rep.name + (rep.role ? ' · ' + rep.role : '') : '', prospect, contactTitle, stageCtx, formattedDate].filter(Boolean).join(' · ');
 
     const repScores = (r.rep_scores || []).filter(rs => rs.name && rs.dimensions?.length);
-    const showToggle = repScores.length >= 1;
+    const _adminView = typeof sirenIsAdmin === 'function' ? sirenIsAdmin() : true;
+    const showToggle = _adminView && repScores.length >= 1;
     const overallSummary = buildSummaryHtml(r.call_summary || {}, 'overall', true, 'Call summary');
     const repSummaries = showToggle
       ? repScores.map((rs, i) => buildSummaryHtml(rs.call_summary || {}, `rep-${i}`, false, `${rs.name}'s summary`)).join('')
@@ -2411,7 +2412,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
           </div>
           <button class="pdf-btn pdf-btn-sm" onclick="window.open('/transcript/'+encodeURIComponent(${escHtml(JSON.stringify(t.id))}),'_blank')">&#128196; View</button>
           <button class="pdf-btn pdf-btn-sm" onclick="loadSavedTranscript(${escHtml(JSON.stringify(t.id))})">&#8635; Load</button>
-          <button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${escHtml(JSON.stringify(t.id))},this)">Delete</button>
+          ${typeof sirenIsAdmin === 'function' && sirenIsAdmin() ? `<button class="hist-delete-btn" style="padding:4px 10px;font-size:11px;" onclick="deleteSavedTranscript(${escHtml(JSON.stringify(t.id))},this)">Delete</button>` : ''}
         </div>`;
       }).join('');
       if (actionBar) { actionBar.style.display = 'block'; brgUpdateCount(); }
