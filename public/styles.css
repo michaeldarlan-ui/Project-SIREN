@@ -2194,3 +2194,50 @@
   .dpick-add-btn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); border-radius: 5px; color: #f59e0b; font-size: 11px; font-weight: 600; cursor: pointer; padding: 4px 10px; white-space: nowrap; }
   .dpick-add-btn:hover:not(:disabled) { background: rgba(245,158,11,.2); }
   .dpick-add-btn:disabled { opacity: .4; cursor: default; color: rgba(255,255,255,.3); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); }
+
+  /* ── Global mobile responsive overrides (≤ 640px) ──────────────────────── */
+  @media (max-width: 640px) {
+    /* DASH: collapse 12-col grid; override any JS-set gridColumn spans */
+    .dash-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .dash-grid > * {
+      grid-column: span 1 !important;
+    }
+
+    /* PULSE KPI rows */
+    .pulse-kpi-row, .pulse-kpi-row-5 { grid-template-columns: 1fr 1fr; }
+
+    /* PULSE 2-col grid */
+    .pulse-grid-2 { grid-template-columns: 1fr; }
+
+    /* ENGAGE meta row */
+    .meta-row { grid-template-columns: 1fr 1fr; }
+
+    /* COACH stat strip */
+    .coach-stat-strip { grid-template-columns: 1fr 1fr; }
+
+    /* COACH / VIGIL deal intel KPI strip */
+    .cd-kpi-strip { grid-template-columns: 1fr 1fr; }
+    .cd-layout { grid-template-columns: 1fr; }
+    .cd-insight-row { grid-template-columns: 1fr; }
+
+    /* USAGE metrics strip */
+    .usage-metrics { grid-template-columns: 1fr 1fr; }
+
+    /* SALES TEAM add row */
+    .add-row { grid-template-columns: 1fr 1fr; }
+
+    /* FORGE integrations */
+    .forge-integrations { grid-template-columns: 1fr; }
+    .forge-template-row { grid-template-columns: 1fr; }
+
+    /* ROADMAP add grid */
+    .rdm-add-grid { grid-template-columns: 1fr; }
+
+    /* SCOPE grid */
+    .scope-grid { grid-template-columns: 1fr; }
+
+    /* General page padding tighten */
+    .page-inner, .page-content { padding-left: 12px !important; padding-right: 12px !important; }
+  }
