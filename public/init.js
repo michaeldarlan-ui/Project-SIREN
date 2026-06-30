@@ -68,16 +68,16 @@
   await _loadUsageFromDB();
   await initAccountProfiles();
 
-  // ── 3. Boot UI ────────────────────────────────────────────────
-  initKeyUI();
-  renderMemberList();
-  renderLibrary();
-  renderTemplates();
-  populateReportTypeSelect();
-  renderDocList();
-  initUsageBar();
-  forgeInit();
-  renderScopePage();
+  // ── 3. Boot UI (each call wrapped so one failure doesn't block navTo) ──
+  try { initKeyUI(); } catch(e) { console.error('[init] initKeyUI:', e); }
+  try { renderMemberList(); } catch(e) { console.error('[init] renderMemberList:', e); }
+  try { renderLibrary(); } catch(e) { console.error('[init] renderLibrary:', e); }
+  try { renderTemplates(); } catch(e) { console.error('[init] renderTemplates:', e); }
+  try { populateReportTypeSelect(); } catch(e) { console.error('[init] populateReportTypeSelect:', e); }
+  try { renderDocList(); } catch(e) { console.error('[init] renderDocList:', e); }
+  try { initUsageBar(); } catch(e) { console.error('[init] initUsageBar:', e); }
+  try { forgeInit(); } catch(e) { console.error('[init] forgeInit:', e); }
+  try { renderScopePage(); } catch(e) { console.error('[init] renderScopePage:', e); }
 
   // ── 4. Navigate to pulse ──────────────────────────────────────
   navTo('pulse');
