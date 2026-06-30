@@ -52,6 +52,13 @@ const HISTORY_COLS = `
 `;
 
 await client.batch([
+  { sql: `CREATE TABLE IF NOT EXISTS orgs (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      is_demo INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )` },
   { sql: `CREATE TABLE IF NOT EXISTS history_prod (${HISTORY_COLS})` },
   { sql: `CREATE TABLE IF NOT EXISTS prospects (name TEXT PRIMARY KEY, industry TEXT)` },
   { sql: `CREATE TABLE IF NOT EXISTS third_parties (name TEXT PRIMARY KEY, role TEXT, organization TEXT, notes TEXT)` },
@@ -171,6 +178,9 @@ await client.batch([
       await client.execute('ALTER TABLE history_prod ADD COLUMN normalized_score INTEGER DEFAULT 0');
       await client.execute('UPDATE history_prod SET normalized_score = total WHERE normalized_score = 0 AND total > 0');
     }
+    if (!cols.includes('org_id')) {
+      await client.execute('ALTER TABLE history_prod ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    }
   }
 
   // Add new columns to call_reps if missing (table already existed before these were added)
@@ -282,6 +292,115 @@ await client.batch([
       }
       console.log(`[db] Migrated ${old.length} transcript rows to standalone schema`);
     }
+    // Add org_id to transcripts if missing
+    const tCols2 = (await client.execute('PRAGMA table_info(transcripts)')).rows.map(r => String(r.name));
+    if (!tCols2.includes('org_id')) {
+      await client.execute('ALTER TABLE transcripts ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    }
+  }
+
+  // Add org_id to roadmap if missing
+  if (tables.includes('roadmap')) {
+    const rCols = (await client.execute('PRAGMA table_info(roadmap)')).rows.map(r => String(r.name));
+    if (!rCols.includes('org_id')) {
+      await client.execute('ALTER TABLE roadmap ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    }
+  }
+
+  // Add org_id to audit_log if missing
+  if (tables.includes('audit_log')) {
+    const aCols = (await client.execute('PRAGMA table_info(audit_log)')).rows.map(r => String(r.name));
+    if (!aCols.includes('org_id')) {
+      await client.execute('ALTER TABLE audit_log ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    }
+  }
+
+  // Add org_id to sessions if missing
+  if (tables.includes('sessions')) {
+    const sCols = (await client.execute('PRAGMA table_info(sessions)')).rows.map(r => String(r.name));
+    if (!sCols.includes('org_id')) {
+      await client.execute('ALTER TABLE sessions ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    }
+  }
+
+  // Add org_id to users if missing
+  if (tables.includes('users')) {
+    const uCols = (await client.execute('PRAGMA table_info(users)')).rows.map(r => String(r.name));
+    if (!uCols.includes('org_id')) {
+      await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    }
+  }
+
+  // Migrate prospects to compound PK (org_id, name)
+  if (tables.includes('prospects')) {
+    const pCols = (await client.execute('PRAGMA table_info(prospects)')).rows.map(r => String(r.name));
+    if (!pCols.includes('org_id')) {
+      const old = (await client.execute('SELECT * FROM prospects')).rows;
+      await client.execute('ALTER TABLE prospects RENAME TO prospects_old');
+      await client.execute(`CREATE TABLE prospects (org_id INTEGER NOT NULL DEFAULT 1, name TEXT NOT NULL, industry TEXT, PRIMARY KEY (org_id, name))`);
+      if (old.length) {
+        await client.batch(old.map(r => ({
+          sql: `INSERT OR IGNORE INTO prospects (org_id, name, industry) VALUES (1, ?, ?)`,
+          args: [String(r.name), r.industry ? String(r.industry) : null],
+        })), 'write');
+      }
+      await client.execute('DROP TABLE prospects_old');
+      console.log(`[db] Migrated prospects to compound PK (org_id, name)`);
+    }
+  }
+
+  // Migrate third_parties to compound PK (org_id, name)
+  if (tables.includes('third_parties')) {
+    const tpCols = (await client.execute('PRAGMA table_info(third_parties)')).rows.map(r => String(r.name));
+    if (!tpCols.includes('org_id')) {
+      const old = (await client.execute('SELECT * FROM third_parties')).rows;
+      await client.execute('ALTER TABLE third_parties RENAME TO third_parties_old');
+      await client.execute(`CREATE TABLE third_parties (org_id INTEGER NOT NULL DEFAULT 1, name TEXT NOT NULL, role TEXT, organization TEXT, notes TEXT, PRIMARY KEY (org_id, name))`);
+      if (old.length) {
+        await client.batch(old.map(r => ({
+          sql: `INSERT OR IGNORE INTO third_parties (org_id, name, role, organization, notes) VALUES (1, ?, ?, ?, ?)`,
+          args: [String(r.name), r.role ? String(r.role) : null, r.organization ? String(r.organization) : null, r.notes ? String(r.notes) : null],
+        })), 'write');
+      }
+      await client.execute('DROP TABLE third_parties_old');
+      console.log(`[db] Migrated third_parties to compound PK (org_id, name)`);
+    }
+  }
+
+  // Migrate team to compound PK (org_id, name)
+  if (tables.includes('team')) {
+    const tmCols = (await client.execute('PRAGMA table_info(team)')).rows.map(r => String(r.name));
+    if (!tmCols.includes('org_id')) {
+      const old = (await client.execute('SELECT * FROM team')).rows;
+      await client.execute('ALTER TABLE team RENAME TO team_old');
+      await client.execute(`CREATE TABLE team (org_id INTEGER NOT NULL DEFAULT 1, name TEXT NOT NULL, role TEXT, idx INTEGER DEFAULT 0, PRIMARY KEY (org_id, name))`);
+      if (old.length) {
+        await client.batch(old.map(r => ({
+          sql: `INSERT OR IGNORE INTO team (org_id, name, role, idx) VALUES (1, ?, ?, ?)`,
+          args: [String(r.name), r.role ? String(r.role) : null, Number(r.idx) || 0],
+        })), 'write');
+      }
+      await client.execute('DROP TABLE team_old');
+      console.log(`[db] Migrated team to compound PK (org_id, name)`);
+    }
+  }
+
+  // Migrate account_profiles to compound PK (org_id, company)
+  if (tables.includes('account_profiles')) {
+    const apCols = (await client.execute('PRAGMA table_info(account_profiles)')).rows.map(r => String(r.name));
+    if (!apCols.includes('org_id')) {
+      const old = (await client.execute('SELECT * FROM account_profiles')).rows;
+      await client.execute('ALTER TABLE account_profiles RENAME TO account_profiles_old');
+      await client.execute(`CREATE TABLE account_profiles (org_id INTEGER NOT NULL DEFAULT 1, company TEXT NOT NULL, profile TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (org_id, company))`);
+      if (old.length) {
+        await client.batch(old.map(r => ({
+          sql: `INSERT OR IGNORE INTO account_profiles (org_id, company, profile, updated_at) VALUES (1, ?, ?, ?)`,
+          args: [String(r.company), String(r.profile), String(r.updated_at)],
+        })), 'write');
+      }
+      await client.execute('DROP TABLE account_profiles_old');
+      console.log(`[db] Migrated account_profiles to compound PK (org_id, company)`);
+    }
   }
 }
 
@@ -292,14 +411,14 @@ function hashPassword(password, salt) {
   );
 }
 
-async function createUser(username, password, role = 'user', mustChange = false) {
+async function createUser(username, password, role = 'user', mustChange = false, orgId = 1) {
   const id   = crypto.randomUUID();
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = await hashPassword(password, salt);
   await client.execute({
-    sql: `INSERT INTO users (id, username, password_hash, salt, role, must_change_password, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, username, hash, salt, role, mustChange ? 1 : 0, new Date().toISOString()],
+    sql: `INSERT INTO users (id, username, password_hash, salt, role, must_change_password, org_id, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, username, hash, salt, role, mustChange ? 1 : 0, orgId, new Date().toISOString()],
   });
   return id;
 }
@@ -309,15 +428,15 @@ async function verifyPassword(username, password) {
   if (!row) return null;
   const hash = await hashPassword(password, String(row.salt));
   if (hash !== String(row.password_hash)) return null;
-  return { id: String(row.id), username: String(row.username), role: String(row.role), mustChangePassword: !!row.must_change_password };
+  return { id: String(row.id), username: String(row.username), role: String(row.role), mustChangePassword: !!row.must_change_password, orgId: Number(row.org_id) || 1 };
 }
 
-async function createSession(userId, username, role) {
+async function createSession(userId, username, role, orgId) {
   const token = crypto.randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   await client.execute({
-    sql: `INSERT INTO sessions (token, user_id, username, role, expires_at) VALUES (?, ?, ?, ?, ?)`,
-    args: [token, userId, username, role, expires],
+    sql: `INSERT INTO sessions (token, user_id, username, role, org_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [token, userId, username, role, orgId || 1, expires],
   });
   return token;
 }
@@ -330,7 +449,7 @@ async function getSession(token) {
     await client.execute({ sql: 'DELETE FROM sessions WHERE token = ?', args: [token] });
     return null;
   }
-  return { userId: String(row.user_id), username: String(row.username), role: String(row.role) };
+  return { userId: String(row.user_id), username: String(row.username), role: String(row.role), orgId: Number(row.org_id) || 1 };
 }
 
 function parseCookie(cookieHeader) {
@@ -356,19 +475,84 @@ async function requireAuth(req, res) {
 {
   const userCount = (await client.execute('SELECT COUNT(*) as n FROM users')).rows[0];
   if (Number(userCount.n) === 0) {
-    await createUser('admin', 'siren-admin', 'admin', true);
+    await createUser('admin', 'siren-admin', 'admin', true, 1);
     console.log('  ✓  Default admin created: admin / siren-admin (change on first login)');
   }
+}
+
+// Seed default orgs
+{
+  const orgCount = (await client.execute('SELECT COUNT(*) as n FROM orgs')).rows[0];
+  if (Number(orgCount.n) === 0) {
+    const now = new Date().toISOString();
+    await client.batch([
+      { sql: `INSERT INTO orgs (id,name,slug,is_demo,created_at) VALUES (1,'Production','production',0,?)`, args: [now] },
+      { sql: `INSERT INTO orgs (id,name,slug,is_demo,created_at) VALUES (2,'Demo','demo',1,?)`, args: [now] },
+    ], 'write');
+    // Assign existing users to org 1
+    await client.execute('UPDATE users SET org_id = 1 WHERE org_id IS NULL OR org_id = 0');
+    // Seed demo data
+    await seedDemoOrg();
+    console.log('  ✓  Orgs seeded: Production (1) and Demo (2)');
+  }
+}
+
+// ── Demo org seeder ───────────────────────────────────────────
+async function seedDemoOrg() {
+  const ORG = 2;
+  const now = new Date().toISOString();
+
+  // Team
+  await client.batch([
+    { sql: `INSERT OR IGNORE INTO team (org_id,name,role,idx) VALUES (?,?,?,?)`, args: [ORG,'Alex Rivera','Account Executive',0] },
+    { sql: `INSERT OR IGNORE INTO team (org_id,name,role,idx) VALUES (?,?,?,?)`, args: [ORG,'Jordan Lee','Sales Manager',1] },
+    { sql: `INSERT OR IGNORE INTO team (org_id,name,role,idx) VALUES (?,?,?,?)`, args: [ORG,'Sam Patel','Account Executive',2] },
+    { sql: `INSERT OR IGNORE INTO team (org_id,name,role,idx) VALUES (?,?,?,?)`, args: [ORG,'Taylor Kim','SDR',3] },
+  ], 'write');
+
+  // Prospects
+  await client.batch([
+    { sql: `INSERT OR IGNORE INTO prospects (org_id,name,industry) VALUES (?,?,?)`, args: [ORG,'Vertex Systems','Technology'] },
+    { sql: `INSERT OR IGNORE INTO prospects (org_id,name,industry) VALUES (?,?,?)`, args: [ORG,'Meridian Health','Healthcare'] },
+    { sql: `INSERT OR IGNORE INTO prospects (org_id,name,industry) VALUES (?,?,?)`, args: [ORG,'Crestview Capital','Finance'] },
+    { sql: `INSERT OR IGNORE INTO prospects (org_id,name,industry) VALUES (?,?,?)`, args: [ORG,'Northgate Retail','Retail'] },
+    { sql: `INSERT OR IGNORE INTO prospects (org_id,name,industry) VALUES (?,?,?)`, args: [ORG,'Apex Manufacturing','Manufacturing'] },
+  ], 'write');
+
+  // Sample calls — 10 realistic demo records
+  const demoCalls = [
+    { id:'demo-001', prospect:'Vertex Systems', rep:'Alex Rivera', stage:'Demo / solution presentation', score:88, grade:'A-', ts:'2026-06-10T14:30:00Z' },
+    { id:'demo-002', prospect:'Meridian Health', rep:'Sam Patel', stage:'Discovery', score:72, grade:'B', ts:'2026-06-12T10:00:00Z' },
+    { id:'demo-003', prospect:'Crestview Capital', rep:'Alex Rivera', stage:'Negotiation', score:91, grade:'A', ts:'2026-06-14T15:00:00Z' },
+    { id:'demo-004', prospect:'Northgate Retail', rep:'Taylor Kim', stage:'Discovery', score:61, grade:'C+', ts:'2026-06-15T11:00:00Z' },
+    { id:'demo-005', prospect:'Apex Manufacturing', rep:'Sam Patel', stage:'Demo / solution presentation', score:79, grade:'B+', ts:'2026-06-17T09:00:00Z' },
+    { id:'demo-006', prospect:'Vertex Systems', rep:'Alex Rivera', stage:'Negotiation', score:94, grade:'A', ts:'2026-06-18T14:00:00Z' },
+    { id:'demo-007', prospect:'Meridian Health', rep:'Sam Patel', stage:'Demo / solution presentation', score:83, grade:'B+', ts:'2026-06-20T10:30:00Z' },
+    { id:'demo-008', prospect:'Crestview Capital', rep:'Taylor Kim', stage:'Proof of concept', score:77, grade:'B', ts:'2026-06-22T16:00:00Z' },
+    { id:'demo-009', prospect:'Northgate Retail', rep:'Alex Rivera', stage:'Discovery', score:66, grade:'C+', ts:'2026-06-24T13:00:00Z' },
+    { id:'demo-010', prospect:'Apex Manufacturing', rep:'Sam Patel', stage:'Negotiation', score:85, grade:'A-', ts:'2026-06-26T11:00:00Z' },
+  ];
+
+  const callStmts = demoCalls.map(c => ({
+    sql: `INSERT OR IGNORE INTO history_prod (id,ts,call_date,prospect,rep,stage,total,normalized_score,letter_grade,grade_label,top_strength,top_priority,results_html,org_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    args: [c.id, c.ts, c.ts.slice(0,10), c.prospect, c.rep, c.stage,
+           c.score, c.score, c.grade,
+           c.score >= 90 ? 'Excellent' : c.score >= 80 ? 'Strong' : c.score >= 70 ? 'Good' : 'Developing',
+           'Active listening', 'Discovery depth',
+           `<p>Demo call scoring for ${c.prospect}</p>`, ORG],
+  }));
+  if (callStmts.length) await client.batch(callStmts, 'write');
 }
 
 // ── Row helpers ───────────────────────────────────────────────
 const DB_COLS = `id, ts, call_date, prospect, rep, rep_role, contact_title, stage,
   total, normalized_score, letter_grade, grade_label, top_strength, top_priority,
-  results_html, participants, dimensions, next_steps, overview, partner_scores, rep_scores, spiced`;
+  results_html, participants, dimensions, next_steps, overview, partner_scores, rep_scores, spiced, org_id`;
 
 const DB_PARAMS = `?, ?, ?, ?, ?, ?, ?, ?,
   ?, ?, ?, ?, ?,
-  ?, ?, ?, ?, ?, ?, ?, ?, ?`;
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?`;
 
 function dbRowToRecord(row) {
   const j = k => { const v = row[k]; return v ? JSON.parse(String(v)) : undefined; };
@@ -396,6 +580,7 @@ function dbRowToRecord(row) {
     partner_scores: j('partner_scores'),
     rep_scores:     j('rep_scores'),
     spiced:         j('spiced'),
+    org_id:         Number(row.org_id) || 1,
   };
 }
 
@@ -424,6 +609,7 @@ function recordToArgs(r) {
     ser(r.partner_scores),
     ser(r.rep_scores),
     ser(r.spiced),
+    r.orgId || r.org_id || 1,
   ];
 }
 
@@ -724,10 +910,10 @@ const server = http.createServer(async (req, res) => {
           res.end(JSON.stringify({ error: 'Invalid username or password' }));
           return;
         }
-        const token = await createSession(user.id, user.username, user.role);
+        const token = await createSession(user.id, user.username, user.role, user.orgId);
         const cookie = `siren_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}`;
         res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': cookie });
-        res.end(JSON.stringify({ ok: true, username: user.username, role: user.role, mustChangePassword: user.mustChangePassword }));
+        res.end(JSON.stringify({ ok: true, username: user.username, role: user.role, mustChangePassword: user.mustChangePassword, orgId: user.orgId }));
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Bad request' }));
@@ -777,8 +963,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && urlPath0 === '/api/auth/me') {
+    const orgRow = (await client.execute({ sql: 'SELECT name, is_demo FROM orgs WHERE id = ?', args: [_session.orgId] })).rows[0];
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ username: _session.username, role: _session.role }));
+    res.end(JSON.stringify({
+      username: _session.username,
+      role: _session.role,
+      orgId: _session.orgId,
+      orgName: orgRow ? String(orgRow.name) : 'Production',
+      isDemo: orgRow ? !!orgRow.is_demo : false,
+    }));
     return;
   }
 
@@ -812,12 +1005,62 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── Org management (admin only) ────────────────────────────
+  if (req.method === 'GET' && urlPath0 === '/api/orgs') {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    const rows = (await client.execute('SELECT id, name, slug, is_demo, created_at FROM orgs ORDER BY id')).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(rows.map(r => ({ id: Number(r.id), name: String(r.name), slug: String(r.slug), isDemo: !!r.is_demo, createdAt: String(r.created_at) }))));
+    return;
+  }
+
+  if (req.method === 'POST' && urlPath0 === '/api/orgs') {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    try {
+      const { name, isDemo } = await readBody(req);
+      if (!name) { res.writeHead(400); res.end(JSON.stringify({ error: 'name required' })); return; }
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const result = await client.execute({
+        sql: `INSERT INTO orgs (name, slug, is_demo, created_at) VALUES (?, ?, ?, ?)`,
+        args: [String(name), slug, isDemo ? 1 : 0, new Date().toISOString()],
+      });
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, id: Number(result.lastInsertRowid) }));
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && /^\/api\/orgs\/\d+\/reset-demo$/.test(urlPath0)) {
+    if (_session.role !== 'admin') { res.writeHead(403); res.end(); return; }
+    const orgId = parseInt(urlPath0.split('/')[3]);
+    const orgRow = (await client.execute({ sql: 'SELECT is_demo FROM orgs WHERE id = ?', args: [orgId] })).rows[0];
+    if (!orgRow || !orgRow.is_demo) { res.writeHead(400); res.end(JSON.stringify({ error: 'Not a demo org' })); return; }
+    try {
+      await client.batch([
+        { sql: 'DELETE FROM history_prod WHERE org_id = ?', args: [orgId] },
+        { sql: 'DELETE FROM prospects WHERE org_id = ?', args: [orgId] },
+        { sql: 'DELETE FROM team WHERE org_id = ?', args: [orgId] },
+        { sql: 'DELETE FROM transcripts WHERE org_id = ?', args: [orgId] },
+        { sql: 'DELETE FROM roadmap WHERE org_id = ?', args: [orgId] },
+        { sql: 'DELETE FROM audit_log WHERE org_id = ?', args: [orgId] },
+        { sql: 'DELETE FROM account_profiles WHERE org_id = ?', args: [orgId] },
+      ], 'write');
+      await seedDemoOrg();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); }
+    return;
+  }
+
   // ── User management (admin only) ───────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/users') {
     if (_session.role !== 'admin') { res.writeHead(403); res.end('Forbidden'); return; }
-    const rows = (await client.execute('SELECT id, username, role, must_change_password, created_at FROM users ORDER BY created_at')).rows;
+    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id ORDER BY u.created_at')).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at) }))));
+    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at) }))));
     return;
   }
 
@@ -827,9 +1070,9 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => { body += c; });
     req.on('end', async () => {
       try {
-        const { username, password, role } = JSON.parse(body);
+        const { username, password, role, orgId } = JSON.parse(body);
         if (!username || !password) { res.writeHead(400); res.end(JSON.stringify({ error: 'username and password required' })); return; }
-        const id = await createUser(username, password, role || 'user', false);
+        const id = await createUser(username, password, role || 'user', false, orgId || _session.orgId);
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, id }));
       } catch (e) {
@@ -936,7 +1179,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url.startsWith('/api/history') &&
       !req.url.startsWith('/api/history/')) {
     const [histRows, repRows, dimRows, summaryRows, stepRows, spicedRows, partnerRows] = await Promise.all([
-      client.execute('SELECT * FROM history_prod ORDER BY ts DESC'),
+      client.execute({ sql: 'SELECT * FROM history_prod WHERE org_id = ? ORDER BY ts DESC', args: [_session.orgId] }),
       client.execute('SELECT * FROM call_reps'),
       client.execute('SELECT * FROM call_dimensions'),
       client.execute('SELECT * FROM call_rep_summary ORDER BY idx'),
@@ -1019,7 +1262,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/api/history/bulk') {
     try {
       const records = await readBody(req);
-      await bulkUpsert(Array.isArray(records) ? records : []);
+      const arr = Array.isArray(records) ? records : [];
+      arr.forEach(r => { r.org_id = _session.orgId; });
+      await bulkUpsert(arr);
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
@@ -1029,7 +1274,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/api/history/migrate') {
     try {
       const records = await readBody(req);
-      await bulkUpsert(Array.isArray(records) ? records : []);
+      const arr = Array.isArray(records) ? records : [];
+      arr.forEach(r => { r.org_id = _session.orgId; });
+      await bulkUpsert(arr);
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
@@ -1040,8 +1287,8 @@ const server = http.createServer(async (req, res) => {
     try {
       const { oldName, newName } = await readBody(req);
       await client.batch([
-        { sql: 'UPDATE history_prod SET prospect = ? WHERE prospect = ?', args: [newName, oldName] },
-        { sql: 'UPDATE prospects SET name = ? WHERE name = ?',           args: [newName, oldName] },
+        { sql: 'UPDATE history_prod SET prospect = ? WHERE prospect = ? AND org_id = ?', args: [newName, oldName, _session.orgId] },
+        { sql: 'UPDATE prospects SET name = ? WHERE name = ? AND org_id = ?',            args: [newName, oldName, _session.orgId] },
       ], 'write');
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
@@ -1052,6 +1299,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && req.url === '/api/history') {
     try {
       const record = await readBody(req);
+      record.org_id = _session.orgId;
       await upsertOne(record);
       res.writeHead(201); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
@@ -1072,8 +1320,8 @@ const server = http.createServer(async (req, res) => {
         vals.push(v);
       }
       if (sets.length) {
-        const setClause = `SET ${sets.join(', ')} WHERE id = ?`;
-        const args = [...vals, id];
+        const setClause = `SET ${sets.join(', ')} WHERE id = ? AND org_id = ?`;
+        const args = [...vals, id, _session.orgId];
         const r1 = await client.execute({ sql: `UPDATE history_prod ${setClause}`, args });
         if (!r1.rowsAffected) console.warn(`[PUT] id not found: ${id}`);
       }
@@ -1084,7 +1332,7 @@ const server = http.createServer(async (req, res) => {
 
   // DELETE /api/history/real
   if (req.method === 'DELETE' && req.url === '/api/history/real') {
-    await client.execute('DELETE FROM history_prod');
+    await client.execute({ sql: 'DELETE FROM history_prod WHERE org_id = ?', args: [_session.orgId] });
     res.writeHead(200); res.end();
     return;
   }
@@ -1092,7 +1340,7 @@ const server = http.createServer(async (req, res) => {
   // DELETE /api/history/:id
   if (req.method === 'DELETE' && req.url.startsWith('/api/history/')) {
     const id = decodeURIComponent(req.url.slice('/api/history/'.length));
-    await client.execute({ sql: 'DELETE FROM history_prod WHERE id = ?', args: [id] });
+    await client.execute({ sql: 'DELETE FROM history_prod WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
     res.writeHead(200); res.end();
     return;
   }
@@ -1100,7 +1348,7 @@ const server = http.createServer(async (req, res) => {
   // ── Prospects API ──────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/prospects') {
-    const rows = (await client.execute('SELECT * FROM prospects ORDER BY name ASC')).rows;
+    const rows = (await client.execute({ sql: 'SELECT * FROM prospects WHERE org_id = ? ORDER BY name ASC', args: [_session.orgId] })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({ name: String(r.name), industry: r.industry ? String(r.industry) : null }))));
     return;
@@ -1111,8 +1359,8 @@ const server = http.createServer(async (req, res) => {
       const name   = decodeURIComponent(req.url.slice('/api/prospects/'.length));
       const fields = await readBody(req);
       await client.execute({
-        sql:  'INSERT INTO prospects (name, industry) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET industry = excluded.industry',
-        args: [name, fields.industry || null],
+        sql:  'INSERT INTO prospects (org_id, name, industry) VALUES (?, ?, ?) ON CONFLICT(org_id, name) DO UPDATE SET industry = excluded.industry',
+        args: [_session.orgId, name, fields.industry || null],
       });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
@@ -1122,7 +1370,7 @@ const server = http.createServer(async (req, res) => {
   // ── Third-parties API ──────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/third-parties') {
-    const rows = (await client.execute('SELECT * FROM third_parties ORDER BY name ASC')).rows;
+    const rows = (await client.execute({ sql: 'SELECT * FROM third_parties WHERE org_id = ? ORDER BY name ASC', args: [_session.orgId] })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({
       name: String(r.name), role: r.role ? String(r.role) : null,
@@ -1137,9 +1385,9 @@ const server = http.createServer(async (req, res) => {
       const name   = decodeURIComponent(req.url.slice('/api/third-parties/'.length));
       const fields = await readBody(req);
       await client.execute({
-        sql:  `INSERT INTO third_parties (name, role, organization, notes) VALUES (?, ?, ?, ?)
-               ON CONFLICT(name) DO UPDATE SET role=excluded.role, organization=excluded.organization, notes=excluded.notes`,
-        args: [name, fields.role || null, fields.organization || null, fields.notes || null],
+        sql:  `INSERT INTO third_parties (org_id, name, role, organization, notes) VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(org_id, name) DO UPDATE SET role=excluded.role, organization=excluded.organization, notes=excluded.notes`,
+        args: [_session.orgId, name, fields.role || null, fields.organization || null, fields.notes || null],
       });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
@@ -1148,7 +1396,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'DELETE' && req.url.startsWith('/api/third-parties/')) {
     const name = decodeURIComponent(req.url.slice('/api/third-parties/'.length));
-    await client.execute({ sql: 'DELETE FROM third_parties WHERE name = ?', args: [name] });
+    await client.execute({ sql: 'DELETE FROM third_parties WHERE name = ? AND org_id = ?', args: [name, _session.orgId] });
     res.writeHead(200); res.end();
     return;
   }
@@ -1312,7 +1560,7 @@ const server = http.createServer(async (req, res) => {
   // ── Team API ───────────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/team') {
-    const rows = (await client.execute('SELECT name, role, idx FROM team ORDER BY idx ASC, name ASC')).rows;
+    const rows = (await client.execute({ sql: 'SELECT name, role, idx FROM team WHERE org_id = ? ORDER BY idx ASC, name ASC', args: [_session.orgId] })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({
       name: String(r.name),
@@ -1325,12 +1573,12 @@ const server = http.createServer(async (req, res) => {
     try {
       const members = await readBody(req);
       if (!Array.isArray(members)) { res.writeHead(400); res.end('Expected array'); return; }
-      const ops = [{ sql: 'DELETE FROM team' }];
+      const ops = [{ sql: 'DELETE FROM team WHERE org_id = ?', args: [_session.orgId] }];
       members.forEach((m, i) => {
         if (!m.name) return;
         ops.push({
-          sql:  'INSERT OR REPLACE INTO team (name, role, idx) VALUES (?, ?, ?)',
-          args: [String(m.name), m.role ? String(m.role) : '', i],
+          sql:  'INSERT OR REPLACE INTO team (org_id, name, role, idx) VALUES (?, ?, ?, ?)',
+          args: [_session.orgId, String(m.name), m.role ? String(m.role) : '', i],
         });
       });
       await client.batch(ops, 'write');
@@ -1341,7 +1589,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Roadmap API ────────────────────────────────────────────
   if (req.method === 'GET' && req.url === '/api/roadmap') {
-    const rows = (await client.execute('SELECT id, title, description, status, created_at FROM roadmap ORDER BY id DESC')).rows;
+    const rows = (await client.execute({ sql: 'SELECT id, title, description, status, created_at FROM roadmap WHERE org_id = ? ORDER BY id DESC', args: [_session.orgId] })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({
       id: Number(r.id), title: String(r.title),
@@ -1357,8 +1605,8 @@ const server = http.createServer(async (req, res) => {
       if (!title) { res.writeHead(400); res.end('title required'); return; }
       const now = new Date().toISOString();
       const result = await client.execute({
-        sql: 'INSERT INTO roadmap (title, description, status, created_at) VALUES (?, ?, ?, ?)',
-        args: [String(title), desc ? String(desc) : '', status || 'planned', now],
+        sql: 'INSERT INTO roadmap (org_id, title, description, status, created_at) VALUES (?, ?, ?, ?, ?)',
+        args: [_session.orgId, String(title), desc ? String(desc) : '', status || 'planned', now],
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ id: Number(result.lastInsertRowid) }));
@@ -1370,9 +1618,9 @@ const server = http.createServer(async (req, res) => {
     try {
       const id = parseInt(req.url.slice('/api/roadmap/'.length));
       const { status, title, desc } = await readBody(req);
-      if (status)  await client.execute({ sql: 'UPDATE roadmap SET status = ? WHERE id = ?',      args: [String(status), id] });
-      if (title)   await client.execute({ sql: 'UPDATE roadmap SET title = ? WHERE id = ?',       args: [String(title), id] });
-      if (desc !== undefined) await client.execute({ sql: 'UPDATE roadmap SET description = ? WHERE id = ?', args: [String(desc), id] });
+      if (status)  await client.execute({ sql: 'UPDATE roadmap SET status = ? WHERE id = ? AND org_id = ?',      args: [String(status), id, _session.orgId] });
+      if (title)   await client.execute({ sql: 'UPDATE roadmap SET title = ? WHERE id = ? AND org_id = ?',       args: [String(title), id, _session.orgId] });
+      if (desc !== undefined) await client.execute({ sql: 'UPDATE roadmap SET description = ? WHERE id = ? AND org_id = ?', args: [String(desc), id, _session.orgId] });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
@@ -1381,7 +1629,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'DELETE' && req.url.startsWith('/api/roadmap/')) {
     try {
       const id = parseInt(req.url.slice('/api/roadmap/'.length));
-      await client.execute({ sql: 'DELETE FROM roadmap WHERE id = ?', args: [id] });
+      await client.execute({ sql: 'DELETE FROM roadmap WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
     return;
@@ -1394,9 +1642,9 @@ const server = http.createServer(async (req, res) => {
     const limit  = Math.min(500, Math.max(1, parseInt(params.get('limit')) || 200));
     const action = params.get('action') || null;
     const sql    = action
-      ? 'SELECT * FROM audit_log WHERE action = ? ORDER BY created_at DESC LIMIT ?'
-      : 'SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?';
-    const args   = action ? [action, limit] : [limit];
+      ? 'SELECT * FROM audit_log WHERE org_id = ? AND action = ? ORDER BY created_at DESC LIMIT ?'
+      : 'SELECT * FROM audit_log WHERE org_id = ? ORDER BY created_at DESC LIMIT ?';
+    const args   = action ? [_session.orgId, action, limit] : [_session.orgId, limit];
     const rows   = (await client.execute({ sql, args })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({
@@ -1419,8 +1667,9 @@ const server = http.createServer(async (req, res) => {
       const { action, entity_id, entity_label, rep, stage, score, letter_grade, details } = await readBody(req);
       if (!action) { res.writeHead(400); res.end('action required'); return; }
       await client.execute({
-        sql: 'INSERT INTO audit_log (action, entity_id, entity_label, rep, stage, score, letter_grade, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        sql: 'INSERT INTO audit_log (org_id, action, entity_id, entity_label, rep, stage, score, letter_grade, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         args: [
+          _session.orgId,
           String(action),
           entity_id    ? String(entity_id)    : null,
           entity_label ? String(entity_label) : null,
@@ -1439,11 +1688,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && req.url === '/api/audit/backfill') {
     try {
-      const prodRows = await client.execute('SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_prod ORDER BY ts ASC');
+      const prodRows = await client.execute({ sql: 'SELECT id, ts, call_date, prospect, rep, rep_role, stage, normalized_score, letter_grade, grade_label, top_priority FROM history_prod WHERE org_id = ? ORDER BY ts ASC', args: [_session.orgId] });
       const allRows = prodRows.rows.slice();
 
       // Get entity_ids already in audit_log (action='grade') to avoid duplicates
-      const existingRes = await client.execute("SELECT entity_id FROM audit_log WHERE action = 'grade'");
+      const existingRes = await client.execute({ sql: "SELECT entity_id FROM audit_log WHERE action = 'grade' AND org_id = ?", args: [_session.orgId] });
       const existingIds = new Set(existingRes.rows.map(r => String(r.entity_id)));
 
       const toInsert = allRows.filter(r => !existingIds.has(String(r.id)));
@@ -1458,8 +1707,9 @@ const server = http.createServer(async (req, res) => {
       for (let i = 0; i < toInsert.length; i += chunkSize) {
         const chunk = toInsert.slice(i, i + chunkSize);
         await client.batch(chunk.map(r => ({
-          sql: 'INSERT INTO audit_log (action, entity_id, entity_label, rep, stage, score, letter_grade, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          sql: 'INSERT INTO audit_log (org_id, action, entity_id, entity_label, rep, stage, score, letter_grade, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           args: [
+            _session.orgId,
             'grade',
             String(r.id),
             r.prospect  ? String(r.prospect)  : null,
@@ -1486,7 +1736,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── Account Profiles API ──────────────────────────────────
   if (req.method === 'GET' && req.url === '/api/account-profiles') {
-    const rows = (await client.execute('SELECT company, profile FROM account_profiles')).rows;
+    const rows = (await client.execute({ sql: 'SELECT company, profile FROM account_profiles WHERE org_id = ?', args: [_session.orgId] })).rows;
     const out = {};
     rows.forEach(r => {
       try { out[String(r.company)] = JSON.parse(String(r.profile)); } catch {}
@@ -1501,8 +1751,8 @@ const server = http.createServer(async (req, res) => {
       const company = decodeURIComponent(req.url.slice('/api/account-profiles/'.length));
       const body = await readBody(req);
       await client.execute({
-        sql: 'INSERT OR REPLACE INTO account_profiles (company, profile, updated_at) VALUES (?, ?, ?)',
-        args: [company, JSON.stringify(body), new Date().toISOString()],
+        sql: 'INSERT OR REPLACE INTO account_profiles (org_id, company, profile, updated_at) VALUES (?, ?, ?, ?)',
+        args: [_session.orgId, company, JSON.stringify(body), new Date().toISOString()],
       });
       res.writeHead(200); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
@@ -1512,9 +1762,10 @@ const server = http.createServer(async (req, res) => {
   // ── Transcripts API ────────────────────────────────────────
 
   if (req.method === 'GET' && req.url === '/api/transcripts') {
-    const rows = (await client.execute(
-      'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts ORDER BY saved_at DESC'
-    )).rows;
+    const rows = (await client.execute({
+      sql: 'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts WHERE org_id = ? ORDER BY saved_at DESC',
+      args: [_session.orgId],
+    })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(rows.map(r => ({
       id: String(r.id), label: String(r.label),
@@ -1531,9 +1782,9 @@ const server = http.createServer(async (req, res) => {
     try {
       const { id, label, prospect, stage, rep, call_date, transcript } = await readBody(req);
       await client.execute({
-        sql:  `INSERT OR REPLACE INTO transcripts (id,label,prospect,stage,rep,call_date,transcript,saved_at) VALUES (?,?,?,?,?,?,?,?)`,
+        sql:  `INSERT OR REPLACE INTO transcripts (id,label,prospect,stage,rep,call_date,transcript,saved_at,org_id) VALUES (?,?,?,?,?,?,?,?,?)`,
         args: [String(id), label || prospect || 'Untitled', prospect||null, stage||null,
-               rep||null, call_date||null, transcript, new Date().toISOString()],
+               rep||null, call_date||null, transcript, new Date().toISOString(), _session.orgId],
       });
       res.writeHead(201); res.end();
     } catch (e) { res.writeHead(400); res.end(e.message); }
@@ -1570,7 +1821,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && req.url.startsWith('/api/transcripts/')) {
     const id  = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
-    const row = (await client.execute({ sql: 'SELECT * FROM transcripts WHERE id = ?', args: [id] })).rows[0];
+    const row = (await client.execute({ sql: 'SELECT * FROM transcripts WHERE id = ? AND org_id = ?', args: [id, _session.orgId] })).rows[0];
     if (!row) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -1587,7 +1838,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'DELETE' && req.url.startsWith('/api/transcripts/')) {
     const id = decodeURIComponent(req.url.slice('/api/transcripts/'.length));
-    await client.execute({ sql: 'DELETE FROM transcripts WHERE id = ?', args: [id] });
+    await client.execute({ sql: 'DELETE FROM transcripts WHERE id = ? AND org_id = ?', args: [id, _session.orgId] });
     res.writeHead(200); res.end();
     return;
   }
