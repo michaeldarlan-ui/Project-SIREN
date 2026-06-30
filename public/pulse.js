@@ -1262,24 +1262,33 @@
     const fmt = d => d ? new Date(d + 'T00:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
     const gradeColor = g => {
-      if (!g) return '#aaa';
-      if (g.startsWith('A')) return '#22c55e';
-      if (g.startsWith('B')) return '#86efac';
-      if (g.startsWith('C')) return '#f59e0b';
-      return '#ef4444';
+      if (!g) return 'rgba(255,255,255,.3)';
+      if (g.startsWith('A')) return '#f59e0b';
+      if (g.startsWith('B')) return '#22c55e';
+      if (g.startsWith('C')) return '#f97316';
+      if (g.startsWith('D')) return '#ef4444';
+      return '#dc2626';
+    };
+    const gradeBg = g => {
+      if (!g) return 'rgba(255,255,255,.04)';
+      if (g.startsWith('A')) return 'rgba(245,158,11,.12)';
+      if (g.startsWith('B')) return 'rgba(34,197,94,.12)';
+      if (g.startsWith('C')) return 'rgba(249,115,22,.12)';
+      return 'rgba(239,68,68,.12)';
     };
 
     const callRows = calls.map(c => {
       const score = c.normalized_score || c.total || 0;
       const gc = gradeColor(c.letter_grade);
+      const gb = gradeBg(c.letter_grade);
       return `<tr>
-        <td>${esc(c.callDate || c.ts.slice(0, 10))}</td>
-        <td>${esc(c.stage || '—')}</td>
-        <td>${esc(c.rep || '—')}</td>
-        <td style="color:${gc};font-weight:700;">${esc(c.letter_grade || '—')}</td>
-        <td style="color:${gc};">${score}</td>
-        <td>${esc(c.top_strength || '—')}</td>
-        <td>${esc(c.top_priority || '—')}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(161,161,170,.7);">${esc(c.callDate || c.ts.slice(0, 10))}</td>
+        <td style="color:rgba(250,250,250,.7);">${esc(c.stage || '—')}</td>
+        <td style="color:rgba(250,250,250,.6);">${esc(c.rep || '—')}</td>
+        <td><span class="grade-cell" style="background:${gb};color:${gc};border:1px solid ${gc}33;">${esc(c.letter_grade || '—')}</span></td>
+        <td style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${gc};">${score}</td>
+        <td style="color:rgba(250,250,250,.75);">${esc(c.top_strength || '—')}</td>
+        <td style="color:rgba(250,250,250,.55);">${esc(c.top_priority || '—')}</td>
       </tr>`;
     }).join('');
 
@@ -1318,82 +1327,136 @@
 
     const reportDate = new Date().toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
 
+    const latestGradeColor = gradeColor(latest.letter_grade);
+    const latestGradeBg    = gradeBg(latest.letter_grade);
+    const latestScore      = latest.normalized_score || latest.total || 0;
+
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SIREN Deal Report — ${esc(company)}</title>
+<title>SIREN · VIGIL Report — ${esc(company)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:#040f14;color:#d4e8f0;font-family:'Inter',sans-serif;font-size:13px;line-height:1.6;padding:40px 48px;}
-  h1{font-size:22px;font-weight:700;letter-spacing:.06em;color:#fff;margin-bottom:4px;}
-  h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:#00c8ff;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(0,200,255,.2);}
-  h3{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.6);margin:16px 0 6px;}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(0,200,255,.2);}
-  .company{font-size:26px;font-weight:700;color:#00c8ff;letter-spacing:.04em;}
-  .meta{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;}
-  .grade-badge{text-align:right;}
-  .grade-letter{font-size:56px;font-weight:800;line-height:1;color:${gradeColor(latest.letter_grade)};}
-  .grade-score{font-size:14px;color:rgba(255,255,255,.5);margin-top:4px;}
+  body{background:#09090b;color:rgba(250,250,250,.88);font-family:'Outfit',system-ui,sans-serif;font-size:13px;line-height:1.65;padding:40px 48px;}
+
+  /* ── Top bar ── */
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid rgba(245,158,11,.18);}
+  .brand{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.22em;color:rgba(245,158,11,.55);text-transform:uppercase;}
+  .report-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.15em;color:rgba(245,158,11,.35);text-transform:uppercase;}
+
+  /* ── Header card ── */
+  .header-card{background:#111113;border:1px solid rgba(245,158,11,.18);border-radius:10px;padding:24px 28px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;}
+  .company{font-size:24px;font-weight:800;color:rgba(250,250,250,.95);letter-spacing:.02em;margin-bottom:6px;}
+  .meta-row{font-size:11px;color:rgba(161,161,170,.8);margin-top:3px;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;}
+  .meta-row span{color:rgba(245,158,11,.55);margin:0 6px;}
+
+  /* ── Grade badge ── */
+  .grade-badge{text-align:center;background:${latestGradeBg};border:2px solid ${latestGradeColor};border-radius:10px;padding:14px 22px;min-width:90px;flex-shrink:0;}
+  .grade-letter{font-size:48px;font-weight:800;line-height:1;color:${latestGradeColor};font-family:'JetBrains Mono',monospace;}
+  .grade-score{font-size:11px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.4);margin-top:6px;letter-spacing:.05em;}
+
+  /* ── Section headers ── */
+  h2{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:rgba(245,158,11,.65);margin:28px 0 10px;padding-bottom:7px;border-bottom:1px solid rgba(245,158,11,.15);}
+  h3{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(245,158,11,.4);margin:14px 0 6px;}
+
+  /* ── Tables ── */
   table{width:100%;border-collapse:collapse;margin-bottom:4px;}
-  th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(0,200,255,.5);text-align:left;padding:6px 8px;border-bottom:1px solid rgba(0,200,255,.15);}
-  td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;}
+  th{font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(245,158,11,.45);text-align:left;padding:7px 10px;border-bottom:1px solid rgba(245,158,11,.12);background:rgba(245,158,11,.04);}
+  td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top;font-size:12px;}
   tr:last-child td{border-bottom:none;}
-  .scope-tbl td:first-child{color:rgba(255,255,255,.4);font-size:11px;width:45%;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .scope-tbl td:first-child{color:rgba(161,161,170,.65);font-size:11px;width:42%;font-family:'JetBrains Mono',monospace;font-size:10px;}
   .sk{white-space:nowrap;}
+
+  /* ── Grade cell pill ── */
+  .grade-cell{display:inline-block;padding:2px 8px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;}
+
+  /* ── Lists ── */
   ul{list-style:none;padding:0;}
-  li{padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;}
+  li{padding:6px 0 6px 14px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px;position:relative;color:rgba(250,250,250,.8);}
+  li::before{content:'›';position:absolute;left:0;color:rgba(245,158,11,.5);}
   li:last-child{border-bottom:none;}
-  .src{font-size:10px;color:rgba(0,200,255,.5);margin-left:8px;}
-  .team-chip{display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);color:#00c8ff;font-size:11px;margin:3px 4px 3px 0;}
+  .src{font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(245,158,11,.4);margin-left:8px;}
+
+  /* ── Team chips ── */
+  .team-chip{display:inline-block;padding:3px 12px;border-radius:20px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);color:rgba(245,158,11,.8);font-size:11px;font-family:'JetBrains Mono',monospace;margin:3px 4px 3px 0;letter-spacing:.03em;}
+
+  /* ── Layout ── */
   .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
-  .save-btn{position:fixed;top:20px;right:20px;background:#00c8ff;color:#040f14;border:none;border-radius:6px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;}
-  .save-btn:hover{background:#33d4ff;}
-  @media print{.save-btn{display:none;}body{padding:20px 28px;}@page{margin:10mm;}}
+  .section-card{background:#111113;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:16px 18px;margin-bottom:4px;}
+
+  /* ── Print button ── */
+  .save-btn{position:fixed;top:20px;right:20px;background:#f59e0b;color:#09090b;border:none;border-radius:6px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.06em;font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
+  .save-btn:hover{background:#fbbf24;}
+
+  /* ── Score bar ── */
+  .score-bar-wrap{height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-top:8px;}
+  .score-bar-fill{height:4px;border-radius:2px;}
+
+  @media print{
+    .save-btn{display:none;}
+    body{padding:20px 28px;background:#09090b !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @page{margin:10mm;size:A4;}
+  }
 </style>
 </head>
 <body>
-<button class="save-btn" onclick="window.print()">Save as PDF</button>
-<div class="header">
-  <div>
-    <div style="font-size:9px;font-weight:700;letter-spacing:.18em;color:rgba(0,200,255,.5);text-transform:uppercase;margin-bottom:8px;">SIREN · Deal Status Report</div>
+<button class="save-btn" onclick="window.print()">⬇ Save PDF</button>
+
+<div class="topbar">
+  <div class="brand">SIREN</div>
+  <div class="report-label">VIGIL · Account Status Report</div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(161,161,170,.4);">${esc(reportDate)}</div>
+</div>
+
+<div class="header-card">
+  <div style="flex:1;">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.15em;color:rgba(245,158,11,.4);text-transform:uppercase;margin-bottom:10px;">Account Intelligence</div>
     <div class="company">${esc(company)}</div>
-    <div class="meta">Stage: ${esc(latest.stage || '—')} &nbsp;·&nbsp; Last call: ${fmt(latest.callDate || latest.ts.slice(0, 10))} &nbsp;·&nbsp; Rep: ${esc(latest.rep || '—')}</div>
-    <div class="meta">Generated: ${esc(reportDate)} &nbsp;·&nbsp; ${calls.length} call${calls.length !== 1 ? 's' : ''} on record</div>
+    <div class="meta-row" style="margin-top:10px;">Stage<span>·</span>${esc(latest.stage || '—')}</div>
+    <div class="meta-row">Last call<span>·</span>${fmt(latest.callDate || latest.ts.slice(0, 10))}</div>
+    <div class="meta-row">Rep<span>·</span>${esc(latest.rep || '—')}</div>
+    <div class="meta-row">${calls.length} call${calls.length !== 1 ? 's' : ''} on record</div>
+    <div style="margin-top:14px;">
+      <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${latestScore}%;background:${latestGradeColor};"></div></div>
+    </div>
   </div>
   <div class="grade-badge">
     <div class="grade-letter">${esc(latest.letter_grade || '—')}</div>
-    <div class="grade-score">${latest.normalized_score || latest.total || 0} / 100</div>
+    <div class="grade-score">${latestScore} / 100</div>
   </div>
 </div>
 
 <h2>Call History</h2>
+<div class="section-card" style="padding:0;overflow:hidden;">
 <table>
   <thead><tr><th>Date</th><th>Stage</th><th>Rep</th><th>Grade</th><th>Score</th><th>Top Strength</th><th>Top Gap</th></tr></thead>
   <tbody>${callRows}</tbody>
 </table>
+</div>
 
 <h2>Next Steps &amp; Action Items</h2>
 <div class="two-col">
-  <div>
-    <h3>Open (${openTasks.length})</h3>
+  <div class="section-card">
+    <h3 style="margin-top:0;">Open (${openTasks.length})</h3>
     <ul>${stepRows(openTasks, false)}</ul>
   </div>
-  <div>
-    <h3>Completed (${doneTasks.length})</h3>
+  <div class="section-card">
+    <h3 style="margin-top:0;">Completed (${doneTasks.length})</h3>
     <ul>${stepRows(doneTasks, true)}</ul>
   </div>
 </div>
 
-${nextStepsHtml ? `<h2>Agreed Next Steps (Latest Call)</h2><ul>${nextStepsHtml}</ul>` : ''}
+${nextStepsHtml ? `<h2>Agreed Next Steps (Latest Call)</h2><div class="section-card"><ul>${nextStepsHtml}</ul></div>` : ''}
 
 <h2>Team</h2>
-<div>${teamHtml}</div>
+<div class="section-card">${teamHtml}</div>
 
-${scopeHtml ? `<h2>Scope Data</h2>${scopeHtml}` : ''}
+${scopeHtml ? `<h2>Scope Data</h2><div class="section-card">${scopeHtml}</div>` : ''}
 
-${latest.overview ? `<h2>Call Overview</h2><p style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.7;">${esc(latest.overview)}</p>` : ''}
+${latest.overview ? `<h2>Call Overview</h2><div class="section-card"><p style="font-size:12px;color:rgba(250,250,250,.7);line-height:1.75;">${esc(latest.overview)}</p></div>` : ''}
 </body>
 </html>`;
 
