@@ -1319,11 +1319,29 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     return 'F';
   }
 
+  // Looks up a specific rep's own personal grading level by name (set per-user by an admin),
+  // falling back to the org-level scale if the rep has no individual level on record.
+  function _repGradingLevel(repName) {
+    const orgLevel = window._sirenGradingLevel ?? 3;
+    const levels = window._sirenTeamGradingLevels || {};
+    if (!repName) return orgLevel;
+    const nm = repName.toLowerCase().trim();
+    let matchKey = Object.keys(levels).find(k => k.toLowerCase().trim() === nm);
+    if (!matchKey) {
+      // Fuzzy fallback: handles transcription name variants (e.g. "Andie" vs "Andie Prandini")
+      matchKey = Object.keys(levels).find(k => {
+        const kn = k.toLowerCase().trim();
+        const shorter = kn.split(' ').length <= nm.split(' ').length ? kn : nm;
+        const longer  = shorter === kn ? nm : kn;
+        return shorter.split(' ').every(w => w.length > 1 && longer.includes(w));
+      });
+    }
+    return matchKey ? levels[matchKey] : orgLevel;
+  }
+
   function normalizeResult(r, primaryRep) {
     // Overall call uses org-level grading scale
     const orgLevel  = window._sirenGradingLevel  ?? 3;
-    // Per-rep uses the current user's personal grading level
-    const repLevel  = window._sirenUserGradingLevel ?? orgLevel;
 
     // Overall call: stage-only ceiling
     const stageMax = Object.values(stageDimCeilings()).reduce((a, b) => a + b, 0);
@@ -1331,13 +1349,13 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     r.normalized_score = Math.min(100, Math.round((rawTotal / stageMax) * 100));
     r.letter_grade = scoreToGradePct(r.normalized_score, orgLevel);
 
-    // Per-rep: role+stage ceiling, resolved from team list by name
+    // Per-rep: role+stage ceiling, graded against that specific rep's own personal level
     if (Array.isArray(r.rep_scores)) {
       r.rep_scores.forEach(rs => {
         const roleMax = rs.role_max || Object.values(repDimMaxesByName(rs.name)).reduce((a, b) => a + b, 0);
         const repRaw = rs.total || 0;
         rs.normalized_score = Math.min(100, Math.round((repRaw / roleMax) * 100));
-        rs.letter_grade = scoreToGradePct(rs.normalized_score, repLevel);
+        rs.letter_grade = scoreToGradePct(rs.normalized_score, _repGradingLevel(rs.name));
       });
     }
   }
@@ -1485,9 +1503,8 @@ Set touched to true only if the rep meaningfully engaged with that component in 
       </div>` : '';
 
     const orgGradingLevel  = window._sirenGradingLevel  ?? 3;
-    const userGradingLevel = window._sirenUserGradingLevel ?? orgGradingLevel;
     const overallView = buildScoreView(r, overallMeta, 'overall', orgGradingLevel);
-    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`, userGradingLevel)).join('') : '';
+    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`, _repGradingLevel(rs.name))).join('') : '';
 
     const isColdCall = stageCtx.toLowerCase().includes('cold');
     const priorCalls = prospect
