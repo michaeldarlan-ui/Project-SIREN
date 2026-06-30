@@ -3,104 +3,228 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SIREN · Login</title>
+<title>SIREN · Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg:       #040f14;
-    --card:     #0a1a24;
-    --raised:   #0e2130;
-    --border:   rgba(0,200,255,.12);
-    --border-m: rgba(0,200,255,.22);
-    --cyan:     #00c8ff;
-    --text:     rgba(255,255,255,.85);
-    --muted:    rgba(255,255,255,.4);
-    --faint:    rgba(255,255,255,.18);
+    --bg:       #09090b;
+    --nav:      #0f0f11;
+    --card:     #111113;
+    --raised:   #18181b;
+    --amber:    #f59e0b;
+    --amber-90: rgba(245,158,11,.90);
+    --amber-70: rgba(245,158,11,.70);
+    --amber-50: rgba(245,158,11,.50);
+    --amber-20: rgba(245,158,11,.20);
+    --amber-12: rgba(245,158,11,.12);
+    --amber-08: rgba(245,158,11,.08);
+    --border:   rgba(255,255,255,.07);
+    --border-m: rgba(255,255,255,.12);
+    --text:     rgba(250,250,250,.90);
+    --muted:    rgba(161,161,170,.70);
+    --faint:    rgba(82,82,91,1);
     --error:    #ef4444;
+    --font:     'Outfit', system-ui, sans-serif;
+    --mono:     'JetBrains Mono', monospace;
   }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-  .wrap { width: 100%; max-width: 380px; padding: 24px; }
-  .logo { text-align: center; margin-bottom: 36px; }
-  .logo-mark { font-size: 11px; font-weight: 700; letter-spacing: .22em; color: var(--cyan); text-transform: uppercase; }
-  .logo-name { font-size: 32px; font-weight: 800; letter-spacing: .12em; color: #fff; line-height: 1; margin-top: 4px; }
-  .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: .06em; margin-top: 6px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px 28px 24px; }
-  h2 { font-size: 14px; font-weight: 700; letter-spacing: .06em; color: var(--text); margin-bottom: 20px; }
-  label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
-  input { width: 100%; background: var(--raised); border: 1px solid var(--border-m); border-radius: 6px; color: rgba(255,255,255,.9); padding: 9px 12px; font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
-  input:focus { border-color: var(--cyan); }
-  .field { margin-bottom: 16px; }
-  .field:last-of-type { margin-bottom: 20px; }
-  button.submit { width: 100%; background: var(--cyan); color: #040f14; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; cursor: pointer; transition: opacity .15s; }
-  button.submit:hover { opacity: .88; }
-  button.submit:disabled { opacity: .45; cursor: default; }
-  .error { color: var(--error); font-size: 12px; margin-top: 12px; min-height: 18px; text-align: center; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-  /* Force-change password panel */
+  /* ── Topbar (matches app) ── */
+  .topbar {
+    background: var(--nav);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    height: 52px;
+    flex-shrink: 0;
+  }
+  .topbar-logo {
+    width: 28px; height: 28px; border-radius: 5px;
+    background: var(--amber);
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 10px; flex-shrink: 0;
+  }
+  .topbar-logo svg { width: 16px; height: 16px; fill: none; stroke: #09090b; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .topbar-name { font-size: 15px; font-weight: 700; color: rgba(250,250,250,.92); letter-spacing: .04em; }
+  .topbar-sub  { font-size: 9px; font-weight: 400; color: var(--muted); letter-spacing: .04em; font-family: var(--mono); margin-top: 1px; }
+
+  /* ── Center content ── */
+  .center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+  }
+  .wrap { width: 100%; max-width: 360px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    color: var(--amber-70);
+    text-transform: uppercase;
+    font-family: var(--mono);
+    margin-bottom: 20px;
+  }
+
+  /* ── Fields ── */
+  .field { margin-bottom: 14px; }
+  .field:last-of-type { margin-bottom: 20px; }
+  label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  input {
+    width: 100%;
+    background: var(--raised);
+    border: 1px solid var(--border-m);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus { border-color: var(--amber-50); }
+
+  /* ── Submit button ── */
+  .btn {
+    width: 100%;
+    background: var(--amber);
+    color: #09090b;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font);
+    letter-spacing: .04em;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn:hover   { opacity: .88; }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── Error ── */
+  .err {
+    font-size: 12px;
+    color: var(--error);
+    margin-top: 10px;
+    min-height: 18px;
+    text-align: center;
+    font-family: var(--mono);
+  }
+
+  /* ── Change-password panel ── */
   #changePwd { display: none; }
   #changePwd.show { display: block; }
-  .back-link { font-size: 12px; color: var(--muted); cursor: pointer; margin-bottom: 16px; display: inline-block; }
-  .back-link:hover { color: var(--cyan); }
+  .back {
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--mono);
+    letter-spacing: .06em;
+    margin-bottom: 16px;
+    display: inline-block;
+  }
+  .back:hover { color: var(--amber); }
+  .hint {
+    font-size: 12px;
+    color: var(--faint);
+    line-height: 1.5;
+    margin-bottom: 18px;
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 12px;
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo">
-    <div class="logo-mark">OneAxiom</div>
-    <div class="logo-name">SIREN</div>
-    <div class="logo-sub">Sales Intelligence &amp; Rep Enablement Network</div>
-  </div>
 
-  <!-- Login form -->
-  <div class="card" id="loginCard">
-    <h2>Sign In</h2>
-    <div class="field">
-      <label for="usr">Username</label>
-      <input id="usr" type="text" autocomplete="username" autofocus>
-    </div>
-    <div class="field">
-      <label for="pwd">Password</label>
-      <input id="pwd" type="password" autocomplete="current-password">
-    </div>
-    <button class="submit" id="loginBtn" onclick="doLogin()">Sign In</button>
-    <div class="error" id="loginErr"></div>
+<div class="topbar">
+  <div class="topbar-logo">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
   </div>
+  <div>
+    <div class="topbar-name">SIREN</div>
+    <div class="topbar-sub">Sales Intelligence, Review &amp; Enablement Network</div>
+  </div>
+</div>
 
-  <!-- Force-change password panel -->
-  <div class="card" id="changePwd">
-    <span class="back-link" onclick="showLogin()">← Back</span>
-    <h2>Change Your Password</h2>
-    <p style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:18px;">You must set a new password before continuing.</p>
-    <div class="field">
-      <label for="curPwd">Current Password</label>
-      <input id="curPwd" type="password" autocomplete="current-password">
+<div class="center">
+  <div class="wrap">
+
+    <!-- Login -->
+    <div class="card" id="loginCard">
+      <div class="card-title">Sign In</div>
+      <div class="field">
+        <label for="usr">Username</label>
+        <input id="usr" type="text" autocomplete="username" autofocus>
+      </div>
+      <div class="field">
+        <label for="pwd">Password</label>
+        <input id="pwd" type="password" autocomplete="current-password">
+      </div>
+      <button class="btn" id="loginBtn" onclick="doLogin()">Sign In →</button>
+      <div class="err" id="loginErr"></div>
     </div>
-    <div class="field">
-      <label for="newPwd">New Password</label>
-      <input id="newPwd" type="password" autocomplete="new-password" placeholder="min. 8 characters">
+
+    <!-- Force change password -->
+    <div class="card" id="changePwd">
+      <span class="back" onclick="showLogin()">← Back to sign in</span>
+      <div class="card-title">Set New Password</div>
+      <div class="hint">Your password must be changed before you can access SIREN.</div>
+      <div class="field">
+        <label for="curPwd">Current Password</label>
+        <input id="curPwd" type="password" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label for="newPwd">New Password</label>
+        <input id="newPwd" type="password" autocomplete="new-password" placeholder="minimum 8 characters">
+      </div>
+      <div class="field">
+        <label for="confPwd">Confirm Password</label>
+        <input id="confPwd" type="password" autocomplete="new-password">
+      </div>
+      <button class="btn" id="changeBtn" onclick="doChangePassword()">Save Password →</button>
+      <div class="err" id="changeErr"></div>
     </div>
-    <div class="field">
-      <label for="confPwd">Confirm Password</label>
-      <input id="confPwd" type="password" autocomplete="new-password">
-    </div>
-    <button class="submit" id="changeBtn" onclick="doChangePassword()">Set Password</button>
-    <div class="error" id="changeErr"></div>
+
   </div>
 </div>
 
 <script>
-  let _pendingUsername = '';
-
   function showLogin() {
     document.getElementById('loginCard').style.display = '';
     document.getElementById('changePwd').classList.remove('show');
     document.getElementById('loginErr').textContent = '';
-  }
-
-  function showChangePwd() {
-    document.getElementById('loginCard').style.display = 'none';
-    document.getElementById('changePwd').classList.add('show');
-    document.getElementById('curPwd').focus();
   }
 
   async function doLogin() {
@@ -109,26 +233,22 @@
     const btn = document.getElementById('loginBtn');
     const err = document.getElementById('loginErr');
     err.textContent = '';
-    if (!username || !password) { err.textContent = 'Enter username and password.'; return; }
-    btn.disabled = true;
-    btn.textContent = 'Signing in…';
+    if (!username || !password) { err.textContent = 'Enter your username and password.'; return; }
+    btn.disabled = true; btn.textContent = 'Signing in…';
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const res  = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
       const data = await res.json();
       if (!res.ok) { err.textContent = data.error || 'Login failed.'; return; }
       if (data.mustChangePassword) {
-        _pendingUsername = username;
         document.getElementById('curPwd').value = password;
-        showChangePwd();
+        document.getElementById('loginCard').style.display = 'none';
+        document.getElementById('changePwd').classList.add('show');
+        document.getElementById('newPwd').focus();
       } else {
         window.location.href = '/';
       }
-    } catch { err.textContent = 'Network error. Try again.'; }
-    finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+    } catch { err.textContent = 'Network error — try again.'; }
+    finally { btn.disabled = false; btn.textContent = 'Sign In →'; }
   }
 
   async function doChangePassword() {
@@ -138,24 +258,18 @@
     const btn = document.getElementById('changeBtn');
     const err = document.getElementById('changeErr');
     err.textContent = '';
-    if (!newPwd || newPwd.length < 8) { err.textContent = 'Password must be at least 8 characters.'; return; }
-    if (newPwd !== confPwd) { err.textContent = 'Passwords do not match.'; return; }
-    btn.disabled = true;
-    btn.textContent = 'Saving…';
+    if (newPwd.length < 8)    { err.textContent = 'Password must be at least 8 characters.'; return; }
+    if (newPwd !== confPwd)   { err.textContent = 'Passwords do not match.'; return; }
+    btn.disabled = true; btn.textContent = 'Saving…';
     try {
-      const res = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: curPwd, newPassword: newPwd }),
-      });
+      const res  = await fetch('/api/auth/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: curPwd, newPassword: newPwd }) });
       const data = await res.json();
       if (!res.ok) { err.textContent = data.error || 'Failed to change password.'; return; }
       window.location.href = '/';
-    } catch { err.textContent = 'Network error. Try again.'; }
-    finally { btn.disabled = false; btn.textContent = 'Set Password'; }
+    } catch { err.textContent = 'Network error — try again.'; }
+    finally { btn.disabled = false; btn.textContent = 'Save Password →'; }
   }
 
-  // Enter key support
   ['usr','pwd'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
   ['curPwd','newPwd','confPwd'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doChangePassword(); }));
 </script>
