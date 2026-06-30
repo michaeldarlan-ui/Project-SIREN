@@ -912,6 +912,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
           Auto-recognized: ${known.map(k => `<strong>${escHtml(k.name)}</strong> (${escHtml(k.role || '')}${k.organization ? ', ' + escHtml(k.organization) : ''})`).join(', ')}
         </div>` : '';
       const storedParties = Object.values(_thirdPartiesCache);
+      const team = loadTeam();
       list.innerHTML = knownHtml + newUnknowns.map(u => {
         const sid = CSS.escape(u.name);
         const matchOpts = storedParties.length
@@ -919,10 +920,19 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
             storedParties.map(p => `<option value="${escHtml(p.name)}">${escHtml(p.name)}${p.organization ? ' ('+escHtml(p.organization)+')' : ''}</option>`).join('')
           : null;
         const matchRow = matchOpts
-          ? `<div class="tp-match-row">
+          ? `<div class="tp-match-row" id="tp-match-row-${sid}">
                <label class="tp-match-label">Match to existing:</label>
                <select class="tp-match-select" id="tp-match-${sid}" onchange="tpMatchChanged(${JSON.stringify(u.name)})">
                  ${matchOpts}
+               </select>
+             </div>`
+          : '';
+        const repRow = team.length
+          ? `<div class="tp-match-row">
+               <label class="tp-match-label">Map to rep:</label>
+               <select class="tp-rep-select" id="tp-rep-${sid}" onchange="tpRepMapChanged(${JSON.stringify(u.name)})">
+                 <option value="">— not a rep —</option>
+                 ${team.map(m => `<option value="${escHtml(m.name)}">${escHtml(m.name)}${m.role ? ' — ' + escHtml(m.role) : ''}</option>`).join('')}
                </select>
              </div>`
           : '';
@@ -933,6 +943,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
             <span class="tp-person-clue">${escHtml(u.clue || '')}</span>
           </div>
           <div class="tp-person-right">
+            ${repRow}
             ${matchRow}
             <div class="tp-person-inputs" id="tp-inputs-${sid}">
               <input class="tp-person-input" id="tp-role-${sid}"
@@ -943,7 +954,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
                 autocomplete="off">
             </div>
             <div class="tp-match-preview" id="tp-preview-${sid}" style="display:none;"></div>
-            <button type="button" class="tp-dismiss-btn" onclick="tpDismiss(${JSON.stringify(u.name)})" title="This speaker is actually the customer or one of your reps, not a third party" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:11px;text-decoration:underline;cursor:pointer;padding:2px 0;margin-top:4px;">Not a third party — this is the customer/rep</button>
+            <button type="button" class="tp-dismiss-btn" onclick="tpDismiss(${JSON.stringify(u.name)})" title="This speaker is actually the customer, not a rep or third party" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:11px;text-decoration:underline;cursor:pointer;padding:2px 0;margin-top:4px;">Not a third party — this is the customer</button>
           </div>
         </div>`;
       }).join('');
@@ -963,13 +974,40 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
     if (el) el.remove();
   };
 
+  // When a generic-labeled speaker is manually mapped to a known rep, this person is no
+  // longer a third party at all — hide the role/org and "match to existing" controls since
+  // they no longer apply.
+  window.tpRepMapChanged = function(name) {
+    const sid = CSS.escape(name);
+    const repSel = document.getElementById('tp-rep-' + sid);
+    const inputs = document.getElementById('tp-inputs-' + sid);
+    const matchRow = document.getElementById('tp-match-row-' + sid);
+    const isRep = !!(repSel && repSel.value);
+    if (inputs) inputs.style.display = isRep ? 'none' : '';
+    if (matchRow) matchRow.style.display = isRep ? 'none' : '';
+    const inp = document.getElementById('tp-role-' + sid);
+    if (inp) inp.classList.remove('tp-input-error');
+  };
+
   function confirmThirdParty() {
     const panel = document.getElementById('thirdPartyPanel');
     const entries = {};
+    const repMap = {};
     let allFilled = true;
 
     panel.querySelectorAll('.tp-person').forEach(personEl => {
       const sid = personEl.id.replace('tp-person-wrap-', '');
+      const repSel = personEl.querySelector('.tp-rep-select');
+      const mappedRep = repSel ? repSel.value.trim() : '';
+
+      if (mappedRep) {
+        // User confirmed this generic-labeled speaker is actually a known rep —
+        // not a third party at all, so it's excluded from entries entirely.
+        const originalName = personEl.querySelector('.tp-person-name')?.textContent || sid;
+        repMap[originalName] = mappedRep;
+        return;
+      }
+
       const sel = personEl.querySelector('.tp-match-select');
       const matched = sel ? _thirdPartiesCache[(sel.value || '').toLowerCase()] : null;
 
@@ -998,7 +1036,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
 
     panel.style.display = 'none';
     document.getElementById('inputCard').style.display = 'block';
-    if (_thirdPartyResolve) { _thirdPartyResolve(entries); _thirdPartyResolve = null; }
+    if (_thirdPartyResolve) { _thirdPartyResolve({ entries, repMap }); _thirdPartyResolve = null; }
   }
 
   function cancelThirdParty() {
@@ -1117,19 +1155,22 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
     if (preBar)  preBar.style.width = '100%';
 
     let userEntries = {};
+    let userRepMap = {};
     if (newUnknowns.length) {
       // Hide loading while user fills in the prompt
       loadEl.style.display = 'none';
       stopRadar();
       document.getElementById('submitBtn').disabled = false;
-      userEntries = await showThirdPartyPrompt(newUnknowns, known);
-      if (!userEntries) {
+      const tpResult = await showThirdPartyPrompt(newUnknowns, known);
+      if (!tpResult) {
         // User cancelled — reset pre-scan step for next attempt
         if (preStep) preStep.classList.remove('visible', 'active', 'done');
         if (preIcon) preIcon.textContent = '○';
         if (preBar)  preBar.style.width = '0%';
         return;
       }
+      userEntries = tpResult.entries || {};
+      userRepMap  = tpResult.repMap  || {};
       document.getElementById('submitBtn').disabled = true;
     }
 
@@ -1138,6 +1179,11 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
       ...known.map(k => ({ name: k.name, role: k.role || '', organization: k.organization || '' })),
       ...Object.entries(userEntries).map(([name, f]) => ({ name, role: f.role, organization: f.organization || '' })),
     ];
+
+    // Speaker labels manually confirmed to be known reps (e.g. "Speaker 3" = Michael Darlan)
+    const repMapContext = Object.keys(userRepMap).length
+      ? `\n\nCONFIRMED SPEAKER MAPPING (ground truth — not a guess): ${Object.entries(userRepMap).map(([label, name]) => `"${label}" = ${name}`).join(', ')}. Treat every instance of these generic labels as the named rep throughout your analysis, including rep_scores.`
+      : '';
 
     const thirdPartyContext = _buildThirdPartyContext(allThirdParties);
 
@@ -1156,7 +1202,7 @@ Use this grading scale when assigning letter_grade. Grades are based on percenta
 A+: 97–100% | A: 93–96% | A-: 90–92% | B+: 87–89% | B: 83–86% | B-: 80–82% | C+: 77–79% | C: 73–76% | C-: 70–72% | D+: 67–69% | D: 63–66% | D-: 60–62% | F: below 60%
 Overall call max (stage ceiling, 7 dimensions): ${Object.values(stageDimCeilings()).reduce((a,b)=>a+b,0)} pts. Primary rep ceiling (role+stage): ${Object.values(combinedDimMaxes(rep)).reduce((a,b)=>a+b,0)} pts.
 
-Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.
+Speaker resolution: Some transcripts label speakers generically ("Speaker 1", "Speaker 2", etc.) instead of by name. Before grading, resolve each generic label to a real person using all available context — the Participants section at the top of the transcript, self-introductions in the conversation (e.g. "This is Ryan with..."), names used when addressing someone directly, role-specific language, and the known team and contact information provided below. Apply the resolved names consistently throughout your entire analysis, including rep_scores.${repMapContext}
 
 Transcription errors — name mismatches: AI transcription software frequently mishears or misrecords spoken names. If the transcript shows a rep introducing themselves with a name that does not match any known team member, assume it is a transcription error — do NOT flag it as a missed opportunity, professionalism issue, or coaching point. Cross-reference the known sales team roster provided. If the spoken name is phonetically similar to a known team member's name, or if context otherwise identifies the speaker as a known rep, treat the introduction as correct and move on. Never penalize a rep for a name the transcript recorded incorrectly.
 

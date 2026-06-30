@@ -323,6 +323,11 @@
     border-radius: 6px; color: var(--siren-cyan-90); font-size: 12px; padding: 5px 8px; cursor: pointer;
   }
   .tp-match-select:focus { outline: none; border-color: var(--siren-cyan-70); }
+  .tp-rep-select {
+    flex: 1; background: var(--siren-bg-card-raised); border: 1px solid rgba(245,158,11,.4);
+    border-radius: 6px; color: #f59e0b; font-size: 12px; padding: 5px 8px; cursor: pointer;
+  }
+  .tp-rep-select:focus { outline: none; border-color: rgba(245,158,11,.7); }
   .tp-match-preview { display: flex; align-items: center; gap: 6px; }
   .tp-match-chip {
     display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
