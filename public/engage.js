@@ -1332,13 +1332,27 @@ Set touched to true only if the rep meaningfully engaged with that component in 
     </div>`;
   }
 
-  function buildScoreView(viewData, metaLine, viewId) {
+  function _gradingScaleBadge(level) {
+    const presets = window.GRADING_PRESETS || [];
+    const preset  = presets.find(p => p.level === level) || presets[2];
+    if (!preset) return '';
+    const colors = ['','rgba(34,197,94,.25)','rgba(245,158,11,.25)','rgba(99,102,241,.25)','rgba(239,68,68,.25)'];
+    const textColors = ['','rgba(34,197,94,.9)','rgba(245,158,11,.9)','rgba(149,152,255,.9)','rgba(239,68,68,.9)'];
+    const bg   = colors[preset.level]   || 'rgba(255,255,255,.1)';
+    const col  = textColors[preset.level] || 'rgba(255,255,255,.6)';
+    return `<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;background:${bg};color:${col};font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;">Grading scale: L${preset.level} ${preset.label}</span>`;
+  }
+
+  function buildScoreView(viewData, metaLine, viewId, gradingLevel) {
     const bg = getBannerColor(viewData.letter_grade);
+    const lvl = gradingLevel ?? window._sirenUserGradingLevel ?? window._sirenGradingLevel ?? 3;
+    const scaleBadge = _gradingScaleBadge(lvl);
     return `<div class="score-view ${viewId === 'overall' ? 'active' : ''}" id="score-view-${viewId}">
       <div class="banner" style="background:${bg};">
         <div>
           <div class="banner-grade">${escHtml(viewData.letter_grade)} &nbsp; ${viewData.normalized_score ?? viewData.total}</div>
           <div class="banner-label">${escHtml(viewData.grade_label || '')}</div>
+          ${scaleBadge}
           ${metaLine ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:5px;">${metaLine}</div>` : ''}
         </div>
         <div class="banner-right">
@@ -1425,8 +1439,10 @@ Set touched to true only if the rep meaningfully engaged with that component in 
         ${repScores.map((rs, i) => `<button class="rep-toggle-btn" id="toggle-rep-${i}" onclick="switchScoreView('rep-${i}',event)">${escHtml(rs.name)}</button>`).join('')}
       </div>` : '';
 
-    const overallView = buildScoreView(r, overallMeta, 'overall');
-    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`)).join('') : '';
+    const orgGradingLevel  = window._sirenGradingLevel  ?? 3;
+    const userGradingLevel = window._sirenUserGradingLevel ?? orgGradingLevel;
+    const overallView = buildScoreView(r, overallMeta, 'overall', orgGradingLevel);
+    const repViews = showToggle ? repScores.map((rs, i) => buildScoreView(rs, escHtml(rs.name) + (stageCtx ? ' · ' + stageCtx : ''), `rep-${i}`, userGradingLevel)).join('') : '';
 
     const isColdCall = stageCtx.toLowerCase().includes('cold');
     const priorCalls = prospect
