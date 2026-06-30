@@ -124,6 +124,7 @@
   @media (max-width: 900px) {
     .nav-hamburger { display: flex; }
     .topbar-siren-sub { display: none; }
+    .topbar-settings { display: none; }
     .nav-tabs {
       display: none;
       position: absolute; top: 52px; left: 0; right: 0; z-index: 200;
@@ -143,7 +144,7 @@
     .nav-tab:last-child { border-bottom: none; }
     .nav-tab.active {
       border-bottom-color: rgba(255,255,255,.05);
-      border-left-color: var(--siren-cyan);
+      border-left-color: var(--siren-amber);
       color: #fff;
       background: rgba(255,255,255,.03);
     }
@@ -174,6 +175,29 @@
   .settings-item:last-child { border-bottom: none; }
   .settings-item:hover { background: var(--siren-bg-card-raised); }
   .settings-item svg { width: 15px; height: 15px; fill: none; stroke: var(--siren-text-muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .settings-item--danger { color: rgba(239,68,68,.8); }
+  .settings-item--danger svg { stroke: rgba(239,68,68,.6); }
+  .settings-item--danger:hover { background: rgba(239,68,68,.06); }
+
+  /* ── Mobile nav footer (hidden on wide screens) ── */
+  .mobile-nav-footer { display: none; }
+  @media (max-width: 900px) {
+    .mobile-nav-footer { display: block; }
+    .mobile-nav-divider { height: 1px; background: rgba(255,255,255,.08); margin: 4px 0; }
+    .mobile-nav-action {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; height: 46px; padding: 0 20px;
+      background: none; border: none; border-bottom: 1px solid rgba(255,255,255,.05);
+      color: rgba(250,250,250,.7); font-family: var(--siren-font-hud);
+      font-size: 11px; letter-spacing: .08em; cursor: pointer; text-align: left;
+    }
+    .mobile-nav-action:last-child { border-bottom: none; }
+    .mobile-nav-action:hover { background: rgba(255,255,255,.04); }
+    .mobile-nav-action svg { width: 15px; height: 15px; fill: none; stroke: rgba(255,255,255,.4); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .mobile-nav-action--danger { color: rgba(239,68,68,.75); }
+    .mobile-nav-action--danger svg { stroke: rgba(239,68,68,.5); }
+    .mobile-nav-action--danger:hover { background: rgba(239,68,68,.06); }
+  }
 
   /* ── Page shell ── */
   .page { display: none; padding: 2rem 1.5rem 3rem; min-height: calc(100vh - 52px); }

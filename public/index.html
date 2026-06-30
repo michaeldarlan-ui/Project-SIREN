@@ -22,9 +22,6 @@
       <span class="topbar-siren-sub">Sales Intelligence, Review &amp; Enablement Network</span>
     </div>
   </div>
-  <button class="nav-hamburger" id="navHamburger" onclick="toggleMobileNav(event)" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
   <nav class="nav-tabs" id="navTabs">
     <button class="nav-tab active" onclick="navTo('pulse')">PULSE</button>
     <button class="nav-tab" onclick="navTo('vigil')">VIGIL</button>
@@ -35,6 +32,18 @@
     <button class="nav-tab" onclick="navTo('coach')">COACH</button>
     <button class="nav-tab" onclick="navTo('usage')">USAGE</button>
     <button class="nav-tab" onclick="navTo('dash')">DASH</button>
+    <!-- Mobile-only footer items (hidden on wide screens) -->
+    <div class="mobile-nav-footer">
+      <div class="mobile-nav-divider"></div>
+      <button class="mobile-nav-action" onclick="authChangePwdOpen();closeMobileNav()">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Change Password
+      </button>
+      <button class="mobile-nav-action mobile-nav-action--danger" onclick="authLogout()">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
+    </div>
   </nav>
   <div class="topbar-settings" id="settingsMenu">
     <button class="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
@@ -84,36 +93,46 @@
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Users
       </button>
+      <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0;"></div>
+      <button class="settings-item" onclick="authChangePwdOpen();closeSettingsMenu()">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Change Password
+      </button>
+      <button class="settings-item settings-item--danger" onclick="authLogout()">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
     </div>
   </div>
   <div id="userPill" style="display:none;align-items:center;gap:10px;margin-left:12px;">
-    <div id="userPillName" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(0,200,255,.7);text-transform:uppercase;"></div>
-    <button onclick="authChangePwdOpen()" style="background:none;border:1px solid rgba(0,200,255,.2);border-radius:4px;padding:3px 8px;font-size:10px;color:rgba(255,255,255,.4);cursor:pointer;letter-spacing:.04em;" title="Change password">⚿</button>
-    <button onclick="authLogout()" style="background:none;border:1px solid rgba(255,100,100,.2);border-radius:4px;padding:3px 8px;font-size:10px;color:rgba(255,100,100,.5);cursor:pointer;letter-spacing:.04em;" title="Sign out">Sign out</button>
+    <div id="userPillName" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(245,158,11,.7);text-transform:uppercase;font-family:'JetBrains Mono',monospace;"></div>
   </div>
+  <button class="nav-hamburger" id="navHamburger" onclick="toggleMobileNav(event)" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </div>
 
 <!-- Change Password Modal -->
 <div id="changePwdModal" onclick="if(event.target===this)authChangePwdClose()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
-  <div style="background:#0a1a24;border:1px solid rgba(0,200,255,.18);border-radius:10px;width:min(380px,94vw);padding:28px;">
+  <div style="background:#111113;border:1px solid rgba(245,158,11,.18);border-radius:10px;width:min(380px,94vw);padding:28px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div style="font-size:13px;font-weight:700;letter-spacing:.06em;color:rgba(0,200,255,.8);">CHANGE PASSWORD</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;color:rgba(245,158,11,.7);text-transform:uppercase;font-family:'JetBrains Mono',monospace;">Change Password</div>
       <button onclick="authChangePwdClose()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="margin-bottom:14px;">
-      <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:5px;">Current Password</label>
-      <input id="cpCurPwd" type="password" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:6px;color:rgba(255,255,255,.9);padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+      <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(161,161,170,.7);text-transform:uppercase;margin-bottom:5px;">Current Password</label>
+      <input id="cpCurPwd" type="password" style="width:100%;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:5px;color:rgba(250,250,250,.9);padding:9px 12px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(245,158,11,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
     </div>
     <div style="margin-bottom:14px;">
-      <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:5px;">New Password</label>
-      <input id="cpNewPwd" type="password" placeholder="min. 8 characters" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:6px;color:rgba(255,255,255,.9);padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+      <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(161,161,170,.7);text-transform:uppercase;margin-bottom:5px;">New Password</label>
+      <input id="cpNewPwd" type="password" placeholder="min. 8 characters" style="width:100%;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:5px;color:rgba(250,250,250,.9);padding:9px 12px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(245,158,11,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
     </div>
     <div style="margin-bottom:20px;">
-      <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:5px;">Confirm Password</label>
-      <input id="cpConfPwd" type="password" style="width:100%;background:#0e2130;border:1px solid rgba(0,200,255,.2);border-radius:6px;color:rgba(255,255,255,.9);padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+      <label style="display:block;font-size:10px;font-weight:600;letter-spacing:.1em;color:rgba(161,161,170,.7);text-transform:uppercase;margin-bottom:5px;">Confirm Password</label>
+      <input id="cpConfPwd" type="password" style="width:100%;background:#18181b;border:1px solid rgba(255,255,255,.12);border-radius:5px;color:rgba(250,250,250,.9);padding:9px 12px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(245,158,11,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
     </div>
-    <button onclick="authDoChangePassword()" style="width:100%;background:#00c8ff;color:#040f14;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;">Save Password</button>
-    <div id="cpErr" style="color:#ef4444;font-size:12px;margin-top:10px;min-height:18px;text-align:center;"></div>
+    <button onclick="authDoChangePassword()" style="width:100%;background:#f59e0b;color:#09090b;border:none;border-radius:5px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">Save Password →</button>
+    <div id="cpErr" style="color:#ef4444;font-size:12px;margin-top:10px;min-height:18px;text-align:center;font-family:'JetBrains Mono',monospace;"></div>
   </div>
 </div>
 
