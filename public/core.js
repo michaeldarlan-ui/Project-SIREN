@@ -62,13 +62,13 @@
     closeMobileNav();
     window.scrollTo(0, 0);
     if (page === 'grader')    typeof renderSavedTranscripts === 'function' && renderSavedTranscripts();
-    if (page === 'pulse')     requestAnimationFrame(() => renderPulse());
+    if (page === 'pulse')     renderPulse();
     if (page === 'history')   renderHistory();
     if (page === 'lifecycle') renderLifecyclePage();
     if (page === 'scope')     renderScopePage();
     if (page === 'forge')     forgeInit();
     if (page === 'vigil')       pulseRenderFeed();
-    if (page === 'coach')       requestAnimationFrame(() => coachInit());
+    if (page === 'coach')       coachInit();
     if (page === 'usage')       renderUsagePage();
     if (page === 'dash')        typeof dashInit === 'function' && dashInit();
     if (page === 'settings')    { rdmRender(); typeof renderGradingDifficultyUI === 'function' && renderGradingDifficultyUI(); }
