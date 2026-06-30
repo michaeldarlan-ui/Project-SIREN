@@ -371,14 +371,22 @@ await client.batch([
     if (!sCols.includes('assumed_user_id')) await client.execute('ALTER TABLE sessions ADD COLUMN assumed_user_id TEXT');
   }
 
-  // Add org_id / display_name / sales_role / email to users if missing
+  // Add org_id / display_name / sales_role / email / last_login_at to users if missing
   if (tables.includes('users')) {
     const uCols = (await client.execute('PRAGMA table_info(users)')).rows.map(r => String(r.name));
-    if (!uCols.includes('org_id'))       await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
-    if (!uCols.includes('display_name')) await client.execute('ALTER TABLE users ADD COLUMN display_name TEXT');
-    if (!uCols.includes('sales_role'))   await client.execute('ALTER TABLE users ADD COLUMN sales_role TEXT');
-    if (!uCols.includes('email'))        await client.execute('ALTER TABLE users ADD COLUMN email TEXT');
+    if (!uCols.includes('org_id'))         await client.execute('ALTER TABLE users ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
+    if (!uCols.includes('display_name'))   await client.execute('ALTER TABLE users ADD COLUMN display_name TEXT');
+    if (!uCols.includes('sales_role'))     await client.execute('ALTER TABLE users ADD COLUMN sales_role TEXT');
+    if (!uCols.includes('email'))          await client.execute('ALTER TABLE users ADD COLUMN email TEXT');
+    if (!uCols.includes('last_login_at'))  await client.execute('ALTER TABLE users ADD COLUMN last_login_at TEXT');
   }
+
+  // Per-user spend tracking
+  await client.execute(`CREATE TABLE IF NOT EXISTS user_spend (
+    user_id TEXT PRIMARY KEY,
+    cost REAL DEFAULT 0,
+    calls INTEGER DEFAULT 0
+  )`);
 
   // Migrate prospects to compound PK (org_id, name)
   if (tables.includes('prospects')) {
@@ -793,7 +801,7 @@ async function bulkUpsert(records) {
 
 function _usageMonthKey() { return 'm' + new Date().toISOString().slice(0, 7); }
 
-async function meterApiCall(model, usage, feature) {
+async function meterApiCall(model, usage, feature, userId) {
   if (!usage) return;
   const p = _ccPrice(model);
   const inTok  = usage.input_tokens || 0;
@@ -822,17 +830,21 @@ async function meterApiCall(model, usage, feature) {
   const day = new Date().toISOString().slice(0, 10);
   const feat = (feature || 'Other').trim();
   try {
-    await client.batch([
+    const batch = [
       { sql, args: ['global', cost] },
       { sql, args: [_usageMonthKey(), cost] },
       { sql: sqlDaily, args: [day, model || 'unknown', cost, inTok, outTok, cacheW, cacheR] },
       { sql: sqlFeature, args: [day, feat, cost, inTok, outTok] },
-    ], 'write');
+    ];
+    if (userId) {
+      batch.push({ sql: `INSERT INTO user_spend (user_id, cost, calls) VALUES (?, ?, 1) ON CONFLICT(user_id) DO UPDATE SET cost = user_spend.cost + excluded.cost, calls = user_spend.calls + 1`, args: [userId, cost] });
+    }
+    await client.batch(batch, 'write');
   } catch (e) { console.error('[meter] write failed:', e.message); }
 }
 
 // Extract usage from a buffered Anthropic response (JSON or SSE stream)
-function meterFromResponse(reqModel, raw, feature) {
+function meterFromResponse(reqModel, raw, feature, userId) {
   try {
     let model = reqModel, usage = null;
     const trimmed = raw.trimStart();
@@ -861,7 +873,7 @@ function meterFromResponse(reqModel, raw, feature) {
       }
       if (seen) usage = { input_tokens: inTok, output_tokens: outTok, cache_creation_input_tokens: cacheW, cache_read_input_tokens: cacheR };
     }
-    if (usage) meterApiCall(model, usage, feature);
+    if (usage) meterApiCall(model, usage, feature, userId);
   } catch (e) { console.error('[meter] parse failed:', e.message); }
 }
 
@@ -998,6 +1010,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const token = await createSession(user.id, user.username, user.role, user.orgId);
+        await client.execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [new Date().toISOString(), user.id] });
         const cookie = `siren_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 3600}`;
         res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': cookie });
         res.end(JSON.stringify({ ok: true, username: user.username, role: user.role, mustChangePassword: user.mustChangePassword, orgId: user.orgId }));
@@ -1452,9 +1465,9 @@ const server = http.createServer(async (req, res) => {
   // ── User management (admin only) ───────────────────────────
   if (req.method === 'GET' && urlPath0 === '/api/users') {
     if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
-    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, o.name as org_name FROM users u LEFT JOIN orgs o ON o.id = u.org_id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
+    const rows = (await client.execute('SELECT u.id, u.username, u.role, u.org_id, u.must_change_password, u.created_at, u.display_name, u.sales_role, u.last_login_at, o.name as org_name, s.cost as spend_cost, s.calls as spend_calls FROM users u LEFT JOIN orgs o ON o.id = u.org_id LEFT JOIN user_spend s ON s.user_id = u.id WHERE u.org_id = ? ORDER BY u.display_name ASC, u.username ASC', [_session.orgId])).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '' }))));
+    res.end(JSON.stringify(rows.map(r => ({ id: String(r.id), username: String(r.username), role: String(r.role), orgId: Number(r.org_id)||1, orgName: r.org_name ? String(r.org_name) : 'Production', mustChangePassword: !!r.must_change_password, createdAt: String(r.created_at), displayName: r.display_name ? String(r.display_name) : '', salesRole: r.sales_role ? String(r.sales_role) : '', lastLoginAt: r.last_login_at ? String(r.last_login_at) : null, totalSpend: r.spend_cost != null ? Number(r.spend_cost) : 0, totalCalls: r.spend_calls != null ? Number(r.spend_calls) : 0 }))));
     return;
   }
 
@@ -1655,7 +1668,7 @@ const server = http.createServer(async (req, res) => {
         proxyRes.on('end', () => {
           res.end();
           if (proxyRes.statusCode >= 200 && proxyRes.statusCode < 300) {
-            meterFromResponse(reqModel, respBuf, reqFeature);
+            meterFromResponse(reqModel, respBuf, reqFeature, _session?.userId);
           }
         });
       });

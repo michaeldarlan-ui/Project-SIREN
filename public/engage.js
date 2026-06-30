@@ -354,18 +354,19 @@
   }
 
   function scoreToGrade(n) {
-    if (n >= 97) return 'A+';
-    if (n >= 93) return 'A';
-    if (n >= 90) return 'A-';
-    if (n >= 87) return 'B+';
-    if (n >= 83) return 'B';
-    if (n >= 80) return 'B-';
-    if (n >= 77) return 'C+';
-    if (n >= 73) return 'C';
-    if (n >= 70) return 'C-';
-    if (n >= 67) return 'D+';
-    if (n >= 63) return 'D';
-    if (n >= 60) return 'D-';
+    const adj = typeof applyGradingOffset === 'function' ? applyGradingOffset(n) : n;
+    if (adj >= 97) return 'A+';
+    if (adj >= 93) return 'A';
+    if (adj >= 90) return 'A-';
+    if (adj >= 87) return 'B+';
+    if (adj >= 83) return 'B';
+    if (adj >= 80) return 'B-';
+    if (adj >= 77) return 'C+';
+    if (adj >= 73) return 'C';
+    if (adj >= 70) return 'C-';
+    if (adj >= 67) return 'D+';
+    if (adj >= 63) return 'D';
+    if (adj >= 60) return 'D-';
     return 'F';
   }
 

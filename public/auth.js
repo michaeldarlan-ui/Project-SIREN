@@ -356,6 +356,8 @@
               <th style="${thStyle}">Sales Role</th>
               <th style="${thStyle}">Username</th>
               <th style="${thStyle}">Platform Role</th>
+              <th style="${thStyle}">Last Login</th>
+              <th style="${thStyle}">Spend</th>
               <th style="${thStyle}">Status</th>
               <th style="${thStyle}padding-right:16px;"></th>
             </tr>
@@ -367,6 +369,12 @@
               const uname = escHtml(u.username);
               const dn = escHtml(u.displayName || '');
               const sr = escHtml(u.salesRole || '');
+              const lastLogin = u.lastLoginAt
+                ? (() => { const d = new Date(u.lastLoginAt); return d.toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' }) + ' ' + d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); })()
+                : '—';
+              const spendStr = u.totalSpend > 0
+                ? `$${u.totalSpend.toFixed(4)} <span style="color:rgba(255,255,255,.25);font-size:10px;">(${u.totalCalls} call${u.totalCalls !== 1 ? 's' : ''})</span>`
+                : '<span style="color:rgba(255,255,255,.2);">—</span>';
               return `<tr id="urow-${uid}">
                 <td style="padding:8px 8px 8px 16px;border-bottom:1px solid rgba(255,255,255,.04);">
                   <input value="${dn}" placeholder="Full name" data-uid="${uid}" data-field="displayName"
@@ -383,6 +391,8 @@
                 </td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:rgba(255,255,255,.5);font-family:'JetBrains Mono',monospace;">${uname}${isSelf ? ' <span style="font-size:9px;color:rgba(245,158,11,.5);">(you)</span>' : ''}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'rgba(245,158,11,.8)':'rgba(255,255,255,.35)'};">${escHtml(u.role)}</td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.4);white-space:nowrap;">${lastLogin}</td>
+                <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.5);white-space:nowrap;">${spendStr}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Change pwd' : 'Active'}</td>
                 <td style="padding:8px 16px 8px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
                   ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="assumeUserRole('${uid}')" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="View app as this user">View as</button>` : ''}
