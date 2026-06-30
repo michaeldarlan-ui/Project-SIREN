@@ -1007,6 +1007,45 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
     }
   };
 
+  // Repairs common JSON malformations in AI-generated grading output before parsing.
+  // Models occasionally emit literal newlines/tabs inside string values, which are
+  // syntactically invalid JSON (must be escaped as \n) and throw "Unterminated string".
+  function _parseAiJson(raw) {
+    try {
+      return JSON.parse(raw);
+    } catch (firstErr) {
+      // Walk the string and escape any literal control character that falls
+      // inside a JSON string literal (tracking quote state, respecting escapes).
+      let out = '';
+      let inString = false;
+      let escaped = false;
+      for (let i = 0; i < raw.length; i++) {
+        const ch = raw[i];
+        if (inString) {
+          if (escaped) {
+            out += ch;
+            escaped = false;
+            continue;
+          }
+          if (ch === '\\') { out += ch; escaped = true; continue; }
+          if (ch === '"') { out += ch; inString = false; continue; }
+          if (ch === '\n') { out += '\\n'; continue; }
+          if (ch === '\r') { out += '\\r'; continue; }
+          if (ch === '\t') { out += '\\t'; continue; }
+          out += ch;
+        } else {
+          out += ch;
+          if (ch === '"') inString = true;
+        }
+      }
+      try {
+        return JSON.parse(out);
+      } catch {
+        throw firstErr; // surface the original error if repair didn't fix it
+      }
+    }
+  }
+
   async function gradeCall() {
     const notes = document.getElementById('callNotes').value.trim();
     const prospect = document.getElementById('prospect').value.trim();
@@ -1244,7 +1283,7 @@ Set touched to true only if the rep meaningfully engaged with that component in 
 
       if (inputTokens || outputTokens) updateUsageUI(inputTokens, outputTokens);
       let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      const parsed = JSON.parse(raw);
+      const parsed = _parseAiJson(raw);
       normalizeResult(parsed, rep);
       renderResults(parsed, prospect, contactTitle, rep, callDate, notes, allThirdParties);
     } catch (err) {
@@ -2302,7 +2341,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
 
       // 4. Parse and normalize
       let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-      const parsed = JSON.parse(raw);
+      const parsed = _parseAiJson(raw);
       normalizeResult(parsed, tRepObj);
 
       // 5. Build results HTML without touching DOM or creating new history records
@@ -3188,7 +3227,7 @@ Jason Pruitt (8:16): Sounds good. Talk then.`;
         }
 
         let raw = accumulated.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
-        const parsed = JSON.parse(raw);
+        const parsed = _parseAiJson(raw);
         normalizeResult(parsed, tRepObj);
 
         // Auto-populate Atlas account profile from extracted data
