@@ -194,7 +194,7 @@ await client.batch([
       role TEXT NOT NULL,
       expires_at TEXT NOT NULL,
       assumed_role TEXT,
-      assumed_user_id INTEGER
+      assumed_user_id TEXT
     )` },
   { sql: `CREATE TABLE IF NOT EXISTS user_tab_permissions (
       user_id INTEGER NOT NULL,
@@ -367,7 +367,7 @@ await client.batch([
     const sCols = (await client.execute('PRAGMA table_info(sessions)')).rows.map(r => String(r.name));
     if (!sCols.includes('org_id'))       await client.execute('ALTER TABLE sessions ADD COLUMN org_id INTEGER NOT NULL DEFAULT 1');
     if (!sCols.includes('assumed_role'))    await client.execute('ALTER TABLE sessions ADD COLUMN assumed_role TEXT');
-    if (!sCols.includes('assumed_user_id')) await client.execute('ALTER TABLE sessions ADD COLUMN assumed_user_id INTEGER');
+    if (!sCols.includes('assumed_user_id')) await client.execute('ALTER TABLE sessions ADD COLUMN assumed_user_id TEXT');
   }
 
   // Add org_id / display_name / sales_role / email to users if missing
@@ -528,7 +528,7 @@ async function getSession(token) {
   }
   const realRole = String(row.role);
   const assumedRole = row.assumed_role ? String(row.assumed_role) : null;
-  const assumedUserId = row.assumed_user_id ? Number(row.assumed_user_id) : null;
+  const assumedUserId = row.assumed_user_id ? String(row.assumed_user_id) : null;
   return { userId: String(row.user_id), username: String(row.username), role: assumedRole || realRole, realRole, assumedRole, assumedUserId, orgId: Number(row.org_id) || 1 };
 }
 
@@ -1223,7 +1223,7 @@ const server = http.createServer(async (req, res) => {
     }
     // Tab permissions: for non-admins (or assumed user), load allowed tabs
     let allowedTabs = null;
-    const tabUserId = _session.assumedUserId || (_session.realRole === 'user' ? Number(_session.userId) : null);
+    const tabUserId = _session.assumedUserId || (_session.realRole === 'user' ? _session.userId : null);
     if (tabUserId) {
       const tabRows = (await client.execute({ sql: 'SELECT tab FROM user_tab_permissions WHERE user_id = ?', args: [tabUserId] })).rows;
       if (tabRows.length > 0) allowedTabs = tabRows.map(r => String(r.tab));
@@ -1252,9 +1252,9 @@ const server = http.createServer(async (req, res) => {
     const uRow = (await client.execute({ sql: 'SELECT id, role, display_name, username, org_id FROM users WHERE id = ? AND org_id = ?', args: [userId, _session.orgId] })).rows[0];
     if (!uRow) { res.writeHead(404); res.end(JSON.stringify({ error: 'User not found' })); return; }
     if (String(uRow.role) === 'admin' || String(uRow.role) === 'superadmin') { res.writeHead(400); res.end(JSON.stringify({ error: 'Cannot assume admin role' })); return; }
-    await client.execute({ sql: 'UPDATE sessions SET assumed_role=?, assumed_user_id=? WHERE token=?', args: [String(uRow.role), Number(uRow.id), _sessionToken] });
+    await client.execute({ sql: 'UPDATE sessions SET assumed_role=?, assumed_user_id=? WHERE token=?', args: [String(uRow.role), String(uRow.id), _sessionToken] });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, assumedRole: String(uRow.role), assumedUserId: Number(uRow.id) }));
+    res.end(JSON.stringify({ ok: true, assumedRole: String(uRow.role), assumedUserId: String(uRow.id) }));
     return;
   }
 
@@ -1363,6 +1363,19 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /api/admin/migrate-prospect-org?prospect=AVN+HLTH — preview matching records
+  if (req.method === 'GET' && urlPath0 === '/api/admin/migrate-prospect-org') {
+    if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
+    const q = (new URL(req.url, 'http://x').searchParams.get('prospect') || '').trim().toLowerCase();
+    if (!q) { res.writeHead(400); res.end(JSON.stringify({ error: 'prospect query required' })); return; }
+    const like = `%${q}%`;
+    const hRows = (await client.execute({ sql: 'SELECT DISTINCT prospect, org_id FROM history_prod WHERE LOWER(prospect) LIKE ? LIMIT 20', args: [like] })).rows;
+    const tRows = (await client.execute({ sql: 'SELECT DISTINCT prospect, org_id FROM transcripts WHERE LOWER(prospect) LIKE ? LIMIT 20', args: [like] })).rows;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ history: hRows.map(r=>({prospect:String(r.prospect||''),orgId:Number(r.org_id)})), transcripts: tRows.map(r=>({prospect:String(r.prospect||''),orgId:Number(r.org_id)})) }));
+    return;
+  }
+
   // POST /api/admin/migrate-prospect-org — move all records matching a prospect pattern to a target org
   if (req.method === 'POST' && urlPath0 === '/api/admin/migrate-prospect-org') {
     if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
@@ -1416,9 +1429,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   // GET /api/users/:id/tabs — admin fetches tab permissions for a user
-  if (req.method === 'GET' && /^\/api\/users\/\d+\/tabs$/.test(urlPath0)) {
+  if (req.method === 'GET' && /^\/api\/users\/[^/]+\/tabs$/.test(urlPath0)) {
     if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
-    const uid = Number(urlPath0.split('/')[3]);
+    const uid = urlPath0.split('/')[3];
     const rows = (await client.execute({ sql: 'SELECT tab FROM user_tab_permissions WHERE user_id = ?', args: [uid] })).rows;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ tabs: rows.length > 0 ? rows.map(r => String(r.tab)) : null }));
@@ -1426,9 +1439,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   // PUT /api/users/:id/tabs — admin sets tab permissions for a user
-  if (req.method === 'PUT' && /^\/api\/users\/\d+\/tabs$/.test(urlPath0)) {
+  if (req.method === 'PUT' && /^\/api\/users\/[^/]+\/tabs$/.test(urlPath0)) {
     if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }
-    const uid = Number(urlPath0.split('/')[3]);
+    const uid = urlPath0.split('/')[3];
     const { tabs } = await readBody(req);
     await client.execute({ sql: 'DELETE FROM user_tab_permissions WHERE user_id = ?', args: [uid] });
     if (Array.isArray(tabs) && tabs.length > 0) {
@@ -1634,7 +1647,7 @@ const server = http.createServer(async (req, res) => {
     // Non-admins (and admins assuming a user) only see that user's calls
     let histSql = 'SELECT * FROM history_prod WHERE org_id = ? ORDER BY ts DESC';
     let histArgs = [_session.orgId];
-    const filterUserId = _session.assumedUserId || (_session.role === 'user' ? Number(_session.userId) : null);
+    const filterUserId = _session.assumedUserId || (_session.role === 'user' ? _session.userId : null);
     if (filterUserId) {
       const userRow = (await client.execute({ sql: 'SELECT display_name FROM users WHERE id = ?', args: [filterUserId] })).rows[0];
       const displayName = userRow?.display_name ? String(userRow.display_name) : null;
@@ -2237,7 +2250,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/transcripts') {
     let tSql = 'SELECT id,label,prospect,stage,rep,call_date,saved_at FROM transcripts WHERE org_id = ? ORDER BY saved_at DESC';
     let tArgs = [_session.orgId];
-    const tFilterUserId = _session.assumedUserId || (_session.role === 'user' ? Number(_session.userId) : null);
+    const tFilterUserId = _session.assumedUserId || (_session.role === 'user' ? _session.userId : null);
     if (tFilterUserId) {
       const uRow = (await client.execute({ sql: 'SELECT display_name FROM users WHERE id = ?', args: [tFilterUserId] })).rows[0];
       const dn = uRow?.display_name ? String(uRow.display_name) : null;

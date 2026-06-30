@@ -334,8 +334,8 @@
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.role==='admin'?'rgba(245,158,11,.8)':'rgba(255,255,255,.35)'};">${escHtml(u.role)}</td>
                 <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;color:${u.mustChangePassword?'#f59e0b':'rgba(34,197,94,.6)'};">${u.mustChangePassword ? 'Change pwd' : 'Active'}</td>
                 <td style="padding:8px 16px 8px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;white-space:nowrap;">
-                  ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="assumeUserRole(${uid})" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="View app as this user">View as</button>` : ''}
-                  ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="openTabPermissions(${uid},'${escHtml(u.displayName||u.username)}')" style="background:none;border:1px solid rgba(245,158,11,.25);color:rgba(245,158,11,.6);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="Configure tab access">Tabs</button>` : ''}
+                  ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="assumeUserRole('${uid}')" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="View app as this user">View as</button>` : ''}
+                  ${(!isSelf && u.role !== 'admin' && u.role !== 'superadmin') ? `<button onclick="openTabPermissions('${uid}','${escHtml(u.displayName||u.username)}')" style="background:none;border:1px solid rgba(245,158,11,.25);color:rgba(245,158,11,.6);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;" title="Configure tab access">Tabs</button>` : ''}
                   <button onclick="usersResetPwd('${uid}','${uname}')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;margin-right:6px;">Reset pwd</button>
                   ${!isSelf ? `<button onclick="usersDelete('${uid}','${uname}')" style="background:none;border:1px solid rgba(239,68,68,.2);color:rgba(239,68,68,.5);border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">Remove</button>` : ''}
                 </td>
@@ -430,6 +430,7 @@
                 <label style="display:block;font-size:9px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;">Target Org Name</label>
                 <input id="migrateTargetOrg" type="text" placeholder="e.g. OneAxiom" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:4px;color:rgba(255,255,255,.8);padding:5px 8px;font-size:12px;font-family:inherit;outline:none;width:140px;">
               </div>
+              <button onclick="adminPreviewMigration()" style="background:none;border:1px solid rgba(99,102,241,.3);color:rgba(149,152,255,.7);border-radius:4px;padding:5px 12px;font-size:11px;cursor:pointer;">Preview</button>
               <button onclick="adminMigrateProspect()" id="migrateProspectBtn" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);border-radius:4px;padding:5px 12px;font-size:11px;cursor:pointer;">Migrate</button>
               <span id="migrateProspectMsg" style="font-size:11px;color:rgba(255,255,255,.3);"></span>
             </div>
@@ -513,6 +514,26 @@
     if (f) f.style.display = 'none';
     if (err) err.innerHTML = '';
   }
+
+  async function adminPreviewMigration() {
+    const prospect = (document.getElementById('migrateProspect')?.value || '').trim();
+    const msg = document.getElementById('migrateProspectMsg');
+    if (!prospect) { if (msg) { msg.style.color='#ef4444'; msg.textContent='Enter a prospect name to preview.'; } return; }
+    if (msg) { msg.style.color='rgba(255,255,255,.3)'; msg.textContent='Searching…'; }
+    try {
+      const res = await fetch(`/api/admin/migrate-prospect-org?prospect=${encodeURIComponent(prospect)}`);
+      const d = await res.json();
+      if (!res.ok) { msg.style.color='#ef4444'; msg.textContent='Error: ' + (d.error||'unknown'); return; }
+      const hNames = [...new Set(d.history.map(r=>r.prospect))];
+      const tNames = [...new Set(d.transcripts.map(r=>r.prospect))];
+      if (!hNames.length && !tNames.length) {
+        msg.style.color='#f59e0b'; msg.textContent=`No records found matching "${prospect}". Check the exact name in the DB.`;
+      } else {
+        msg.style.color='#4ade80'; msg.textContent=`Found: ${d.history.length} call(s) [${hNames.slice(0,3).join(', ')}], ${d.transcripts.length} transcript(s). Ready to migrate.`;
+      }
+    } catch { if (msg) { msg.style.color='#ef4444'; msg.textContent='Network error.'; } }
+  }
+  window.adminPreviewMigration = adminPreviewMigration;
 
   async function adminMigrateProspect() {
     const prospect  = (document.getElementById('migrateProspect')?.value || '').trim();
