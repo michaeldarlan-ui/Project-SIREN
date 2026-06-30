@@ -1963,7 +1963,12 @@
   .pulse-api-dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
   .pulse-api-key { color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
   .pulse-api-val { font-weight: 600; color: rgba(255,255,255,0.7); }
-  .pulse-api-brand { color: rgba(245,158,11,0.4); letter-spacing: 0.12em; font-size: 10px; }
+  .pulse-api-brand { color: rgba(245,158,11,0.4); letter-spacing: 0.12em; font-size: 10px; white-space: nowrap; }
+  .pulse-api-brand--short { display: none; }
+  @media (max-width: 900px) {
+    .pulse-api-brand--full  { display: none; }
+    .pulse-api-brand--short { display: inline; }
+  }
 
   /* ── History page ── */
   .hist-empty { font-size: 14px; color: var(--siren-text-faint); padding: 3rem 0; text-align: center; }
