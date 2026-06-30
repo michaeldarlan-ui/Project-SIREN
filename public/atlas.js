@@ -55,6 +55,7 @@
     const company = document.getElementById('lcCompanySelect').value;
     const emptyEl = document.getElementById('lcGraphEmpty');
     if (!company) {
+      _lcNodes = []; _lcEdges = []; _lcCompany = null;
       document.getElementById('lcGraphRoot').innerHTML = '';
       if (emptyEl) emptyEl.style.display = 'flex';
       lcCloseSidebar();
