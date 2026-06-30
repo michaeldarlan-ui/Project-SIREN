@@ -714,7 +714,7 @@
       .filter(h => {
         const lc = repName.toLowerCase();
         const rs = _parseRepScores(h.rep_scores);
-        const rsEntry = rs.find(r => _repNameMatch(r.name, name));
+        const rsEntry = rs.find(r => _repNameMatch(r.name, repName));
         if (rsEntry) return rsEntry.total > 0;
         return (h.rep||'').toLowerCase().trim() === lc.trim();
       })

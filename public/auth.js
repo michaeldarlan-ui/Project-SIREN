@@ -12,7 +12,9 @@
 
     // Store org + user context globally for other modules
     window._sirenOrg  = { id: _authUser.orgId, name: _authUser.orgName, isDemo: _authUser.isDemo };
-    window._sirenUser = { role: _authUser.role, username: _authUser.username, displayName: _authUser.displayName || _authUser.username, orgId: _authUser.orgId };
+    // When admin assumes a user role, use the assumed user's display name so COACH/data filters work correctly
+    const effectiveDisplayName = _authUser.assumedUserDisplay || _authUser.displayName || _authUser.username;
+    window._sirenUser = { role: _authUser.role, username: _authUser.username, displayName: effectiveDisplayName, orgId: _authUser.orgId };
     window.sirenIsAdmin = () => ['admin','superadmin'].includes(window._sirenUser?.role);
     window._sirenGradingLevel = _authUser.gradingLevel || 3;
     // Personal grading level: non-admins get their own auto-promoted level; admins use org level
