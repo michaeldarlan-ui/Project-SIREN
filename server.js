@@ -1349,6 +1349,17 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /api/team-grading-levels — display_name -> userGradingLevel map for the org
+  // (lightweight, no admin gate — needed so per-rep report views show each rep's own scale)
+  if (req.method === 'GET' && urlPath0 === '/api/team-grading-levels') {
+    const rows = (await client.execute({ sql: 'SELECT display_name, user_grading_level FROM users WHERE org_id = ? AND display_name IS NOT NULL AND display_name != \'\'', args: [_session.orgId] })).rows;
+    const levels = {};
+    rows.forEach(r => { levels[String(r.display_name)] = Number(r.user_grading_level) || 1; });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ levels }));
+    return;
+  }
+
   // POST /api/auth/assume-role — admin temporarily views app as a specific user
   if (req.method === 'POST' && urlPath0 === '/api/auth/assume-role') {
     if (_session.realRole !== 'admin' && _session.realRole !== 'superadmin') { res.writeHead(403); res.end('Forbidden'); return; }

@@ -72,6 +72,11 @@
     const kj = kr.ok ? await kr.json() : {};
     window._sirenOrgKnowledge = kj.content || '';
   } catch { window._sirenOrgKnowledge = ''; }
+  try {
+    const gr = await fetch('/api/team-grading-levels');
+    const gj = gr.ok ? await gr.json() : {};
+    window._sirenTeamGradingLevels = gj.levels || {};
+  } catch { window._sirenTeamGradingLevels = {}; }
 
   // ── 3. Boot UI (each call wrapped so one failure doesn't block navTo) ──
   try { initKeyUI(); } catch(e) { console.error('[init] initKeyUI:', e); }
