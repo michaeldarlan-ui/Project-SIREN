@@ -845,7 +845,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
           stream: false,
           system: 'You identify call participants. Return ONLY valid JSON, no markdown.',
           messages: [{ role: 'user', content:
-            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}${knownCustomerContacts ? knownCustomerContacts + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- CRITICAL: Only include people who have actual spoken lines in the transcript (e.g. "Name (timestamp): ..."). Do NOT include anyone who is merely mentioned, referenced, or named by another speaker without speaking themselves.\n- "sales_team": name matches a known team member\n- "customer": name matches a known customer contact for this company, or clearly represents the prospect company\n- "unknown": neither — could be a partner, SE, vendor rep, consultant, etc. Known third-party participants above must always be classified as "unknown".\nOnly flag "unknown" if confident they are a real speaker who is not sales team or customer.\n\nTranscript (excerpt):\n${head}${lateCtx}`
+            `${knownSales}\n${knownThirdParties ? knownThirdParties + '\n' : ''}${knownCustomerContacts ? knownCustomerContacts + '\n' : ''}Customer company: ${prospect || 'unknown'}\nCustomer contact title: ${contactTitle || 'unknown'}\n\nReview this transcript and identify every distinct speaker. Return:\n{"participants":[{"name":"string","type":"sales_team"|"customer"|"unknown","clue":"brief reason"}]}\n\nRules:\n- CRITICAL: Only include people who have actual spoken lines in the transcript (e.g. "Name (timestamp): ..."). Do NOT include anyone who is merely mentioned, referenced, or named by another speaker without speaking themselves.\n- "sales_team": name matches a known team member, OR the speaker's own words clearly show them representing/selling/pitching your company's product or service\n- "customer": name matches a known customer contact for this company, OR the speaker's own words clearly show them representing the prospect company (asking about pricing/features for their own use, describing their own environment or pain points, raising objections as a buyer, being addressed as the client)\n- "unknown": neither of the above — a genuine third party (partner, SE, vendor rep, consultant) whose own words show they represent neither your company nor the customer. Known third-party participants above must always be classified as "unknown".\n- IMPORTANT: Generic speaker labels (e.g. "Speaker 1", "Speaker 2", "Speaker 3", "Caller", "Unknown Speaker") are NOT evidence of being a third party. Most calls only have your reps and the customer present. When a speaker has a generic label, use conversational context — what they say, what they ask, how others address them — to determine if they are sales_team or customer. Only classify a generic-labeled speaker as "unknown" if the conversation explicitly establishes they are from neither company (e.g. introduced as "from our partner X" or "our security consultant").\n\nTranscript (excerpt):\n${head}${lateCtx}`
           }]
         })
       });
@@ -930,6 +930,7 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
                 autocomplete="off">
             </div>
             <div class="tp-match-preview" id="tp-preview-${sid}" style="display:none;"></div>
+            <button type="button" class="tp-dismiss-btn" onclick="tpDismiss(${JSON.stringify(u.name)})" title="This speaker is actually the customer or one of your reps, not a third party" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:11px;text-decoration:underline;cursor:pointer;padding:2px 0;margin-top:4px;">Not a third party — this is the customer/rep</button>
           </div>
         </div>`;
       }).join('');
@@ -939,6 +940,15 @@ DEMO DELIVERY EDGE CASES — apply these rules before scoring Demo Delivery:
       if (first) first.focus();
     });
   }
+
+  // Lets the rep override a misclassified speaker (e.g. a generically-labeled customer
+  // mistakenly flagged as an unknown third party) by removing them from the prompt entirely —
+  // they're simply not tracked as a third party and grading proceeds without them.
+  window.tpDismiss = function(name) {
+    const sid = CSS.escape(name);
+    const el = document.getElementById('tp-person-wrap-' + sid);
+    if (el) el.remove();
+  };
 
   function confirmThirdParty() {
     const panel = document.getElementById('thirdPartyPanel');
