@@ -22,8 +22,10 @@
     if (_authUser.role === 'admin') {
       const div = document.getElementById('usersMenuDivider');
       const btn = document.getElementById('usersMenuItem');
+      const mobileBtn = document.getElementById('mobileUsersItem');
       if (div) div.style.display = '';
       if (btn) btn.style.display = '';
+      if (mobileBtn) mobileBtn.style.display = '';
     }
   }
 
